@@ -2,6 +2,11 @@
 
 ## 27/12/2025
 
+- **MCP (foundation)**:
+  - Criado o catálogo canônico de tools do CRM para MCP (nomes padrão `crm.*`, títulos e descrições) em `lib/mcp/crmToolCatalog.ts`.
+  - Criado um registry/adaptador para expor as tools existentes de `createCRMTools` como tools MCP (mapeamento interno → nome MCP, com fallback para tools não mapeadas) em `lib/mcp/crmRegistry.ts`.
+  - Detalhe técnico: o registry mantém ordenação determinística por `name` para facilitar cache/diffs em clients MCP.
+
 - **Installer (Supabase Edge Functions / Management API)**:
   - Novo step **`supabase_edge_functions`** no instalador: seta secrets e faz deploy automático das Edge Functions do repositório (`supabase/functions/*`).
   - Inputs novos no Wizard: `supabase.accessToken` (PAT), `supabase.projectRef` (opcional; inferido de `supabase.url` quando vazio) e `supabase.deployEdgeFunctions` (default `true`).
@@ -84,6 +89,7 @@
   - Melhoria: `POST /api/public/v1/deals/move-stage` (e variantes) agora aceita `mark: "won"|"lost"` para marcar ganho/perdido **explicitamente**, sem depender da etapa final configurada do board.
   - UX: no assistente de API, a identidade do lead agora é **telefone por padrão** (email via toggle) e, ao selecionar etapa de **Ganho/Perdido** configurada no board, o wizard adiciona `mark` automaticamente no request.
   - UX: OpenAPI/Swagger saiu do fluxo de “passo” e virou **Consulta técnica** (sem numeração), posicionada **após** o Passo “Copiar e testar”.
+  - UX: Passo 2 (API) agora é realmente dinâmico para **Criar/Atualizar Lead** (campos de exemplo editáveis: nome/email/telefone/source).
   - UX: seletor de etapas no assistente mostra apenas o **nome da etapa** (sem sufixo de UUID).
   - UX: em **Chaves existentes**, agora é possível **excluir** chaves **revogadas** (com confirmação).
   - UX (produto): o assistente agora usa dados do próprio app (boards/deals/stages) para montar o cURL **com valores reais** (wizard dinâmico), e a **API key virou independente do wizard** (colar/validar chave é opcional e fica só em memória).

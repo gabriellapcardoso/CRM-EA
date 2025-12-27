@@ -44,6 +44,10 @@ export const ApiKeysSection: React.FC = () => {
   const [identityMode, setIdentityMode] = useState<'phone' | 'email'>('phone');
   const [identityPhone, setIdentityPhone] = useState<string>('');
   const [identityEmail, setIdentityEmail] = useState<string>('');
+  const [leadName, setLeadName] = useState<string>('Lead Teste');
+  const [leadEmail, setLeadEmail] = useState<string>('teste@exemplo.com');
+  const [leadPhone, setLeadPhone] = useState<string>('+5511999999999');
+  const [leadSource, setLeadSource] = useState<string>('n8n');
   const [activityType, setActivityType] = useState<string>('NOTE');
   const [activityTitle, setActivityTitle] = useState<string>('Nota via integração');
   const [actionTestLoading, setActionTestLoading] = useState(false);
@@ -227,7 +231,11 @@ export const ApiKeysSection: React.FC = () => {
   const curlExample = useMemo(() => {
     const token = (apiKeyToken.trim() || createdToken?.trim() || '') || 'SUA_API_KEY';
     if (action === 'create_lead') {
-      return `curl -X POST '${contactsUrl}' \\\n+  -H 'Content-Type: application/json' \\\n+  -H 'X-Api-Key: ${token}' \\\n+  -d '{\n+    \"name\": \"Lead Teste\",\n+    \"email\": \"teste@exemplo.com\",\n+    \"phone\": \"+5511999999999\",\n+    \"source\": \"n8n\"\n+  }'`;
+      const name = (leadName || 'Lead').replaceAll('"', '\\"');
+      const email = (leadEmail || 'teste@exemplo.com').replaceAll('"', '\\"');
+      const phone = (leadPhone || '+5511999999999').replaceAll('"', '\\"');
+      const source = (leadSource || 'n8n').replaceAll('"', '\\"');
+      return `curl -X POST '${contactsUrl}' \\\n+  -H 'Content-Type: application/json' \\\n+  -H 'X-Api-Key: ${token}' \\\n+  -d '{\n+    \"name\": \"${name}\",\n+    \"email\": \"${email}\",\n+    \"phone\": \"${phone}\",\n+    \"source\": \"${source}\"\n+  }'`;
     }
     if (action === 'create_deal') {
       const boardKey = selectedBoardKey || 'board-key';
@@ -255,6 +263,10 @@ export const ApiKeysSection: React.FC = () => {
     selectedBoardKey,
     selectedBoardId,
     apiKeyToken,
+    leadName,
+    leadEmail,
+    leadPhone,
+    leadSource,
     identityMode,
     identityPhone,
     identityEmail,
@@ -279,10 +291,10 @@ export const ApiKeysSection: React.FC = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Api-Key': token },
           body: JSON.stringify({
-            name: 'Lead Teste',
-            email: `teste+${Date.now()}@exemplo.com`,
-            phone: '+5511999999999',
-            source: 'ui-test',
+            name: leadName || 'Lead Teste',
+            email: leadEmail || `teste+${Date.now()}@exemplo.com`,
+            phone: leadPhone || '+5511999999999',
+            source: leadSource || 'ui-test',
           }),
         });
         const json = await res.json().catch(() => ({}));
@@ -503,6 +515,47 @@ export const ApiKeysSection: React.FC = () => {
           <div className="text-xs text-slate-600 dark:text-slate-300 mb-3">
             Aqui entra o “mágico”: você escolhe e a gente já preenche o comando final.
           </div>
+
+          {action === 'create_lead' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Nome</div>
+                <input
+                  value={leadName}
+                  onChange={(e) => setLeadName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white"
+                  placeholder="Nome do lead"
+                />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Source</div>
+                <input
+                  value={leadSource}
+                  onChange={(e) => setLeadSource(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white"
+                  placeholder="n8n / make / webhook"
+                />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Email</div>
+                <input
+                  value={leadEmail}
+                  onChange={(e) => setLeadEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white"
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Telefone (E.164)</div>
+                <input
+                  value={leadPhone}
+                  onChange={(e) => setLeadPhone(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white font-mono"
+                  placeholder="+5511999999999"
+                />
+              </div>
+            </div>
+          )}
 
           {(action === 'create_deal' || action === 'move_stage') && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
