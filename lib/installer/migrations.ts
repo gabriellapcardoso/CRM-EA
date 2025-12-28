@@ -26,6 +26,44 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+/**
+ * Tenta conectar ao banco com retry e backoff exponencial.
+ * Útil quando o DNS do projeto Supabase ainda não propagou.
+ */
+async function connectWithRetry(
+  client: Client,
+  opts?: { maxAttempts?: number; initialDelayMs?: number }
+): Promise<void> {
+  const maxAttempts = opts?.maxAttempts ?? 5;
+  const initialDelayMs = opts?.initialDelayMs ?? 3000;
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await client.connect();
+      return; // Sucesso!
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const isRetryable = 
+        lastError.message.includes('ENOTFOUND') || 
+        lastError.message.includes('ECONNREFUSED') ||
+        lastError.message.includes('ETIMEDOUT') ||
+        lastError.message.includes('EAI_AGAIN');
+      
+      if (!isRetryable || attempt === maxAttempts) {
+        throw lastError;
+      }
+      
+      const delayMs = initialDelayMs * Math.pow(2, attempt - 1); // Backoff exponencial
+      console.log(`[migrations] Conexão falhou (${lastError.message}), tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs/1000}s...`);
+      await sleep(delayMs);
+    }
+  }
+  
+  throw lastError || new Error('Falha ao conectar ao banco de dados');
+}
+
 async function waitForStorageReady(client: Client, opts?: { timeoutMs?: number; pollMs?: number }) {
   const timeoutMs = typeof opts?.timeoutMs === 'number' ? opts.timeoutMs : 210_000;
   const pollMs = typeof opts?.pollMs === 'number' ? opts.pollMs : 4_000;
@@ -66,7 +104,9 @@ export async function runSchemaMigration(dbUrl: string) {
     ssl: needsSsl(dbUrl) ? { rejectUnauthorized: false } : undefined,
   });
 
-  await client.connect();
+  // Tenta conectar com retry (DNS pode demorar a propagar após criar projeto)
+  await connectWithRetry(client, { maxAttempts: 5, initialDelayMs: 3000 });
+  
   try {
     // Never "skip" Storage. We wait until it's ready, then run migrations.
     await waitForStorageReady(client);
