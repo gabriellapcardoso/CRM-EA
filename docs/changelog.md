@@ -2,6 +2,12 @@
 
 ## 28/12/2025
 
+- **Installer — Fix migrations retry + Pooler oficial (Supavisor)**:
+  - **Retry de conexão PG sem reutilizar client**: evita erro "Client has already been connected" durante `migrations`
+  - **DB URL via Supavisor Transaction Pooler**: usa `GET /v1/projects/{ref}/config/database/pooler` para obter `aws-*-REGION.pooler.supabase.com:6543`
+  - **Username no pooler**: `role.{projectRef}` conforme docs oficiais
+
+
 
 - **Installer — Prevenção de Loops de Auto-Submit**:
   - **Fix no `/install/start`**: adicionada verificação `!error` no auto-submit do token Vercel
