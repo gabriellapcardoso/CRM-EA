@@ -108,6 +108,8 @@ const transformActivityToDb = (activity: Partial<Activity>): Partial<DbActivity>
   return db;
 };
 
+import { sortActivitiesSmart } from '@/lib/utils/activitySort';
+
 export const activitiesService = {
   /**
    * Busca todas as atividades.
@@ -125,10 +127,13 @@ export const activitiesService = {
           *,
           deals:deal_id (title)
         `)
-        .order('date', { ascending: false });
+        .order('date', { ascending: false }); // Ordenação básica do banco
 
       if (error) return { data: null, error };
-      return { data: (data || []).map(a => transformActivity(a as DbActivityWithDeal)), error: null };
+      
+      // Transforma e aplica ordenação inteligente
+      const activities = (data || []).map(a => transformActivity(a as DbActivityWithDeal));
+      return { data: sortActivitiesSmart(activities), error: null };
     } catch (e) {
       return { data: null, error: e as Error };
     }

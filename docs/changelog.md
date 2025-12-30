@@ -2,6 +2,40 @@
 
 ## 30/12/2025
 
+- **Ordenação inteligente de atividades — Padrão de mercado implementado**:
+  - **Problema**: Atividades eram ordenadas apenas por data decrescente, não seguindo padrão de mercado para CRMs.
+  - **Solução**: Implementada ordenação inteligente que separa atividades em três grupos:
+    1. **Atrasadas** (data < hoje): ordenadas por data crescente (mais antigas primeiro = mais urgente)
+    2. **Hoje** (data === hoje): ordenadas por hora crescente (mais próximas primeiro)
+    3. **Futuras** (data > hoje): ordenadas por data crescente (mais próximas primeiro)
+  - **Aplicado em**: `activitiesService.getAll()`, `useActivities`, `useActivitiesByDeal`, `usePendingActivities`, `useTodayActivities`, e optimistic updates.
+  - **Arquivos**: `lib/supabase/activities.ts`, `lib/query/hooks/useActivitiesQuery.ts`, `lib/supabase/index.ts`
+
+- **Realtime funcionando corretamente — Atividades aparecem imediatamente**:
+  - **Problema resolvido**: Atividades agora aparecem imediatamente após criação, sem necessidade de F5.
+  - **Solução**: Ajustado `invalidateQueries` com `refetchType: 'all'` e `refetchQueries` com `type: 'all'` para forçar refetch de todas as queries correspondentes, não apenas as ativas.
+  - **Logs**: Adicionados logs detalhados para debug do estado das queries no cache.
+  - **Arquivo**: `lib/realtime/useRealtimeSync.ts`
+
+- **Correção crítica no Realtime — Queries não sendo refeitas após INSERT**:
+  - **Problema**: `refetchQueries` com `type: 'active'` estava muito restritivo e não encontrava queries para refazer quando o evento Realtime disparava.
+  - **Solução**: Removido `type: 'active'` para que `refetchQueries` refaça todas as queries que correspondem à key (não apenas as ativas). Isso garante que queries sejam refeitas mesmo se não estiverem "ativas" no momento exato do evento.
+  - **Arquivo**: `lib/realtime/useRealtimeSync.ts`
+
+- **Correção de bug no Realtime — TypeError ao refetch queries**:
+  - **Problema**: `refetchQueries` pode retornar `undefined` em alguns casos, causando erro ao acessar `.length`.
+  - **Solução**: Adicionada verificação de segurança usando `Array.isArray()` antes de acessar `.length`.
+  - **Arquivo**: `lib/realtime/useRealtimeSync.ts`
+
+- **Análise da Stack e Realtime — Validação de implementação**:
+  - **Análise completa**: Verificada compatibilidade e uso correto de Next.js 16.0.10, React 19.2.1, TanStack Query v5.90.12, @supabase/ssr 0.8.0 e @supabase/supabase-js 2.87.1.
+  - **Conclusão**: Stack está correta e seguindo melhores práticas. Implementação do Realtime está adequada.
+  - **Melhorias**: Adicionado logging detalhado em `useRealtimeSync` para identificar quando queries são refeitas e quando não há queries ativas. Melhorado tratamento de erros no `refetchQueries`.
+  - **Documentação**: Criado `docs/realtime-analysis.md` com análise completa da stack e possíveis causas de problemas.
+  - **Arquivos**: `lib/realtime/useRealtimeSync.ts`, `lib/query/hooks/useActivitiesQuery.ts`, `docs/realtime-analysis.md`
+
+## 30/12/2025
+
 - **Central de I.A — Melhoria de UX nos toggles**:
   - **Problema**: Toggles não deixavam claro se estavam habilitados ou desabilitados (cores inconsistentes).
   - **Solução**: Padronização de todos os toggles para usar **verde quando ligado** e **vermelho quando desligado** (padrão universal).
@@ -40,6 +74,16 @@
   - **Prevenção**:
     - `eslint` agora aplica `react-hooks/rules-of-hooks` como **error**.
     - Adicionado teste de regressão `features/boards/components/Modals/DealDetailModal.test.tsx` (abre/fecha modal sem crash).
+
+- **Política local — precheck antes de cada commit**:
+  - **Mudança**: adicionado `npm run precheck` (lint + typecheck + tests + build) e hook `.githooks/pre-commit`.
+  - **Setup**: `node scripts/setup-githooks.mjs` configura `core.hooksPath` para usar `.githooks`.
+  - **Atalho**: `npm run precheck:fast` (sem build) para o loop de desenvolvimento.
+
+- **Story tests — “estórias de usuário” como testes executáveis**:
+  - **Mudança**: estórias em `stories/*.md` com suíte `test/stories/*.test.tsx` + runner de passos.
+  - **Comando**: `npm run stories` (rodar apenas estórias).
+  - **Primeira estória**: `US-001-abrir-deal-no-boards` (regressão do crash ao abrir deal).
 
 ## 29/12/2025
 

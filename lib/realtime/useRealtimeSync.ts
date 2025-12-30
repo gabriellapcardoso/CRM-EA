@@ -58,17 +58,34 @@ export function useRealtimeSync(
   const [isConnected, setIsConnected] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingInvalidationsRef = useRef<Set<readonly unknown[]>>(new Set());
+  const onchangeRef = useRef(onchange);
+  
+  // Keep callback ref up to date without causing re-renders
+  useEffect(() => {
+    onchangeRef.current = onchange;
+  }, [onchange]);
 
   useEffect(() => {
     if (!enabled) return;
 
     const sb = supabase;
-    if (!sb) return;
+    if (!sb) {
+      console.warn('[Realtime] Supabase client not available');
+      return;
+    }
 
     const tableList = Array.isArray(tables) ? tables : [tables];
     const channelName = `realtime-sync-${tableList.join('-')}`;
 
+    // Cleanup existing channel if any
+    if (channelRef.current) {
+      console.log(`[Realtime] Cleaning up existing channel: ${channelName}`);
+      sb.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
     // Create channel
+    // Note: Supabase Realtime handles reconnection automatically
     const channel = sb.channel(channelName);
 
     // Subscribe to each table
@@ -81,34 +98,116 @@ export function useRealtimeSync(
           table,
         },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
-
+          console.log(`[Realtime] ${table} ${payload.eventType}:`, payload);
 
           // Call custom callback if provided
-          onchange?.(payload);
+          onchangeRef.current?.(payload);
 
           // Queue query keys for invalidation (lazy loaded)
           const keys = getTableQueryKeys(table);
           keys.forEach(key => pendingInvalidationsRef.current.add(key));
 
-          // Debounce invalidation
-          if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-          }
-
-          debounceTimerRef.current = setTimeout(() => {
-            // Invalidate all pending queries
+          // For INSERT events, refetch immediately (no debounce) for instant UI updates
+          // For UPDATE/DELETE, use debounce to batch multiple rapid changes
+          if (payload.eventType === 'INSERT') {
+            // Clear any pending debounce
+            if (debounceTimerRef.current) {
+              clearTimeout(debounceTimerRef.current);
+              debounceTimerRef.current = null;
+            }
+            
+            // Invalidate and refetch immediately for INSERTs
+            // According to TanStack Query v5 docs:
+            // - invalidateQueries() marks queries as stale but doesn't force immediate refetch
+            // - refetchQueries() forces immediate refetch of matching queries
+            // - We use both to ensure: 1) mark as stale, 2) force immediate refetch
             pendingInvalidationsRef.current.forEach(queryKey => {
-              queryClient.invalidateQueries({ queryKey });
+              console.log(`[Realtime] Invalidating and refetching queries immediately for INSERT:`, queryKey);
+              
+              // Check if there are any queries in cache matching this key
+              const cache = queryClient.getQueryCache();
+              const matchingQueries = cache.findAll({ queryKey, exact: false });
+              console.log(`[Realtime] Found ${matchingQueries.length} queries in cache for key:`, queryKey);
+              
+              // Log query states for debugging
+              matchingQueries.forEach((query, idx) => {
+                console.log(`[Realtime] Query ${idx + 1}:`, {
+                  queryKey: query.queryKey,
+                  state: query.state.status,
+                  isStale: query.isStale(),
+                });
+              });
+              
+              // Step 1: Invalidate and force refetch of all matching queries
+              // According to TanStack Query v5 docs:
+              // - invalidateQueries with refetchType: 'all' marks as stale AND refetches all matching queries
+              // - This bypasses staleTime and ensures instant update
+              // - exact: false matches all queries that start with this key
+              queryClient.invalidateQueries({ 
+                queryKey,
+                exact: false, // Match all queries that start with this key
+                refetchType: 'all', // Force refetch of ALL matching queries (not just active)
+              });
+              
+              // Step 2: Also try refetchQueries as fallback
+              // This ensures queries are refetched even if invalidateQueries doesn't work
+              const refetchPromise = queryClient.refetchQueries({ 
+                queryKey,
+                exact: false, // Match all queries that start with this key
+                type: 'all', // Refetch all matching queries (not just active)
+              });
+              
+              // Log result for debugging
+              refetchPromise
+                .then((result) => {
+                  // refetchQueries returns an array of queries, but may be undefined in some cases
+                  const refetchedCount = Array.isArray(result) ? result.length : 0;
+                  if (refetchedCount > 0) {
+                    console.log(`[Realtime] ✅ Successfully refetched ${refetchedCount} queries for key:`, queryKey);
+                  } else {
+                    // Note: invalidateQueries with refetchType: 'all' above should have already refetched
+                    // This is just a fallback, so no warning needed if it's 0
+                    console.log(`[Realtime] ℹ️ Refetch fallback: ${refetchedCount} queries (invalidateQueries should have already handled it)`);
+                  }
+                })
+                .catch((err) => {
+                  console.error(`[Realtime] ❌ Error refetching queries:`, err);
+                });
             });
             pendingInvalidationsRef.current.clear();
-          }, debounceMs);
+          } else {
+            // Debounce invalidation for UPDATE/DELETE
+            if (debounceTimerRef.current) {
+              clearTimeout(debounceTimerRef.current);
+            }
+
+            debounceTimerRef.current = setTimeout(() => {
+              // Invalidate all pending queries
+              pendingInvalidationsRef.current.forEach(queryKey => {
+                console.log(`[Realtime] Invalidating queries (debounced):`, queryKey);
+                queryClient.invalidateQueries({ queryKey });
+              });
+              pendingInvalidationsRef.current.clear();
+            }, debounceMs);
+          }
         }
       );
     });
 
     // Subscribe to channel
     channel.subscribe((status) => {
+      console.log(`[Realtime] Channel ${channelName} status:`, status);
       setIsConnected(status === 'SUBSCRIBED');
+      
+      if (status === 'SUBSCRIBED') {
+        console.log(`[Realtime] Successfully subscribed to ${tableList.join(', ')}`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[Realtime] Channel error for ${channelName}`);
+      } else if (status === 'TIMED_OUT') {
+        console.warn(`[Realtime] Channel timeout for ${channelName}`);
+      } else if (status === 'CLOSED') {
+        console.warn(`[Realtime] Channel closed for ${channelName}`);
+      }
     });
 
     channelRef.current = channel;
@@ -124,7 +223,9 @@ export function useRealtimeSync(
       }
       setIsConnected(false);
     };
-  }, [enabled, JSON.stringify(tables), debounceMs, onchange, queryClient]);
+    // Only re-run if enabled, tables, or debounceMs change
+    // queryClient is stable, onchange is handled via ref
+  }, [enabled, JSON.stringify(tables), debounceMs]);
 
   return {
     /** Manually trigger a sync */

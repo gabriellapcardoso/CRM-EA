@@ -9,6 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../index';
 import { activitiesService } from '@/lib/supabase';
+import { sortActivitiesSmart } from '@/lib/utils/activitySort';
 import { useAuth } from '@/context/AuthContext';
 import type { Activity } from '@/types';
 
@@ -60,10 +61,11 @@ export const useActivities = (filters?: ActivitiesFilters) => {
         });
       }
 
-      return activities;
+      // Apply smart sorting (already sorted by service, but re-sort after filtering)
+      return sortActivitiesSmart(activities);
     },
     enabled: !authLoading && !!user, // Only fetch when auth is ready
-    staleTime: 1 * 60 * 1000, // 1 minute - activities change frequently
+    staleTime: 30 * 1000, // 30 seconds - short staleTime for Realtime updates
   });
 };
 
@@ -76,7 +78,8 @@ export const useActivitiesByDeal = (dealId: string | undefined) => {
     queryFn: async () => {
       const { data, error } = await activitiesService.getAll();
       if (error) throw error;
-      return (data || []).filter(a => a.dealId === dealId);
+      const filtered = (data || []).filter(a => a.dealId === dealId);
+      return sortActivitiesSmart(filtered);
     },
     enabled: !!dealId,
   });
@@ -91,7 +94,8 @@ export const usePendingActivities = () => {
     queryFn: async () => {
       const { data, error } = await activitiesService.getAll();
       if (error) throw error;
-      return (data || []).filter(a => !a.completed);
+      const filtered = (data || []).filter(a => !a.completed);
+      return sortActivitiesSmart(filtered);
     },
   });
 };
@@ -107,7 +111,8 @@ export const useTodayActivities = () => {
     queryFn: async () => {
       const { data, error } = await activitiesService.getAll();
       if (error) throw error;
-      return (data || []).filter(a => a.date.startsWith(today));
+      const filtered = (data || []).filter(a => a.date.startsWith(today));
+      return sortActivitiesSmart(filtered);
     },
     staleTime: 30 * 1000, // 30 seconds - very fresh for today's view
   });
@@ -141,11 +146,32 @@ export const useCreateActivity = () => {
         id: `temp-${Date.now()}`,
       } as Activity;
 
-      queryClient.setQueryData<Activity[]>(queryKeys.activities.lists(), (old = []) => [
-        tempActivity,
-        ...old,
-      ]);
-      return { previousActivities };
+      // Insert temp activity and re-sort intelligently
+      queryClient.setQueryData<Activity[]>(queryKeys.activities.lists(), (old = []) => {
+        const withNew = [...old, tempActivity];
+        return sortActivitiesSmart(withNew);
+      });
+      return { previousActivities, tempId: tempActivity.id };
+    },
+    onSuccess: (data, _variables, context) => {
+      // Replace temp activity with real one from server and re-sort
+      // This ensures immediate UI update while Realtime syncs in background
+      queryClient.setQueryData<Activity[]>(queryKeys.activities.lists(), (old = []) => {
+        if (!old) return [data];
+        const tempId = context?.tempId;
+        if (tempId) {
+          // Remove temp activity, add real one, and re-sort
+          const withoutTemp = old.filter(a => a.id !== tempId);
+          const withReal = [...withoutTemp, data];
+          return sortActivitiesSmart(withReal);
+        }
+        // If temp not found, just add the new one and re-sort
+        return sortActivitiesSmart([...old, data]);
+      });
+      
+      // Invalidate to ensure Realtime updates are picked up
+      // This is a no-op if data is already fresh, but ensures consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
     },
     onError: (_error, _params, context) => {
       if (context?.previousActivities) {
@@ -153,6 +179,7 @@ export const useCreateActivity = () => {
       }
     },
     onSettled: () => {
+      // Final invalidation to ensure Realtime updates are picked up
       queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
     },
   });
