@@ -238,11 +238,33 @@ export const useDealsView = (
 ): DealView[] => {
   const { rawDeals } = useDeals();
 
+  // Pre-build Maps para lookups O(1) ao invés de O(n) com .find()
+  // Isso reduz de O(deals * boards * stages) para O(deals + boards + stages)
+  const boardMap = useMemo(() => {
+    const map = new Map<string, Board>();
+    for (const board of boards) {
+      map.set(board.id, board);
+    }
+    return map;
+  }, [boards]);
+
+  // Map de stageId -> stageLabel para lookup direto O(1)
+  const stageLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const board of boards) {
+      if (board.stages) {
+        for (const stage of board.stages) {
+          map.set(stage.id, stage.label);
+        }
+      }
+    }
+    return map;
+  }, [boards]);
+
   return useMemo(() => {
     return rawDeals.map(deal => {
-      // Find the stage label from the board stages
-      const board = boards.find(b => b.id === deal.boardId);
-      const stage = board?.stages?.find(s => s.id === deal.status);
+      // Lookups O(1) usando Maps pré-construídos
+      const stageLabel = stageLabelMap.get(deal.status) || 'Desconhecido';
 
       return {
         ...deal,
@@ -252,8 +274,8 @@ export const useDealsView = (
           : undefined,
         contactName: deal.contactId ? (contactMap[deal.contactId]?.name || 'Sem Contato') : 'Sem Contato',
         contactEmail: deal.contactId ? (contactMap[deal.contactId]?.email || '') : '',
-        stageLabel: stage?.label || 'Desconhecido',
+        stageLabel,
       };
     });
-  }, [rawDeals, companyMap, contactMap, boards]);
+  }, [rawDeals, companyMap, contactMap, stageLabelMap]);
 };
