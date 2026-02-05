@@ -346,3 +346,44 @@ body {
     opacity: 0;
   }
 }
+
+/* ========================================
+ * Performance: content-visibility
+ * Otimiza renderização de listas longas
+ * Browser pula layout/paint de itens fora da viewport
+ * ======================================== */
+
+/**
+ * .cv-auto - Aplica content-visibility: auto em elementos
+ * Use em linhas de tabela ou itens de lista que são renderizados em quantidade
+ *
+ * contain-intrinsic-size define o tamanho "placeholder" enquanto o elemento
+ * está fora da viewport, evitando scroll jumping
+ *
+ * Exemplo de uso:
+ * <tr className="cv-auto cv-row-md">...</tr>
+ */
+.cv-auto {
+  content-visibility: auto;
+}
+
+/* Tamanhos de placeholder para diferentes tipos de elementos */
+.cv-row-sm {
+  contain-intrinsic-size: auto 40px; /* Linhas pequenas (compactas) */
+}
+
+.cv-row-md {
+  contain-intrinsic-size: auto 60px; /* Linhas médias (padrão) */
+}
+
+.cv-row-lg {
+  contain-intrinsic-size: auto 80px; /* Linhas grandes (com mais conteúdo) */
+}
+
+.cv-card {
+  contain-intrinsic-size: auto 120px; /* Cards (deal cards, contact cards) */
+}
+
+.cv-card-lg {
+  contain-intrinsic-size: auto 200px; /* Cards grandes (com preview) */
+}
