@@ -366,25 +366,39 @@ export const useBoardsController = () => {
 
   // Filtering Logic
   const filteredDeals = useMemo(() => {
+    // Pre-compute valores fora do loop para evitar recriação a cada iteração
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 30);
+    const cutoffTime = cutoffDate.getTime();
+
+    // Cache do searchTerm em lowercase (evita toLowerCase() 2x por deal)
+    const searchLower = searchTerm.toLowerCase();
+
+    // Parse das datas do filtro uma única vez (antes era new Date() por deal)
+    const startTime = dateRange.start ? new Date(dateRange.start).getTime() : null;
+    let endTime: number | null = null;
+    if (dateRange.end) {
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      endTime = endDate.getTime();
+    }
 
     return deals.filter(l => {
+      // Search: usa searchLower pré-computado
       const matchesSearch =
-        (l.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (l.companyName || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (l.title || '').toLowerCase().includes(searchLower) ||
+        (l.companyName || '').toLowerCase().includes(searchLower);
 
       const matchesOwner =
         ownerFilter === 'all' || l.ownerId === profile?.id;
 
+      // Date: usa timestamps pré-computados (comparação numérica é mais rápida)
       let matchesDate = true;
-      if (dateRange.start) {
-        matchesDate = matchesDate && new Date(l.createdAt) >= new Date(dateRange.start);
+      if (startTime !== null) {
+        matchesDate = new Date(l.createdAt).getTime() >= startTime;
       }
-      if (dateRange.end) {
-        const endDate = new Date(dateRange.end);
-        endDate.setHours(23, 59, 59, 999);
-        matchesDate = matchesDate && new Date(l.createdAt) <= endDate;
+      if (matchesDate && endTime !== null) {
+        matchesDate = new Date(l.createdAt).getTime() <= endTime;
       }
 
       // Status Filter Logic
@@ -400,8 +414,8 @@ export const useBoardsController = () => {
       let matchesRecent = true;
       if (statusFilter === 'open' || statusFilter === 'all') {
         if (l.isWon || l.isLost) {
-          const lastUpdate = new Date(l.updatedAt);
-          if (lastUpdate < cutoffDate) {
+          // Usa cutoffTime pré-computado
+          if (new Date(l.updatedAt).getTime() < cutoffTime) {
             matchesRecent = false;
           }
         }
