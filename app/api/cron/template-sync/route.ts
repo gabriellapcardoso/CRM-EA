@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createStaticAdminClient } from '@/lib/supabase/server';
 import { MetaCloudWhatsAppProvider } from '@/lib/messaging/providers/whatsapp/meta-cloud.provider';
 import type { DbMessagingTemplate } from '@/lib/messaging/types';
 
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     return json({ error: 'Unauthorized' }, 401);
   }
 
-  const supabase = await createClient();
+  const supabase = createStaticAdminClient();
 
   // Fetch all active meta-cloud channels that have a wabaId configured
   const { data: channels, error: channelsError } = await supabase
