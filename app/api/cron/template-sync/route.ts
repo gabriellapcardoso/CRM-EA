@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     .from('messaging_channels')
     .select('id, organization_id, external_identifier, credentials, settings')
     .eq('provider', 'meta-cloud')
-    .eq('is_active', true)
+    .eq('status', 'connected')
     .is('deleted_at', null);
 
   if (channelsError) {
