@@ -15,22 +15,30 @@ const config = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['var(--font-inter)', 'Inter', 'sans-serif'],
-                display: ['Space Grotesk', 'sans-serif'],
+                sans: ['SF Pro Display', 'sans-serif'],
+                display: ['SF Pro Display', 'sans-serif'],
                 serif: ['Cinzel', 'serif'],
             },
             colors: {
+                // aaagência brand purple — kept in sync with app/globals.css @theme
                 primary: {
-                    50: '#f0f9ff',
-                    100: '#e0f2fe',
-                    200: '#bae6fd',
-                    300: '#7dd3fc',
-                    400: '#38bdf8',
-                    500: '#0ea5e9',
-                    600: '#0284c7',
-                    700: '#0369a1',
-                    800: '#075985',
-                    900: '#0c4a6e',
+                    50: '#f8f2fc',
+                    100: '#efe3f6',
+                    200: '#ddc2ec',
+                    300: '#c08fdd',
+                    400: '#a059cb',
+                    500: '#8330b3',
+                    600: '#6a1f96',
+                    700: '#54007f',
+                    800: '#460069',
+                    900: '#350052',
+                },
+                // aaagência brand lime — reserved accent for the AI/assistant surface
+                lime: {
+                    50: '#fbfeef',
+                    100: '#f5fdd9',
+                    500: '#bff208',
+                    700: '#6f8c00',
                 },
                 dark: {
                     bg: '#020617',

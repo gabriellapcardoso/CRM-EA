@@ -481,7 +481,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 type="button"
                 onClick={() => setIsGlobalAIOpen(!isGlobalAIOpen)}
                 className={`p-2 rounded-full transition-all active:scale-95 focus-visible-ring ${isGlobalAIOpen
-                  ? 'text-primary-600 bg-primary-50 dark:text-primary-400 dark:bg-primary-900/20'
+                  ? 'text-lime-700 bg-lime-100 dark:text-lime-500 dark:bg-lime-700/20'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
                   }`}
               >

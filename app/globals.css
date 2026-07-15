@@ -2,26 +2,88 @@
 @import "tailwindcss";
 
 /* ========================================
+ * aaagência brand fonts — self-hosted SF Pro Display
+ * ======================================== */
+@font-face {
+  font-family: "SF Pro Display";
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SFProDisplay-Light.woff2") format("woff2");
+}
+@font-face {
+  font-family: "SF Pro Display";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SFProDisplay-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "SF Pro Display";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SFProDisplay-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "SF Pro Display";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SFProDisplay-Semibold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "SF Pro Display";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SFProDisplay-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "SF Pro Display";
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SFProDisplay-Heavy.woff2") format("woff2");
+}
+@font-face {
+  font-family: "SF Pro Display";
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SFProDisplay-Black.woff2") format("woff2");
+}
+
+/* ========================================
  * Tailwind v4 Theme Configuration
  * Migrated from tailwind.config.js
  * ======================================== */
 @theme {
-  /* Font Families */
-  --font-sans: 'Inter', var(--font-inter), sans-serif;
-  --font-display: 'Space Grotesk', sans-serif;
+  /* Font Families — aaagência brand: SF Pro Display carries the whole system */
+  --font-sans: 'SF Pro Display', sans-serif;
+  --font-display: 'SF Pro Display', sans-serif;
   --font-serif: 'Cinzel', serif;
 
-  /* Primary Colors */
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-200: #bae6fd;
-  --color-primary-300: #7dd3fc;
-  --color-primary-400: #38bdf8;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-  --color-primary-800: #075985;
-  --color-primary-900: #0c4a6e;
+  /* Primary Colors — aaagência brand purple scale (exact brand hex #54007F sits at 700,
+     matching the brand's own token file; 500 stays vivid/readable for buttons+links) */
+  --color-primary-50: #f8f2fc;
+  --color-primary-100: #efe3f6;
+  --color-primary-200: #ddc2ec;
+  --color-primary-300: #c08fdd;
+  --color-primary-400: #a059cb;
+  --color-primary-500: #8330b3;
+  --color-primary-600: #6a1f96;
+  --color-primary-700: #54007f;
+  --color-primary-800: #460069;
+  --color-primary-900: #350052;
+
+  /* aaagência brand lime — reserved accent for the AI/assistant surface only */
+  --color-lime-50: #fbfeef;
+  --color-lime-100: #f5fdd9;
+  --color-lime-500: #bff208;
+  --color-lime-700: #6f8c00;
+  /* Text on a lime surface must stay dark purple, never white (brand rule) */
+  --color-on-lime: #210032;
 
   /* Dark Theme Colors */
   --color-dark-bg: #020617;
@@ -154,7 +216,7 @@ svg.lucide {
   /* Conversation List */
   --conversation-hover: oklch(95% 0.008 260);
   --conversation-active: oklch(92% 0.015 240);
-  --conversation-unread-dot: oklch(55% 0.18 240);
+  --conversation-unread-dot: #f1006e; /* aaagência brand pink — attention accent */
 
   /* Window Expiry */
   --window-expiring: oklch(70% 0.15 55);
@@ -250,7 +312,7 @@ html, body {
   /* Conversation List */
   --conversation-hover: oklch(18% 0.015 260);
   --conversation-active: oklch(22% 0.02 240);
-  --conversation-unread-dot: oklch(60% 0.18 240);
+  --conversation-unread-dot: #ff3d92; /* aaagência brand pink (dark-mode tint) */
 
   /* Window Expiry */
   --window-expiring: oklch(75% 0.15 55);
