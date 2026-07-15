@@ -55,7 +55,11 @@ export async function GET(req: Request) {
     .lt('attempts', MAX_ATTEMPTS)
     .order('created_at', { ascending: true })
     .limit(BATCH_SIZE)
-    .select('id, organization_id, conversation_id, deal_id, message_id, message_text');
+    // created_at must stay in the select list — PostgREST requires any column
+    // used in .order() on an UPDATE to also be selected, or it 500s with
+    // "column does not exist" even though the column is real (discovered
+    // 2026-07-15, this route's first production invocation ever).
+    .select('id, organization_id, conversation_id, deal_id, message_id, message_text, created_at');
 
   if (claimError) {
     console.error('[Cron:stage-evaluations] Failed to claim batch:', claimError);
