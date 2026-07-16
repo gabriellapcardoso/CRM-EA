@@ -95,3 +95,4 @@ debug_navigation_failed_*.png
 *.png
 .env*.local
 .dmux/
+.gstack/
