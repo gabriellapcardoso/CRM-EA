@@ -135,11 +135,16 @@ export interface HITLDecision {
 
 /**
  * Determina a decisão de HITL baseado na confiança da avaliação.
+ *
+ * @param targetRequiresHuman - Se o estágio DESTINO tem `requires_human_advance`
+ *   (board_stages), o avanço NUNCA é automático — mesmo com confidence alta,
+ *   vira pending advance para aprovação humana (T1, PLANO-NOVO-FLUXO).
  */
 export function determineHITLDecision(
   confidence: number,
   shouldAdvance: boolean,
-  config: HITLConfig = DEFAULT_HITL_CONFIG
+  config: HITLConfig = DEFAULT_HITL_CONFIG,
+  targetRequiresHuman: boolean = false
 ): HITLDecision {
   // Se AI não recomenda avanço, não faz nada
   if (!shouldAdvance) {
@@ -156,6 +161,15 @@ export function determineHITLDecision(
       autoAdvance: false,
       requiresConfirmation: false,
       skipSuggestion: true,
+    };
+  }
+
+  // Estágio destino exige humano — nunca auto-avança, sempre pede aprovação
+  if (targetRequiresHuman) {
+    return {
+      autoAdvance: false,
+      requiresConfirmation: true,
+      skipSuggestion: false,
     };
   }
 
@@ -267,15 +281,12 @@ export async function resolvePendingAdvance(
   const finalReason = userEdits.reason || pending.reason;
   const wasEdited = userEdits.targetStageId !== undefined || userEdits.reason !== undefined;
 
-  // 5. Atualizar deal para novo estágio (defense-in-depth: org_id filter)
-  const { error: updateError } = await supabase
-    .from('deals')
-    .update({
-      stage_id: finalStageId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', pending.deal_id)
-    .eq('organization_id', pending.organization_id);
+  // 5. Atualizar deal para novo estágio via RPC — semântica única de fechamento:
+  // valida board/org e sincroniza is_won/is_lost/closed_at atomicamente (T1)
+  const { error: updateError } = await supabase.rpc('move_deal_to_stage', {
+    p_deal_id: pending.deal_id,
+    p_stage_id: finalStageId,
+  });
 
   if (updateError) {
     return { success: false, error: `Falha ao atualizar deal: ${updateError.message}` };

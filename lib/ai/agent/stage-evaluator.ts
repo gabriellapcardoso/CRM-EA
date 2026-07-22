@@ -242,7 +242,9 @@ Avalie cada critério de avanço e decida se o lead deve avançar para o próxim
     const hitlDecision = determineHITLDecision(
       evaluation.overallConfidence,
       evaluation.shouldAdvance,
-      hitlConfig
+      hitlConfig,
+      // Enforcement T1: estágio com requires_human_advance nunca é auto-avançado
+      nextStageResult.requiresHuman
     );
 
     console.log('[StageEvaluator] HITL decision:', hitlDecision);
@@ -254,13 +256,12 @@ Avalie cada critério de avanço e decida se o lead deve avançar para o próxim
 
     // Caso 2: Avanço automático (confidence >= hitlThreshold)
     if (hitlDecision.autoAdvance) {
-      const { error: updateError } = await supabase
-        .from('deals')
-        .update({
-          stage_id: nextStageResult.nextStageId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', context.deal.id);
+      // RPC = semântica única de fechamento: valida board/org e sincroniza
+      // is_won/is_lost/closed_at atomicamente (T1, PLANO-NOVO-FLUXO)
+      const { error: updateError } = await supabase.rpc('move_deal_to_stage', {
+        p_deal_id: context.deal.id,
+        p_stage_id: nextStageResult.nextStageId,
+      });
 
       if (updateError) {
         console.error('[StageEvaluator] Error advancing deal:', updateError);
@@ -362,7 +363,7 @@ Avalie cada critério de avanço e decida se o lead deve avançar para o próxim
 async function getNextStage(
   supabase: SupabaseClient,
   currentStageId: string
-): Promise<{ nextStageId: string | null; nextStageName: string | null }> {
+): Promise<{ nextStageId: string | null; nextStageName: string | null; requiresHuman: boolean }> {
   // Buscar estágio atual para pegar board_id e order
   const { data: currentStage } = await supabase
     .from('board_stages')
@@ -371,13 +372,13 @@ async function getNextStage(
     .maybeSingle();
 
   if (!currentStage) {
-    return { nextStageId: null, nextStageName: null };
+    return { nextStageId: null, nextStageName: null, requiresHuman: false };
   }
 
   // Buscar próximo estágio (order maior que atual, ordenado crescente)
   const { data: nextStage } = await supabase
     .from('board_stages')
-    .select('id, name')
+    .select('id, name, requires_human_advance')
     .eq('board_id', currentStage.board_id)
     .gt('"order"', currentStage.order)
     .order('"order"', { ascending: true })
@@ -385,10 +386,14 @@ async function getNextStage(
     .maybeSingle();
 
   if (!nextStage) {
-    return { nextStageId: null, nextStageName: null };
+    return { nextStageId: null, nextStageName: null, requiresHuman: false };
   }
 
-  return { nextStageId: nextStage.id, nextStageName: nextStage.name };
+  return {
+    nextStageId: nextStage.id,
+    nextStageName: nextStage.name,
+    requiresHuman: nextStage.requires_human_advance === true,
+  };
 }
 
 async function logStageAdvancement(

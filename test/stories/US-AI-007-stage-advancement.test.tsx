@@ -55,6 +55,13 @@ const mockSupabase = {
   limit: vi.fn().mockReturnThis(),
   single: vi.fn(),
   maybeSingle: vi.fn(),
+  // T1: auto-avanço usa RPC move_deal_to_stage (semântica única de fechamento).
+  // Valida o nome — RPC desconhecida = erro, não sucesso silencioso.
+  rpc: vi.fn((name: string) =>
+    name === 'move_deal_to_stage'
+      ? Promise.resolve({ data: null, error: null })
+      : Promise.resolve({ data: null, error: { message: `RPC não mockada: ${name}` } })
+  ),
 };
 
 // =============================================================================
@@ -407,6 +414,54 @@ describe('evaluateStageAdvancement()', () => {
       // O avanço automático depende do mock do update funcionar
       // Vamos verificar que a AI foi chamada corretamente
       expect(mockGenerateText).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('cenário: estágio destino exige humano (requires_human_advance — T1)', () => {
+    it('NÃO auto-avança mesmo com confidence alta — cria pending advance', async () => {
+      mockGenerateText.mockResolvedValueOnce({
+        output: createMockEvaluation({
+          shouldAdvance: true,
+          overallConfidence: 0.97,
+        }),
+      });
+
+      // getNextStage: próximo estágio é "Topou proposta" com requires_human_advance
+      mockSupabase.maybeSingle
+        .mockResolvedValueOnce({
+          data: { board_id: 'board-1', order: 3 },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: { id: 'stage-topou', name: 'Topou proposta', requires_human_advance: true },
+          error: null,
+        });
+      // createPendingAdvance usa single
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { id: 'pending-topou-1' },
+        error: null,
+      });
+
+      const params: EvaluateAdvancementParams = {
+        supabase: mockSupabase as any,
+        context: createMockContext(),
+        stageConfig: createMockStageConfig(),
+        conversationHistory: [
+          { role: 'user', content: 'Pode mandar a proposta, topo sim!' },
+        ],
+        aiConfig: { provider: 'google', apiKey: 'test-key', model: 'gemini-1.5-flash' },
+        organizationId: 'org-123',
+        conversationId: 'conv-123',
+      };
+
+      const result = await evaluateStageAdvancement(params);
+
+      expect(result.success).toBe(true);
+      expect(result.advanced).toBe(false);
+      // Nunca chamou a RPC de movimento (auto-avanço bloqueado)
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+      // Criou o pending advance (aprovação humana)
+      expect(result.pendingAdvanceId).toBe('pending-topou-1');
     });
   });
 

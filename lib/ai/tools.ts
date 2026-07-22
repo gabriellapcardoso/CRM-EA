@@ -705,14 +705,29 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     return { error: 'Especifique o estágio destino.' };
                 }
 
-                const { error } = await supabase
-                    .from('deals')
-                    .update({
-                        stage_id: targetStageId,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('organization_id', organizationId)
-                    .eq('id', targetDealId);
+                // Enforcement T1: estágio com requires_human_advance exige aprovação
+                // humana explícita — bloqueia execução quando a aprovação foi bypassada
+                if (bypassApproval) {
+                    const { data: targetStage } = await supabase
+                        .from('board_stages')
+                        .select('requires_human_advance, label, name')
+                        .eq('organization_id', organizationId)
+                        .eq('id', targetStageId)
+                        .maybeSingle();
+
+                    if (targetStage?.requires_human_advance) {
+                        return {
+                            success: false,
+                            error: `O estágio "${targetStage.label || targetStage.name}" exige aprovação humana — mover manualmente pelo kanban ou aprovar a sugestão pendente.`,
+                        };
+                    }
+                }
+
+                // RPC = semântica única de fechamento (sincroniza is_won/is_lost/closed_at)
+                const { error } = await supabase.rpc('move_deal_to_stage', {
+                    p_deal_id: targetDealId,
+                    p_stage_id: targetStageId,
+                });
 
                 if (error) {
                     return { success: false, error: error.message };
