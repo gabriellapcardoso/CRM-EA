@@ -5,6 +5,8 @@ import { GenerateObjectionResponseInputSchema, ObjectionResponseOutputSchema } f
 import { getResolvedPrompt } from '@/lib/ai/prompts/server';
 import { renderPromptTemplate } from '@/lib/ai/prompts/render';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import { SECURITY_PREAMBLE } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export const maxDuration = 60;
 
@@ -32,14 +34,18 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const { deal, objection } = GenerateObjectionResponseInputSchema.parse(body);
 
+    const { text: safeObjection } = sanitizeIncomingMessage(String(objection || ''), { org_id: organizationId });
+    const { text: safeTitle } = sanitizeIncomingMessage(String(deal?.title || ''), { org_id: organizationId });
+
     const resolved = await getResolvedPrompt(supabase, organizationId, 'task_deals_objection_responses');
     const prompt = renderPromptTemplate(resolved?.content || '', {
-      objection,
-      dealTitle: deal?.title || '',
+      objection: safeObjection,
+      dealTitle: safeTitle,
     });
 
     const result = await generateText({
       model,
+      system: SECURITY_PREAMBLE,
       maxRetries: 3,
       output: Output.object({ schema: ObjectionResponseOutputSchema }),
       prompt,

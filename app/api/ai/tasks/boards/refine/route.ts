@@ -5,6 +5,8 @@ import { RefineBoardInputSchema, RefineBoardOutputSchema } from '@/lib/ai/tasks/
 import { getResolvedPrompt } from '@/lib/ai/prompts/server';
 import { renderPromptTemplate } from '@/lib/ai/prompts/render';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import { SECURITY_PREAMBLE } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export const maxDuration = 60;
 
@@ -32,18 +34,20 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const { currentBoard, userInstruction, chatHistory } = RefineBoardInputSchema.parse(body);
 
+    const { text: safeInstruction } = sanitizeIncomingMessage(String(userInstruction || ''), { org_id: organizationId });
     const historyContext = chatHistory ? `\nHistórico:\n${JSON.stringify(chatHistory)}` : '';
     const boardContext = currentBoard ? `\nBoard atual (JSON):\n${JSON.stringify(currentBoard)}` : '';
 
     const resolved = await getResolvedPrompt(supabase, organizationId, 'task_boards_refine');
     const prompt = renderPromptTemplate(resolved?.content || '', {
-      userInstruction,
+      userInstruction: safeInstruction,
       boardContext,
       historyContext,
     });
 
     const result = await generateText({
       model,
+      system: SECURITY_PREAMBLE,
       maxRetries: 3,
       output: Output.object({ schema: RefineBoardOutputSchema }),
       prompt,

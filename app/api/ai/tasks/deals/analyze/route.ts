@@ -5,6 +5,8 @@ import { AnalyzeLeadInputSchema, AnalyzeLeadOutputSchema } from '@/lib/ai/tasks/
 import { getResolvedPrompt } from '@/lib/ai/prompts/server';
 import { renderPromptTemplate } from '@/lib/ai/prompts/render';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import { SECURITY_PREAMBLE } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export const maxDuration = 60;
 
@@ -35,9 +37,11 @@ export async function POST(req: Request) {
     const value = deal?.value ?? 0;
     const formattedValue = typeof value === 'number' ? value.toLocaleString('pt-BR') : String(value);
 
+    const { text: safeTitle } = sanitizeIncomingMessage(String(deal?.title || ''), { org_id: organizationId });
+
     const resolved = await getResolvedPrompt(supabase, organizationId, 'task_deals_analyze');
     const prompt = renderPromptTemplate(resolved?.content || '', {
-      dealTitle: deal?.title || '',
+      dealTitle: safeTitle,
       dealValue: formattedValue,
       stageLabel: stageLabel || deal?.status || '',
       probability: deal?.probability || 50,
@@ -45,6 +49,7 @@ export async function POST(req: Request) {
 
     const result = await generateText({
       model,
+      system: SECURITY_PREAMBLE,
       maxRetries: 3,
       output: Output.object({ schema: AnalyzeLeadOutputSchema }),
       prompt,

@@ -7,7 +7,8 @@
 
 import { generateText } from 'ai';
 import { getModel } from '@/lib/ai/config';
-import type { OrgAIConfig } from '@/lib/ai/agent/agent.service';
+import { SECURITY_PREAMBLE, type OrgAIConfig } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export async function generatePersonaPrompt({
   businessContext,
@@ -22,20 +23,25 @@ export async function generatePersonaPrompt({
 }): Promise<string> {
   const model = getModel(aiConfig.provider, aiConfig.apiKey, aiConfig.model);
 
-  const webSection = scrapedWebContent
-    ? `\nCONTEÚDO DO SITE DA EMPRESA (extraído automaticamente):\n${scrapedWebContent}\n`
+  const { text: safeBusinessContext } = sanitizeIncomingMessage(businessContext || '');
+  const { text: safeAgentGoal } = sanitizeIncomingMessage(agentGoal || '');
+  const { text: safeWebContent } = sanitizeIncomingMessage(scrapedWebContent || '');
+
+  const webSection = safeWebContent
+    ? `\nCONTEÚDO DO SITE DA EMPRESA (extraído automaticamente):\n${safeWebContent}\n`
     : '';
 
   const { text } = await generateText({
     model,
+    system: SECURITY_PREAMBLE,
     prompt: `Você é um especialista em criar personas de IA para agentes de vendas.
 Com base no contexto de negócio e objetivo abaixo, gere um system prompt completo para um agente de vendas.
 
 CONTEXTO DO NEGÓCIO:
-${businessContext}
+${safeBusinessContext}
 ${webSection}
 OBJETIVO DO AGENTE:
-${agentGoal}
+${safeAgentGoal}
 
 Gere um system prompt profissional que:
 1. Define a identidade e tom do agente (formal/informal, nome, etc.) — use as informações reais da empresa se disponíveis no conteúdo do site
@@ -64,10 +70,13 @@ export async function suggestHandoffKeywords({
 }): Promise<string[]> {
   const model = getModel(aiConfig.provider, aiConfig.apiKey, aiConfig.model);
 
+  const { text: safeAgentGoal } = sanitizeIncomingMessage(agentGoal || '');
+
   const { text } = await generateText({
     model,
+    system: SECURITY_PREAMBLE,
     prompt: `Com base neste objetivo de agente de vendas:
-"${agentGoal}"
+"${safeAgentGoal}"
 
 Sugira 5-8 palavras ou frases que, quando ditas pelo lead, indicam que ele quer falar com um humano.
 Exemplos: "falar com atendente", "humano", "gerente", "responsável"

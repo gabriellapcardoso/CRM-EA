@@ -14,7 +14,8 @@ import { z } from 'zod';
 import { generateText, Output } from 'ai';
 import type { LearnedCriterion, LearnedPattern } from './few-shot-learner';
 import { getModel } from '@/lib/ai/config';
-import type { OrgAIConfig } from './agent.service';
+import { SECURITY_PREAMBLE, type OrgAIConfig } from './agent.service';
+import { sanitizeIncomingMessage } from './input-filter';
 
 // =============================================================================
 // Types
@@ -209,8 +210,12 @@ export async function evaluateWithLearnedCriteria(
   // Schema gerado em runtime baseado no que a AI aprendeu
   const dynamicSchema = generateEvaluationSchema(learnedPatterns.learnedCriteria);
 
+  // Sanitizar apenas mensagens do lead (user) — nunca as do assistente
   const formattedHistory = conversationHistory
-    .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+    .map((m) => {
+      const content = m.role === 'user' ? sanitizeIncomingMessage(m.content).text : m.content;
+      return `[${m.role.toUpperCase()}]: ${content}`;
+    })
     .join('\n');
 
   const model = getModel(aiConfig.provider, aiConfig.apiKey, aiConfig.model);
@@ -221,7 +226,7 @@ export async function evaluateWithLearnedCriteria(
       schema: dynamicSchema,
       name: 'LearnedCriteriaEvaluation',
     }),
-    system: buildSystemPromptFromPatterns(learnedPatterns),
+    system: `${SECURITY_PREAMBLE}\n\n${buildSystemPromptFromPatterns(learnedPatterns)}`,
     prompt: `Avalie esta conversa usando os critérios aprendidos:
 
 ${formattedHistory}

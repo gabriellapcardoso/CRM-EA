@@ -5,6 +5,8 @@ import { GenerateBoardStructureInputSchema, BoardStructureOutputSchema } from '@
 import { getResolvedPrompt } from '@/lib/ai/prompts/server';
 import { renderPromptTemplate } from '@/lib/ai/prompts/render';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import { SECURITY_PREAMBLE } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export const maxDuration = 60;
 
@@ -43,14 +45,17 @@ export async function POST(req: Request) {
             { id: 'OTHER', name: 'Outros' },
           ];
 
+    const { text: safeDescription } = sanitizeIncomingMessage(String(description || ''), { org_id: organizationId });
+
     const resolved = await getResolvedPrompt(supabase, organizationId, 'task_boards_generate_structure');
     const prompt = renderPromptTemplate(resolved?.content || '', {
-      description,
+      description: safeDescription,
       lifecycleJson: JSON.stringify(lifecycleList),
     });
 
     const result = await generateText({
       model,
+      system: SECURITY_PREAMBLE,
       maxRetries: 3,
       output: Output.object({ schema: BoardStructureOutputSchema }),
       prompt,

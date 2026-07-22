@@ -10,7 +10,8 @@
 import { generateText, Output } from 'ai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getModel } from '../config';
-import { getOrgAIConfig } from '../agent/agent.service';
+import { getOrgAIConfig, SECURITY_PREAMBLE } from '../agent/agent.service';
+import { sanitizeIncomingMessage } from '../agent/input-filter';
 import { MeetingBriefingSchema, type BriefingResponse, type MeetingBriefing } from './schemas';
 
 // =============================================================================
@@ -183,12 +184,20 @@ async function buildDealContext(
       .limit(MAX_MESSAGES_FOR_BRIEFING);
 
     if (messagesData) {
-      messages = messagesData.map((msg) => ({
-        direction: msg.direction as 'inbound' | 'outbound',
-        content: extractTextContent(msg.content as Record<string, unknown>),
-        timestamp: msg.created_at,
-        isAI: (msg.metadata as Record<string, unknown>)?.sent_by_ai === true,
-      }));
+      messages = messagesData.map((msg) => {
+        const direction = msg.direction as 'inbound' | 'outbound';
+        const rawContent = extractTextContent(msg.content as Record<string, unknown>);
+        // Sanitizar apenas mensagens do lead (inbound) — nunca as do vendedor/AI
+        const content = direction === 'inbound'
+          ? sanitizeIncomingMessage(rawContent, { org_id: deal.organization_id, conversation_id: conversations[0].id }).text
+          : rawContent;
+        return {
+          direction,
+          content,
+          timestamp: msg.created_at,
+          isAI: (msg.metadata as Record<string, unknown>)?.sent_by_ai === true,
+        };
+      });
     }
   }
 
@@ -370,7 +379,7 @@ INSTRUÇÕES FINAIS:
         name: 'MeetingBriefing',
         description: 'Briefing estruturado pré-conversa com status BANT e recomendações',
       }),
-      system: BRIEFING_SYSTEM_PROMPT,
+      system: `${SECURITY_PREAMBLE}\n\n${BRIEFING_SYSTEM_PROMPT}`,
       prompt,
       maxRetries: 2,
     });

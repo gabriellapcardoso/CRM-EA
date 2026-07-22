@@ -12,7 +12,8 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getModel } from '@/lib/ai/config';
-import type { OrgAIConfig } from './agent.service';
+import { SECURITY_PREAMBLE, type OrgAIConfig } from './agent.service';
+import { sanitizeIncomingMessage } from './input-filter';
 
 // =============================================================================
 // Types
@@ -171,9 +172,13 @@ export async function fetchConversationsForLearning(
       messages: (messages || []).map((m) => {
         const raw = m.content as Record<string, unknown> | string | null;
         const text = typeof raw === 'string' ? raw : (raw?.text as string) || '';
+        const role = m.direction === 'outbound' ? 'assistant' as const : 'user' as const;
         return {
-          role: m.direction === 'outbound' ? 'assistant' as const : 'user' as const,
-          content: text,
+          role,
+          // Sanitizar apenas mensagens inbound (do lead) — nunca as do vendedor/AI
+          content: role === 'user'
+            ? sanitizeIncomingMessage(text, { org_id: organizationId, conversation_id: conv.id }).text
+            : text,
           timestamp: m.created_at,
         };
       }),
@@ -219,7 +224,7 @@ export async function learnFromConversations(
   const { output } = await generateText({
     model,
     output: Output.object({ schema: LearnedPatternSchema }),
-    system: FEW_SHOT_EXTRACTION_PROMPT,
+    system: `${SECURITY_PREAMBLE}\n\n${FEW_SHOT_EXTRACTION_PROMPT}`,
     prompt: `Analise estas ${conversations.length} conversas bem-sucedidas e extraia os padrões:
 
 ${formatConversationsForPrompt(conversations)}

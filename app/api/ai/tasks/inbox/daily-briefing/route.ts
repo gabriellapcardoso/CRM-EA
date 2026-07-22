@@ -5,6 +5,8 @@ import { GenerateDailyBriefingInputSchema } from '@/lib/ai/tasks/schemas';
 import { getResolvedPrompt } from '@/lib/ai/prompts/server';
 import { renderPromptTemplate } from '@/lib/ai/prompts/render';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import { SECURITY_PREAMBLE } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export const maxDuration = 60;
 
@@ -32,13 +34,17 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const { radarData } = GenerateDailyBriefingInputSchema.parse(body);
 
+    // radarData contém títulos de deals/atividades editáveis por usuários — sanitizar antes de interpolar
+    const { text: safeDataJson } = sanitizeIncomingMessage(JSON.stringify({ radarData }), { org_id: organizationId });
+
     const resolved = await getResolvedPrompt(supabase, organizationId, 'task_inbox_daily_briefing');
     const prompt = renderPromptTemplate(resolved?.content || '', {
-      dataJson: JSON.stringify({ radarData }),
+      dataJson: safeDataJson,
     });
 
     const result = await generateText({
       model,
+      system: SECURITY_PREAMBLE,
       maxRetries: 3,
       prompt,
     });

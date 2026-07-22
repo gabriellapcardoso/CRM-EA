@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getModel } from '@/lib/ai/config';
 import { AI_DEFAULT_MODELS } from '@/lib/ai/defaults';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
+import { SECURITY_PREAMBLE } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export const maxDuration = 60;
 
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
 
     // 2. Parse body
     const body = await req.json().catch(() => null);
-    const messages: UIMessage[] = (body?.messages ?? []) as UIMessage[];
+    const rawMessages: UIMessage[] = (body?.messages ?? []) as UIMessage[];
 
     // 3. Get profile + organization
     const { data: profile } = await supabase
@@ -54,6 +56,20 @@ export async function POST(req: Request) {
             { status: 409 }
         );
     }
+
+    // Sanitizar apenas partes de texto das mensagens do usuário (nunca as do assistente)
+    const messages: UIMessage[] = rawMessages.map((m) =>
+        m.role === 'user'
+            ? {
+                ...m,
+                parts: (m.parts ?? []).map((p) =>
+                    p.type === 'text'
+                        ? { ...p, text: sanitizeIncomingMessage(p.text, { org_id: organizationId }).text }
+                        : p
+                ),
+            }
+            : m
+    );
 
     // 4. Get AI settings from org
     const { data: orgSettings } = await supabase
@@ -637,7 +653,9 @@ export async function POST(req: Request) {
     // 6. Stream response
     const result = streamText({
         model,
-        system: `Você é o assistente inteligente do NossoCRM. Você tem acesso completo ao CRM e pode:
+        system: `${SECURITY_PREAMBLE}
+
+Você é o assistente inteligente do NossoCRM. Você tem acesso completo ao CRM e pode:
 
 - Buscar e analisar deals, contatos e atividades
 - Criar novas atividades, deals e tarefas

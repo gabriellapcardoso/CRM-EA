@@ -5,6 +5,8 @@ import { GenerateSalesScriptInputSchema } from '@/lib/ai/tasks/schemas';
 import { getResolvedPrompt } from '@/lib/ai/prompts/server';
 import { renderPromptTemplate } from '@/lib/ai/prompts/render';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import { SECURITY_PREAMBLE } from '@/lib/ai/agent/agent.service';
+import { sanitizeIncomingMessage } from '@/lib/ai/agent/input-filter';
 
 export const maxDuration = 60;
 
@@ -32,16 +34,20 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const { deal, scriptType, context } = GenerateSalesScriptInputSchema.parse(body);
 
+    const { text: safeTitle } = sanitizeIncomingMessage(String(deal?.title || ''), { org_id: organizationId });
+    const { text: safeContext } = sanitizeIncomingMessage(String(context || ''), { org_id: organizationId });
+
     const resolved = await getResolvedPrompt(supabase, organizationId, 'task_inbox_sales_script');
     const template = resolved?.content || '';
     const prompt = renderPromptTemplate(template, {
       scriptType: scriptType || 'geral',
-      dealTitle: deal?.title || '',
-      context: context || '',
+      dealTitle: safeTitle,
+      context: safeContext,
     });
 
     const result = await generateText({
       model,
+      system: SECURITY_PREAMBLE,
       maxRetries: 3,
       prompt,
     });

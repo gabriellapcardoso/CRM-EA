@@ -19,6 +19,8 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getModel, type AIProvider } from '../config';
+import { SECURITY_PREAMBLE } from './agent.service';
+import { sanitizeIncomingMessage } from './input-filter';
 import type { LeadContext, StageAIConfig } from './types';
 import {
   determineHITLDecision,
@@ -131,9 +133,14 @@ export async function evaluateStageAdvancement(
   try {
     const model = getModel(aiConfig.provider, aiConfig.apiKey, aiConfig.model);
 
-    // Montar histórico formatado
+    // Montar histórico formatado — sanitizar apenas mensagens do lead (user), nunca as do assistente
     const historyText = conversationHistory
-      .map((m) => `${m.role === 'user' ? 'LEAD' : 'VENDEDOR'}: ${m.content}`)
+      .map((m) => {
+        const content = m.role === 'user'
+          ? sanitizeIncomingMessage(m.content, { org_id: organizationId, conversation_id: params.conversationId }).text
+          : m.content;
+        return `${m.role === 'user' ? 'LEAD' : 'VENDEDOR'}: ${content}`;
+      })
       .join('\n\n');
 
     // Montar critérios como lista
@@ -141,7 +148,9 @@ export async function evaluateStageAdvancement(
       .map((c, i) => `${i + 1}. ${c}`)
       .join('\n');
 
-    const systemPrompt = `Você é um especialista em qualificação de leads de vendas.
+    const systemPrompt = `${SECURITY_PREAMBLE}
+
+Você é um especialista em qualificação de leads de vendas.
 
 Analise o histórico da conversa e avalie se os critérios de avanço foram satisfeitos.
 
@@ -163,8 +172,8 @@ ${stageConfig.stage_goal ? `OBJETIVO DO ESTÁGIO: ${stageConfig.stage_goal}` : '
 
     const userPrompt = `
 CONTEXTO DO LEAD:
-- Nome: ${context.contact?.name || 'Desconhecido'}
-- Empresa: ${context.contact?.company || 'Não informada'}
+- Nome: ${sanitizeIncomingMessage(context.contact?.name || 'Desconhecido', { org_id: organizationId }).text}
+- Empresa: ${sanitizeIncomingMessage(context.contact?.company || 'Não informada', { org_id: organizationId }).text}
 - Estágio atual: ${context.deal?.stage_name || 'Desconhecido'}
 
 HISTÓRICO DA CONVERSA:

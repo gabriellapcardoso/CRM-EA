@@ -10,7 +10,8 @@
 import { generateText, Output } from 'ai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getModel } from '../config';
-import { getOrgAIConfig } from '../agent/agent.service';
+import { getOrgAIConfig, SECURITY_PREAMBLE } from '../agent/agent.service';
+import { sanitizeIncomingMessage } from '../agent/input-filter';
 import { BANTExtractionSchema, type BANTExtraction, type AIExtractedData, type AIExtractedField } from './schemas';
 
 // =============================================================================
@@ -90,7 +91,11 @@ export async function extractAndUpdateBANT(params: ExtractBANTParams): Promise<{
     const messagesText = messages
       .map((m) => {
         const role = m.direction === 'inbound' ? 'LEAD' : 'VENDEDOR';
-        const content = extractTextContent(m.content as Record<string, unknown>);
+        const rawContent = extractTextContent(m.content as Record<string, unknown>);
+        // Sanitizar apenas mensagens do lead (inbound) — nunca as do vendedor/AI
+        const content = m.direction === 'inbound'
+          ? sanitizeIncomingMessage(rawContent, { org_id: organizationId, conversation_id: conversationId }).text
+          : rawContent;
         return `[${role}]: ${content}`;
       })
       .join('\n');
@@ -114,7 +119,7 @@ export async function extractAndUpdateBANT(params: ExtractBANTParams): Promise<{
         name: 'BANTExtraction',
         description: 'Extração de campos BANT da conversa em português',
       }),
-      system: EXTRACTION_SYSTEM_PROMPT,
+      system: `${SECURITY_PREAMBLE}\n\n${EXTRACTION_SYSTEM_PROMPT}`,
       prompt: `Analise esta conversa e extraia as informações BANT em português:
 
 ${messagesText}
