@@ -1,6 +1,8 @@
 # NossoCRM — Relatório de Auditoria
 Data: 2026-04-17 | Branch: feature/004-goal-oriented-agent | Modo: completo
 
+> **ATUALIZAÇÃO 2026-07-22**: violações críticas **1 e 2 FECHADAS** (commit `04705a3`) — sanitização + preamble em 15 entry points (os 7 auditados + 11 adicionais encontrados na execução, incl. `stage-evaluator.ts`). Violações 3-7 seguem abertas.
+
 ## Sumário Executivo
 - 🔴 Crítico: 7 violações
 - 🟡 Médio: 4 violações
