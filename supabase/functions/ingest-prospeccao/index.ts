@@ -14,7 +14,7 @@
  *   T2_DUPLICATE_IN_FLIGHT → 409 · T2_INVALID_* → 422 · resto → 500 (sem detalhes)
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { validarPayloadProspeccao } from "./contract.ts";
+import { LIMITES, validarPayloadProspeccao } from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,21 +95,31 @@ Deno.serve(async (req) => {
     return json(401, { error: "Secret inválido" });
   }
 
+  // Cap de tamanho antes do parse (achado do review: sem limite, um secret
+  // vazado infla webhook_events_in/custom_fields com megabytes)
+  const contentLength = Number(req.headers.get("Content-Length") ?? "0");
+  if (contentLength > LIMITES.payloadTotalBytes) {
+    return json(413, { error: "Payload acima de 64KB" });
+  }
+  const corpoBruto = await req.text();
+  if (corpoBruto.length > LIMITES.payloadTotalBytes) {
+    return json(413, { error: "Payload acima de 64KB" });
+  }
   let corpo: unknown;
   try {
-    corpo = await req.json();
+    corpo = JSON.parse(corpoBruto);
   } catch {
     return json(400, { error: "JSON inválido" });
   }
 
   if (reconcile) {
-    const ids = (corpo as { correlation_ids?: unknown })?.correlation_ids;
+    const ids = (corpo as { external_event_ids?: unknown })?.external_event_ids;
     if (!Array.isArray(ids) || ids.some((i) => typeof i !== "string") || ids.length > 5000) {
-      return json(422, { error: "correlation_ids deve ser lista de strings (máx 5000)" });
+      return json(422, { error: "external_event_ids deve ser lista de strings (máx 5000)" });
     }
     const { data, error } = await supabase.rpc("reconcile_prospeccao", {
       p_source_id: sourceId,
-      p_correlation_ids: ids,
+      p_external_event_ids: ids,
     });
     if (error) return json(500, { error: "Falha na reconciliação" });
     return json(200, { ok: true, found: data ?? [] });
@@ -131,7 +141,13 @@ Deno.serve(async (req) => {
     if (msg.includes("T2_INVALID_PHONE")) return json(422, { error: "Telefone inválido (E.164 BR)" });
     if (msg.includes("T2_INVALID_PAYLOAD")) return json(422, { error: "Payload incompleto" });
     if (msg.includes("T2_INVALID_SOURCE")) return json(404, { error: "Fonte não encontrada/inativa" });
-    console.error("ingest-prospeccao: falha na RPC", msg);
+    // Sem error.message no log (achado do review: unique_violation inclui
+    // VALORES da chave — telefone/correlation viraria PII nos logs retidos)
+    const code = (error as { code?: string }).code ?? "unknown";
+    console.error(
+      "ingest-prospeccao: falha na RPC",
+      JSON.stringify({ code, external_event_id: (validacao.payload as { external_event_id: string }).external_event_id }),
+    );
     return json(500, { error: "Falha ao processar o lead" });
   }
 

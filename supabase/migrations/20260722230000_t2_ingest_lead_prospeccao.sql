@@ -14,10 +14,14 @@
 -- ============================================================================
 
 -- 1) Status 'draft' em messaging_messages -----------------------------------
+-- Sem handler de exceção DE PROPÓSITO (achado do review): se o schema de prod
+-- divergir do esperado, a migration FALHA alto em vez de "passar" deixando o
+-- INSERT de 'draft' quebrado em runtime.
 DO $$
 DECLARE
   v_constraint TEXT;
 BEGIN
+  -- Acha o CHECK de status atual pela definição (o nome pode variar entre ambientes)
   SELECT conname INTO v_constraint
   FROM pg_constraint
   WHERE conrelid = 'public.messaging_messages'::regclass
@@ -31,8 +35,50 @@ BEGIN
   ALTER TABLE public.messaging_messages
     ADD CONSTRAINT messaging_messages_status_check
     CHECK (status IN ('draft', 'pending', 'queued', 'sent', 'delivered', 'read', 'failed'));
-EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- Rascunho NÃO conta como mensagem da conversa: o trigger de contadores/preview
+-- tratava qualquer INSERT como mensagem real — a operadora (e o agente IA, que
+-- lê o histórico) veriam o rascunho como outbound "enviado" (achado do review).
+CREATE OR REPLACE FUNCTION public.update_conversation_on_message()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- T2: rascunhos não atualizam preview/contadores — só viram "mensagem" ao
+  -- serem enviados de fato (fluxo de envio insere linha nova status 'pending').
+  IF NEW.status = 'draft' THEN
+    RETURN NEW;
+  END IF;
+
+  UPDATE public.messaging_conversations
+  SET
+    last_message_at = NEW.created_at,
+    last_message_preview = CASE
+      WHEN NEW.content_type = 'text' THEN LEFT(NEW.content->>'text', 100)
+      WHEN NEW.content_type = 'image' THEN '[Imagem]'
+      WHEN NEW.content_type = 'video' THEN '[Video]'
+      WHEN NEW.content_type = 'audio' THEN '[Audio]'
+      WHEN NEW.content_type = 'document' THEN '[Documento]'
+      WHEN NEW.content_type = 'sticker' THEN '[Sticker]'
+      WHEN NEW.content_type = 'location' THEN '[Localização]'
+      WHEN NEW.content_type = 'contact' THEN '[Contato]'
+      ELSE NEW.content_type
+    END,
+    last_message_direction = NEW.direction,
+    message_count = message_count + 1,
+    unread_count = CASE
+      WHEN NEW.direction = 'inbound' THEN unread_count + 1
+      ELSE unread_count
+    END,
+    window_expires_at = CASE
+      WHEN NEW.direction = 'inbound' THEN NOW() + INTERVAL '24 hours'
+      ELSE window_expires_at
+    END,
+    updated_at = NOW()
+  WHERE id = NEW.conversation_id;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 2) Correlação estável cross-sistema em contacts ---------------------------
 -- `prospect_correlation_id` = id do lead na prospecção. Identidade estável
@@ -182,9 +228,23 @@ BEGIN
   END IF;
 
   IF v_contact_id IS NULL THEN
-    INSERT INTO contacts (organization_id, name, email, phone, source, prospect_correlation_id)
-    VALUES (v_source.organization_id, v_nome, v_email, v_phone, 'prospeccao', v_correlation)
-    RETURNING id INTO v_contact_id;
+    -- Corrida de dois eventos do mesmo lead (achado do review): captura a
+    -- violação do índice único de correlação e re-seleciona em vez de 500.
+    BEGIN
+      INSERT INTO contacts (organization_id, name, email, phone, source, prospect_correlation_id)
+      VALUES (v_source.organization_id, v_nome, v_email, v_phone, 'prospeccao', v_correlation)
+      RETURNING id INTO v_contact_id;
+    EXCEPTION WHEN unique_violation THEN
+      SELECT id INTO v_contact_id
+        FROM contacts
+       WHERE organization_id = v_source.organization_id
+         AND deleted_at IS NULL
+         AND prospect_correlation_id = v_correlation
+       LIMIT 1;
+      IF v_contact_id IS NULL THEN
+        RAISE; -- violação veio de outro índice — falha alto
+      END IF;
+    END;
   ELSE
     -- Preenche só o que está vazio (não sobrescreve trabalho da fundadora/agente)
     UPDATE contacts
@@ -241,11 +301,13 @@ BEGIN
   -- quebra transições automáticas"). Sem canal (pré-T4): rascunho fica no
   -- custom_fields do deal, materializável quando o canal existir.
   IF v_msg IS NOT NULL THEN
+    -- 'connected' é o status real do CHECK de messaging_channels (o review
+    -- pegou 'active', que não existe — o canal nunca casaria).
     SELECT id, business_unit_id INTO v_channel
       FROM messaging_channels
      WHERE organization_id = v_source.organization_id
        AND channel_type = 'whatsapp'
-       AND status = 'active'
+       AND status = 'connected'
      ORDER BY created_at
      LIMIT 1;
 
@@ -301,12 +363,15 @@ REVOKE ALL ON FUNCTION public.ingest_lead_prospeccao(UUID, JSONB) FROM anon;
 REVOKE ALL ON FUNCTION public.ingest_lead_prospeccao(UUID, JSONB) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.ingest_lead_prospeccao(UUID, JSONB) TO service_role;
 
--- 5) RPC de reconciliação por chave de correlação ---------------------------
--- Devolve quais correlation_ids têm deal no CRM (qualquer estado). Base do job
--- de reconciliação da prospecção (lista acionável de faltantes, não contagem).
+-- 5) RPC de reconciliação por chave de CICLO --------------------------------
+-- Devolve quais external_event_ids (`lead:{id}:demo:{ciclo}`) foram de fato
+-- processados com deal criado. Por evento — reconciliar por lead mascararia um
+-- ciclo perdido quando o ciclo anterior existe (achado do review). O deal do
+-- evento também precisa continuar vivo (não deletado) — evento processado com
+-- deal apagado depois é exatamente a perda que a reconciliação deve apontar.
 CREATE OR REPLACE FUNCTION public.reconcile_prospeccao(
   p_source_id UUID,
-  p_correlation_ids TEXT[]
+  p_external_event_ids TEXT[]
 )
 RETURNS TEXT[]
 LANGUAGE plpgsql
@@ -327,13 +392,16 @@ BEGIN
     RAISE EXCEPTION 'T2_INVALID_SOURCE';
   END IF;
 
-  SELECT COALESCE(array_agg(DISTINCT c.prospect_correlation_id), '{}')
+  SELECT COALESCE(array_agg(DISTINCT w.external_event_id), '{}')
     INTO v_found
-    FROM contacts c
-    JOIN deals d ON d.contact_id = c.id AND d.deleted_at IS NULL
-   WHERE c.organization_id = v_org
-     AND c.deleted_at IS NULL
-     AND c.prospect_correlation_id = ANY(p_correlation_ids);
+    FROM webhook_events_in w
+    JOIN deals d ON d.id = w.created_deal_id
+               AND d.organization_id = v_org
+               AND d.deleted_at IS NULL
+   WHERE w.source_id = p_source_id
+     AND w.organization_id = v_org
+     AND w.status = 'processed'
+     AND w.external_event_id = ANY(p_external_event_ids);
 
   RETURN v_found;
 END;

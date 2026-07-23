@@ -1,6 +1,11 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { validarPayloadProspeccao } from '../supabase/functions/ingest-prospeccao/contract'
 import fixture from './fixtures/t2-payload.json'
+
+// Caminho da cópia irmã da fixture no repo da prospecção (mesmo filesystem em dev)
+const FIXTURE_IRMA = join(__dirname, '../../prospeccao-aaagencia/lib/fixtures/t2-payload.json')
 
 /**
  * T2 — Teste de contrato cross-projeto (exigência do test plan do
@@ -14,6 +19,12 @@ describe('contrato Prospecção → CRM (T2)', () => {
   it('aceita a fixture compartilhada', () => {
     const resultado = validarPayloadProspeccao(fixture)
     expect(resultado).toEqual({ ok: true, payload: fixture })
+  })
+
+  // Guarda contra divergência silenciosa das duas cópias da fixture (achado do
+  // review). Skip quando o repo irmão não está no filesystem (CI isolado).
+  it.skipIf(!existsSync(FIXTURE_IRMA))('fixture idêntica à cópia do repo da prospecção', () => {
+    expect(JSON.parse(readFileSync(FIXTURE_IRMA, 'utf8'))).toEqual(fixture)
   })
 
   it('rejeita payload sem external_event_id', () => {
@@ -55,5 +66,33 @@ describe('contrato Prospecção → CRM (T2)', () => {
 
   it('rejeita enviado_em inválido', () => {
     expect(validarPayloadProspeccao({ ...fixture, enviado_em: 'ontem' }).ok).toBe(false)
+  })
+
+  it('rejeita chave inconsistente com correlation_id/ciclo', () => {
+    expect(validarPayloadProspeccao({ ...fixture, correlation_id: 'outro-lead' }).ok).toBe(false)
+    expect(
+      validarPayloadProspeccao({ ...fixture, external_event_id: `lead:${fixture.correlation_id}:demo:9` }).ok,
+    ).toBe(false)
+  })
+
+  it('rejeita mensagem_email ausente ou não-string', () => {
+    const { mensagem_email: _omit, ...resto } = fixture
+    expect(validarPayloadProspeccao(resto).ok).toBe(false)
+    expect(validarPayloadProspeccao({ ...fixture, mensagem_email: 123 }).ok).toBe(false)
+  })
+
+  it('rejeita nota não-numérica', () => {
+    expect(validarPayloadProspeccao({ ...fixture, lead: { ...fixture.lead, nota: '4.8' } }).ok).toBe(false)
+    expect(validarPayloadProspeccao({ ...fixture, lead: { ...fixture.lead, nota: null } }).ok).toBe(true)
+  })
+
+  it('rejeita mensagens acima do limite de 4096', () => {
+    expect(validarPayloadProspeccao({ ...fixture, mensagem_whatsapp: 'x'.repeat(5000) }).ok).toBe(false)
+  })
+
+  it('aceita demo pdf com link (URL pública do arquivo)', () => {
+    expect(
+      validarPayloadProspeccao({ ...fixture, demo: { link: 'https://x.supabase.co/storage/v1/object/public/demos/a/demo.pdf', tipo: 'pdf' } }).ok,
+    ).toBe(true)
   })
 })
