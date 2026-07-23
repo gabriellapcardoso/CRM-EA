@@ -1,0 +1,139 @@
+/**
+ * T2 — Receptor Prospecção → CRM (modo rascunho).
+ *
+ * Rotas:
+ * - `POST /functions/v1/ingest-prospeccao/<source_id>`            → ingestão (RPC transacional)
+ * - `POST /functions/v1/ingest-prospeccao/<source_id>/reconcile`  → reconciliação por correlação
+ *
+ * Autenticação: `X-Webhook-Secret` (ou `Bearer`) contra o `secret` da fonte em
+ * `integration_inbound_sources`, comparado em tempo constante.
+ *
+ * Todo o trabalho de escrita acontece na RPC `ingest_lead_prospeccao` — uma
+ * transação única (contato + deal + conversa + rascunho). Esta function só
+ * autentica, valida o contrato e mapeia erros:
+ *   T2_DUPLICATE_IN_FLIGHT → 409 · T2_INVALID_* → 422 · resto → 500 (sem detalhes)
+ */
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { validarPayloadProspeccao } from "./contract.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Webhook-Secret, Authorization",
+  "Access-Control-Max-Age": "86400",
+};
+
+function json(status: number, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
+function getSecretFromRequest(req: Request) {
+  const xSecret = req.headers.get("X-Webhook-Secret") || "";
+  if (xSecret.trim()) return xSecret.trim();
+  const auth = req.headers.get("Authorization") || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m?.[1]?.trim() ?? "";
+}
+
+/**
+ * Comparação em tempo constante (achado do hardening: `!==` vaza timing).
+ * Compara digests SHA-256 dos dois valores — tamanho fixo, e um XOR por byte
+ * sem short-circuit.
+ */
+async function secretsIguais(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const va = new Uint8Array(da);
+  const vb = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
+
+function parseRota(req: Request): { sourceId: string | null; reconcile: boolean } {
+  const parts = new URL(req.url).pathname.split("/").filter(Boolean);
+  const idx = parts.findIndex((p) => p === "ingest-prospeccao");
+  if (idx === -1) return { sourceId: null, reconcile: false };
+  return { sourceId: parts[idx + 1] ?? null, reconcile: parts[idx + 2] === "reconcile" };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return json(405, { error: "Método não permitido" });
+
+  const { sourceId, reconcile } = parseRota(req);
+  if (!sourceId) return json(404, { error: "source_id ausente na URL" });
+
+  const secretHeader = getSecretFromRequest(req);
+  if (!secretHeader) return json(401, { error: "Secret ausente" });
+
+  const supabaseUrl = Deno.env.get("CRM_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL");
+  const serviceKey =
+    Deno.env.get("CRM_SUPABASE_SECRET_KEY") ??
+    Deno.env.get("CRM_SUPABASE_SERVICE_ROLE_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceKey) return json(500, { error: "Supabase não configurado no runtime" });
+
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  const { data: source, error: sourceErr } = await supabase
+    .from("integration_inbound_sources")
+    .select("id, secret, active")
+    .eq("id", sourceId)
+    .maybeSingle();
+
+  // Pré-auth: nunca vazar detalhes internos (achado do hardening)
+  if (sourceErr) return json(500, { error: "Erro ao buscar fonte" });
+  if (!source || !source.active) return json(404, { error: "Fonte não encontrada/inativa" });
+  if (!(await secretsIguais(String(source.secret), secretHeader))) {
+    return json(401, { error: "Secret inválido" });
+  }
+
+  let corpo: unknown;
+  try {
+    corpo = await req.json();
+  } catch {
+    return json(400, { error: "JSON inválido" });
+  }
+
+  if (reconcile) {
+    const ids = (corpo as { correlation_ids?: unknown })?.correlation_ids;
+    if (!Array.isArray(ids) || ids.some((i) => typeof i !== "string") || ids.length > 5000) {
+      return json(422, { error: "correlation_ids deve ser lista de strings (máx 5000)" });
+    }
+    const { data, error } = await supabase.rpc("reconcile_prospeccao", {
+      p_source_id: sourceId,
+      p_correlation_ids: ids,
+    });
+    if (error) return json(500, { error: "Falha na reconciliação" });
+    return json(200, { ok: true, found: data ?? [] });
+  }
+
+  const validacao = validarPayloadProspeccao(corpo);
+  if (!validacao.ok) return json(422, { error: validacao.erro });
+
+  const { data, error } = await supabase.rpc("ingest_lead_prospeccao", {
+    p_source_id: sourceId,
+    p_payload: validacao.payload,
+  });
+
+  if (error) {
+    const msg = String(error.message ?? "");
+    if (msg.includes("T2_DUPLICATE_IN_FLIGHT")) {
+      return json(409, { error: "Evento em processamento — aguarde e reenvie." });
+    }
+    if (msg.includes("T2_INVALID_PHONE")) return json(422, { error: "Telefone inválido (E.164 BR)" });
+    if (msg.includes("T2_INVALID_PAYLOAD")) return json(422, { error: "Payload incompleto" });
+    if (msg.includes("T2_INVALID_SOURCE")) return json(404, { error: "Fonte não encontrada/inativa" });
+    console.error("ingest-prospeccao: falha na RPC", msg);
+    return json(500, { error: "Falha ao processar o lead" });
+  }
+
+  return json(200, data);
+});

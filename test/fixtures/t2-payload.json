@@ -1,0 +1,22 @@
+{
+  "external_event_id": "lead:9b2f6c1e-4a7d-4e2b-8f3a-1c5d7e9f0a2b:demo:0",
+  "correlation_id": "9b2f6c1e-4a7d-4e2b-8f3a-1c5d7e9f0a2b",
+  "ciclo": 0,
+  "origem": "prospeccao-aaagencia",
+  "lead": {
+    "nome": "Clínica Sorriso BH",
+    "telefone": "+5531988887777",
+    "email": "contato@sorrisobh.com.br",
+    "instagram": "@sorrisobh",
+    "motor": "pagina",
+    "nota": 4.8,
+    "motivo": "Sem site próprio, só Instagram"
+  },
+  "demo": {
+    "link": "https://sorriso-bh-demo.vercel.app",
+    "tipo": "link"
+  },
+  "mensagem_whatsapp": "Oi, Clínica! Vi que vocês estão com nota 4.8 no Google, parabéns, os clientes elogiam bastante. Montei uma página nova pra vocês como demonstração. Dá uma olhada: https://sorriso-bh-demo.vercel.app. Dá uma olhada e me diz o que achou?",
+  "mensagem_email": "Assunto: Uma ideia pra Clínica Sorriso BH\n\nOi, Clínica! ...",
+  "enviado_em": "2026-07-22T23:00:00.000Z"
+}

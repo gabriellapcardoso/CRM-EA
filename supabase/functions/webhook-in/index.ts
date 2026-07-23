@@ -99,6 +99,32 @@ function getSecretFromRequest(req: Request) {
   return "";
 }
 
+/**
+ * Hardening T2: comparação de secret em tempo constante (`!==` vaza timing).
+ * Compara digests SHA-256 — tamanho fixo, XOR por byte sem short-circuit.
+ */
+async function secretsIguais(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const va = new Uint8Array(da);
+  const vb = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
+
+/**
+ * Hardening T2: remove caracteres especiais do PostgREST antes de interpolar
+ * em `.or()` (mesma regra de `lib/utils/sanitize.ts` do app — `(11) 98765-4321`
+ * quebrava/injetava no filtro).
+ */
+function sanitizePostgrestValue(value: string): string {
+  return value.replace(/[,()*\\]/g, "");
+}
+
 function toNullableString(v: unknown) {
   if (typeof v !== "string") return null;
   const s = v.trim();
@@ -187,9 +213,12 @@ Deno.serve(async (req) => {
     .eq("id", sourceId)
     .maybeSingle();
 
-  if (sourceErr) return json(500, { error: "Erro ao buscar fonte", details: sourceErr.message });
+  // Hardening T2: pré-auth nunca vaza detalhes internos; secret em tempo constante
+  if (sourceErr) return json(500, { error: "Erro ao buscar fonte" });
   if (!source || !source.active) return json(404, { error: "Fonte não encontrada/inativa" });
-  if (String(source.secret) !== String(secretHeader)) return json(401, { error: "Secret inválido" });
+  if (!(await secretsIguais(String(source.secret), String(secretHeader)))) {
+    return json(401, { error: "Secret inválido" });
+  }
 
   let payload: LeadPayload;
   try {
@@ -293,9 +322,10 @@ Deno.serve(async (req) => {
   }
 
   if (leadEmail || leadPhone) {
+    // Hardening T2: sanitiza antes de interpolar no `.or()` do PostgREST
     const filters: string[] = [];
-    if (leadEmail) filters.push(`email.eq.${leadEmail}`);
-    if (leadPhone) filters.push(`phone.eq.${leadPhone}`);
+    if (leadEmail) filters.push(`email.eq.${sanitizePostgrestValue(leadEmail)}`);
+    if (leadPhone) filters.push(`phone.eq.${sanitizePostgrestValue(leadPhone)}`);
 
     const { data: existingContacts, error: findErr } = await supabase
       .from("contacts")
@@ -362,7 +392,7 @@ Deno.serve(async (req) => {
   if (contactId) {
     const { data: existingDeal, error: findDealErr } = await supabase
       .from("deals")
-      .select("id, stage_id, is_won, is_lost")
+      .select("id, stage_id, is_won, is_lost, custom_fields")
       .eq("organization_id", source.organization_id)
       .eq("board_id", source.entry_board_id)
       .eq("contact_id", contactId)
@@ -388,8 +418,13 @@ Deno.serve(async (req) => {
       if (clientCompanyId) updates.client_company_id = clientCompanyId;
 
       // mantém stage atual (não “puxa” de volta pro stage de entrada)
-      // apenas carimba metadados do inbound
+      // apenas carimba metadados do inbound.
+      // Hardening T2: MERGE com o custom_fields existente — sobrescrever o
+      // JSONB inteiro apagava dados do agente/fundadora no reenvio.
+      const existingCustomFields =
+        (existingDeal as { custom_fields?: Record<string, unknown> }).custom_fields ?? {};
       updates.custom_fields = {
+        ...existingCustomFields,
         inbound_source_id: source.id,
         inbound_external_event_id: externalEventId,
         inbound_company_name: companyName,
