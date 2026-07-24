@@ -144,10 +144,12 @@ export async function fetchConversationsForLearning(
   const result: ConversationForLearning[] = [];
 
   for (const conv of conversations) {
+    // Exclui rascunhos (T2): nunca enviados, não são exemplo real de resposta do agente.
     const { data: messages, error: msgError } = await supabase
       .from('messaging_messages')
       .select('id, direction, content, created_at')
       .eq('conversation_id', conv.id)
+      .neq('status', 'draft')
       .order('created_at', { ascending: true });
 
     if (msgError) {

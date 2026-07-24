@@ -1262,11 +1262,13 @@ export async function getConversationHistory(
   conversationId: string,
   limit: number = 10
 ): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
-  // Fetch most recent messages (DESC) then reverse for chronological order
+  // Fetch most recent messages (DESC) then reverse for chronological order.
+  // Exclui rascunhos (T2): nunca foram enviados, não entram na avaliação de avanço.
   const { data: messages } = await supabase
     .from('messaging_messages')
     .select('direction, content, created_at')
     .eq('conversation_id', conversationId)
+    .neq('status', 'draft')
     .order('created_at', { ascending: false })
     .limit(limit);
 

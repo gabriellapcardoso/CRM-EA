@@ -435,10 +435,12 @@ async function fetchUnresolvedConversations(
   // Buscar última mensagem de cada conversa
   const results = await Promise.all(
     conversations.map(async (conv) => {
+      // Exclui rascunhos (T2): nunca foram enviados, não são "última mensagem" de verdade.
       const { data: lastMessage } = await supabase
         .from('messaging_messages')
         .select('content')
         .eq('conversation_id', conv.id)
+        .neq('status', 'draft')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
@@ -486,6 +488,7 @@ async function searchRelevantHistory(
     `
     )
     .eq('messaging_conversations.contact_id', contactId)
+    .neq('status', 'draft')
     .order('created_at', { ascending: false })
     .limit(20);
 

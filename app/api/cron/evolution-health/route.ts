@@ -50,6 +50,11 @@ export async function GET(req: Request) {
     return json({ error: 'Failed to fetch channels' }, 500);
   }
 
+  // Cooldown entre alertas do mesmo canal — sem isso, um canal caído às 2h da
+  // sexta manda um e-mail a cada 30min até alguém acordar e resolver (spam
+  // que faz o alerta real se perder no meio do ruído).
+  const ALERT_COOLDOWN_HOURS = 4;
+
   let checked = 0;
   let alerted = 0;
 
@@ -59,6 +64,19 @@ export async function GET(req: Request) {
       const status = await router.getChannelStatus(channel.id);
 
       if (status.status === 'connected') return;
+
+      const cooldownSince = new Date(Date.now() - ALERT_COOLDOWN_HOURS * 60 * 60 * 1000).toISOString();
+      const { data: recentAlert } = await supabase
+        .from('security_alerts')
+        .select('id')
+        .eq('organization_id', channel.organization_id)
+        .eq('alert_type', 'evolution_disconnected')
+        .contains('details', { channel_id: channel.id })
+        .gte('created_at', cooldownSince)
+        .limit(1)
+        .maybeSingle();
+
+      if (recentAlert) return; // já alertou esse canal recentemente, não repete
 
       alerted++;
       const title = `Canal WhatsApp desconectado: ${channel.name}`;

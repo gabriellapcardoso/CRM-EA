@@ -99,10 +99,13 @@ export async function buildLeadContext(
       : Promise.resolve({ data: null }),
 
     // 2c. Buscar histórico de mensagens
+    // Exclui rascunhos (T2): nunca foram enviados, o agente não pode "lembrar"
+    // de algo que o lead nunca recebeu.
     supabase
       .from('messaging_messages')
       .select('direction, content, created_at, metadata')
       .eq('conversation_id', conversationId)
+      .neq('status', 'draft')
       .order('created_at', { ascending: false })
       .limit(MAX_MESSAGES_IN_CONTEXT),
 

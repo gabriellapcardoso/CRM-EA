@@ -37,6 +37,7 @@ export async function POST(
           contact_id,
           external_contact_id,
           channel_id,
+          message_count,
           channel:messaging_channels!channel_id (
             id,
             channel_type,
@@ -65,6 +66,7 @@ export async function POST(
       contact_id: string | null;
       external_contact_id: string;
       channel_id: string;
+      message_count: number;
       channel: {
         id: string;
         channel_type: string;
@@ -124,6 +126,26 @@ export async function POST(
           sent_at: new Date().toISOString(),
         })
         .eq('id', messageId);
+
+      // A trigger de preview/contador só dispara em INSERT — e o rascunho original
+      // foi inserido com status='draft', que ela ignora de propósito (T2). Sem isto,
+      // a conversa nunca seria "contabilizada": preview/contador ficariam errados
+      // pra sempre depois do envio, mesmo com a mensagem já enviada de fato.
+      const preview =
+        message.content_type === 'text'
+          ? String((message.content as { text?: string })?.text ?? '').slice(0, 100)
+          : `[${message.content_type}]`;
+
+      await supabase
+        .from('messaging_conversations')
+        .update({
+          last_message_at: new Date().toISOString(),
+          last_message_preview: preview,
+          last_message_direction: 'outbound',
+          message_count: (conversation.message_count ?? 0) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', conversation.id);
 
       // Decisão 9 (PLANO-NOVO-FLUXO.md): 1ª msg sai pelo inbox -> deal move pra "Contatado"
       if (conversation.contact_id) {

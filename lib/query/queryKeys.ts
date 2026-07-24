@@ -112,8 +112,8 @@ export const queryKeys = {
         search: (conversationId: string | undefined, term: string) =>
             [...base.all, 'search', conversationId, term] as const,
         /** Conversation IDs with a pending draft (T2/T4 — badge no inbox) */
-        draftConversationIds: (businessUnitId?: string) =>
-            [...base.all, 'draftConversationIds', businessUnitId] as const,
+        draftConversationIds: () =>
+            [...base.all, 'draftConversationIds'] as const,
     })),
 
     /**
