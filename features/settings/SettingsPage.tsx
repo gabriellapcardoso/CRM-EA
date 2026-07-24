@@ -10,6 +10,7 @@ import { WebhooksSection } from './components/WebhooksSection';
 import { McpSection } from './components/McpSection';
 import { ChannelsSection } from './components/ChannelsSection';
 import { BusinessUnitsSection } from './components/BusinessUnitsSection';
+import { WhatsAppSafetySection } from './components/WhatsAppSafetySection';
 import { DataStorageSettings } from './components/DataStorageSettings';
 import { ProductsCatalogManager } from './components/ProductsCatalogManager';
 import { AICenterSettings } from './AICenterSettings';
@@ -112,13 +113,13 @@ const ProductsSettings: React.FC = () => {
 };
 
 const IntegrationsSettings: React.FC = () => {
-  type IntegrationsSubTab = 'channels' | 'webhooks' | 'api' | 'mcp';
+  type IntegrationsSubTab = 'channels' | 'webhooks' | 'api' | 'mcp' | 'whatsapp-safety';
   const [subTab, setSubTab] = useState<IntegrationsSubTab>('channels');
 
   useEffect(() => {
     const syncFromHash = () => {
     const h = typeof window !== 'undefined' ? (window.location.hash || '').replace('#', '') : '';
-    if (h === 'channels' || h === 'webhooks' || h === 'api' || h === 'mcp') setSubTab(h as IntegrationsSubTab);
+    if (h === 'channels' || h === 'webhooks' || h === 'api' || h === 'mcp' || h === 'whatsapp-safety') setSubTab(h as IntegrationsSubTab);
     };
 
     syncFromHash();
@@ -146,6 +147,7 @@ const IntegrationsSettings: React.FC = () => {
           { id: 'webhooks' as const, label: 'Webhooks' },
           { id: 'api' as const, label: 'API' },
           { id: 'mcp' as const, label: 'MCP' },
+          { id: 'whatsapp-safety' as const, label: 'Segurança WhatsApp' },
         ] as const).map((t) => {
           const active = subTab === t.id;
           return (
@@ -166,6 +168,7 @@ const IntegrationsSettings: React.FC = () => {
       {subTab === 'api' && <ApiKeysSection />}
       {subTab === 'webhooks' && <WebhooksSection />}
       {subTab === 'mcp' && <McpSection />}
+      {subTab === 'whatsapp-safety' && <WhatsAppSafetySection />}
     </div>
   );
 };
