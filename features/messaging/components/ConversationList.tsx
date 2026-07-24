@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { ConversationItem } from './ConversationItem';
 import { ChannelIndicator } from './ChannelIndicator';
 import { useConversations } from '@/lib/query/hooks/useConversationsQuery';
+import { useDraftConversationIds } from '@/lib/query/hooks/useMessagingMessagesQuery';
 import type { ConversationFilters, ConversationStatus, ChannelType, ConversationView } from '@/lib/messaging/types';
 import type { PresenceStatus } from '@/lib/messaging/hooks/useContactPresence';
 
@@ -14,6 +15,7 @@ interface ConversationItemWrapperProps {
   isSelected: boolean;
   onSelect: (id: string) => void;
   presenceStatus?: PresenceStatus;
+  hasDraft?: boolean;
 }
 
 const ConversationItemWrapper = memo(function ConversationItemWrapper({
@@ -21,6 +23,7 @@ const ConversationItemWrapper = memo(function ConversationItemWrapper({
   isSelected,
   onSelect,
   presenceStatus,
+  hasDraft,
 }: ConversationItemWrapperProps) {
   const handleClick = useCallback(() => {
     onSelect(conversation.id);
@@ -32,6 +35,7 @@ const ConversationItemWrapper = memo(function ConversationItemWrapper({
       isSelected={isSelected}
       onClick={handleClick}
       presenceStatus={presenceStatus}
+      hasDraft={hasDraft}
     />
   );
 });
@@ -72,6 +76,7 @@ export const ConversationList = memo(function ConversationList({
   }), [statusFilter, businessUnitId, searchQuery, channelFilter, showUnreadOnly]);
 
   const { data: conversations, isLoading, error } = useConversations(filters);
+  const { data: draftConversationIds } = useDraftConversationIds();
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -270,6 +275,7 @@ export const ConversationList = memo(function ConversationList({
               isSelected={conversation.id === selectedId}
               onSelect={onSelect}
               presenceStatus={conversation.contactId && getPresence ? getPresence(conversation.contactId) : undefined}
+              hasDraft={draftConversationIds?.has(conversation.id) ?? false}
             />
           ))
         )}

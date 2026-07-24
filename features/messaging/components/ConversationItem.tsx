@@ -3,7 +3,7 @@
 import React, { memo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, User } from 'lucide-react';
+import { Clock, User, PenLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sanitizeUrl } from '@/lib/utils/sanitize';
 import { ChannelIndicator } from './ChannelIndicator';
@@ -16,6 +16,7 @@ interface ConversationItemProps {
   isSelected: boolean;
   onClick: () => void;
   presenceStatus?: PresenceStatus;
+  hasDraft?: boolean;
 }
 
 export const ConversationItem = memo(function ConversationItem({
@@ -23,6 +24,7 @@ export const ConversationItem = memo(function ConversationItem({
   isSelected,
   onClick,
   presenceStatus = 'offline',
+  hasDraft = false,
 }: ConversationItemProps) {
   const {
     externalContactName,
@@ -118,6 +120,14 @@ export const ConversationItem = memo(function ConversationItem({
 
         {/* Badges */}
         <div className="flex items-center gap-2 mt-1.5">
+          {/* Rascunho pendente (T2/T4) */}
+          {hasDraft && (
+            <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+              <PenLine className="w-3 h-3" />
+              Rascunho
+            </span>
+          )}
+
           {/* Unread badge */}
           {unreadCount > 0 && (
             <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-primary-500 text-white">

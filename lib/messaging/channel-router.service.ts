@@ -24,6 +24,7 @@
 
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { ChannelProviderFactory } from './channel-factory';
+import { checkWhatsAppSendGuard } from './whatsapp-send-guard';
 
 // IMPORTANT: Import providers to trigger automatic factory registration
 // This must be imported before any ChannelProviderFactory.createProvider() calls
@@ -126,6 +127,30 @@ export class ChannelRouterService {
     params: SendMessageParams
   ): Promise<SendMessageResult> {
     try {
+      const channel = await this.fetchChannel(channelId);
+      if (!channel) {
+        return {
+          success: false,
+          error: { code: 'ROUTER_ERROR', message: `Channel not found: ${channelId}`, retryable: false },
+        };
+      }
+
+      // T4: supressão (LGPD) + kill switch — só se aplica ao canal WhatsApp,
+      // e só a esse ponto único (choke point confirmado no /plan-eng-review).
+      if (channel.channelType === 'whatsapp') {
+        const guard = await checkWhatsAppSendGuard(channel.organizationId, params.to);
+        if (!guard.allowed) {
+          return {
+            success: false,
+            error: {
+              code: guard.reasonCode ?? 'BLOCKED',
+              message: guard.reasonMessage ?? 'Envio bloqueado.',
+              retryable: false,
+            },
+          };
+        }
+      }
+
       const provider = await this.getProviderForChannel(channelId);
       return await provider.sendMessage(params);
     } catch (error) {

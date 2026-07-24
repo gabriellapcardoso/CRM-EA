@@ -2,10 +2,10 @@
 
 import React, { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Check, CheckCheck, Clock, AlertCircle, FileText, MapPin, Play, Pause, Image, Reply } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, FileText, MapPin, Play, Pause, Image, Reply, Send, PenLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sanitizeUrl } from '@/lib/utils/sanitize';
-import { useSendMessage } from '@/lib/query/hooks/useMessagingMessagesQuery';
+import { useSendMessage, useSendDraft } from '@/lib/query/hooks/useMessagingMessagesQuery';
 import type {
   MessagingMessage,
   MessageStatus,
@@ -431,8 +431,10 @@ export const MessageBubble = memo(function MessageBubble({
   onReply,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === 'outbound';
+  const isDraft = message.status === 'draft';
   const time = format(new Date(message.createdAt), 'HH:mm');
   const { mutate: sendMessage } = useSendMessage();
+  const { mutate: sendDraft, isPending: isSendingDraft } = useSendDraft();
 
   const reactions = (message.metadata?.reactions as Record<string, number> | undefined) ?? {};
   const canReact = !isOutbound && !!message.externalId;
@@ -469,11 +471,21 @@ export const MessageBubble = memo(function MessageBubble({
         <div
           className={cn(
             'rounded-2xl px-4 py-2 shadow-sm',
-            isOutbound
-              ? 'bg-primary-500 text-white rounded-br-md'
-              : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md border border-slate-200 dark:border-slate-700',
+            isDraft
+              ? 'bg-amber-50 dark:bg-amber-500/10 text-slate-900 dark:text-white rounded-br-md border-2 border-dashed border-amber-400 dark:border-amber-500/60'
+              : isOutbound
+                ? 'bg-primary-500 text-white rounded-br-md'
+                : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md border border-slate-200 dark:border-slate-700',
           )}
         >
+          {/* Draft label */}
+          {isDraft && (
+            <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1">
+              <PenLine className="w-3 h-3" />
+              Rascunho — não enviado
+            </p>
+          )}
+
           {/* Reply quote */}
           {repliedToMessage && (
             <div
@@ -505,20 +517,40 @@ export const MessageBubble = memo(function MessageBubble({
             <MessageContent message={message} />
           </div>
 
-          {/* Timestamp + delivery status */}
-          <div
-            className={cn(
-              'flex items-center justify-end gap-1 mt-1',
-              isOutbound ? 'text-white/70' : 'text-slate-400',
-            )}
-          >
-            <span className="text-[10px]">{time}</span>
-            {isOutbound && <StatusIcon status={message.status} />}
-          </div>
+          {isDraft ? (
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80">{time}</span>
+              <button
+                type="button"
+                onClick={() => sendDraft(message.id)}
+                disabled={isSendingDraft}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                  'bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+              >
+                <Send className="w-3 h-3" />
+                {isSendingDraft ? 'Enviando…' : 'Enviar rascunho'}
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Timestamp + delivery status */}
+              <div
+                className={cn(
+                  'flex items-center justify-end gap-1 mt-1',
+                  isOutbound ? 'text-white/70' : 'text-slate-400',
+                )}
+              >
+                <span className="text-[10px]">{time}</span>
+                {isOutbound && <StatusIcon status={message.status} />}
+              </div>
 
-          {/* Error detail */}
-          {message.status === 'failed' && message.errorMessage && (
-            <p className="text-xs text-red-300 mt-1">{message.errorMessage}</p>
+              {/* Error detail */}
+              {message.status === 'failed' && message.errorMessage && (
+                <p className="text-xs text-red-300 mt-1">{message.errorMessage}</p>
+              )}
+            </>
           )}
         </div>
 

@@ -422,3 +422,63 @@ export function useRetryMessage() {
     },
   });
 }
+
+/**
+ * Send a pending draft message (T2 rascunho → envio real).
+ * Só envia mensagens com status='draft' — o endpoint valida no servidor.
+ */
+export function useSendDraft() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (messageId: string): Promise<MessagingMessage> => {
+      const response = await fetch(`/api/messaging/messages/${messageId}/send-draft`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to send draft');
+      }
+
+      return response.json();
+    },
+    onSettled: (message) => {
+      if (message) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messagingMessages.byConversation(message.conversationId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messagingMessages.draftConversationIds(),
+        });
+        queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.all });
+      }
+    },
+  });
+}
+
+/**
+ * IDs of conversations with at least one pending draft message (T2/T4).
+ * Usado pra badge "rascunho pendente" na lista de conversas do inbox.
+ */
+export function useDraftConversationIds() {
+  const { user, loading: authLoading } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.messagingMessages.draftConversationIds(),
+    queryFn: async (): Promise<Set<string>> => {
+      const supabase = getClient();
+
+      const { data, error } = await supabase
+        .from('messaging_messages')
+        .select('conversation_id')
+        .eq('status', 'draft');
+
+      if (error) throw error;
+
+      return new Set((data || []).map((row) => row.conversation_id as string));
+    },
+    staleTime: 15 * 1000,
+    enabled: !authLoading && !!user,
+  });
+}

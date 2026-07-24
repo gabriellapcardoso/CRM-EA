@@ -49,6 +49,7 @@ export type MessageContentType =
  * Message delivery status.
  */
 export type MessageStatus =
+  | 'draft'      // T2: rascunho gerado automaticamente, aguardando envio manual
   | 'pending'    // Created locally, not yet sent
   | 'queued'     // Queued for sending
   | 'sent'       // Sent to provider
@@ -88,6 +89,7 @@ export const PRIORITY_COLORS: Record<ConversationPriority, string> = {
  * Human-readable labels for message statuses (PT-BR).
  */
 export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
+  draft: 'Rascunho',
   pending: 'Pendente',
   queued: 'Na fila',
   sent: 'Enviada',
