@@ -107,4 +107,32 @@ describe('WhatsAppSafetySection', () => {
       expect(body).toMatchObject({ alertEmail: 'fundadora@aaagencia.com.br' });
     });
   });
+
+  it('reverte o kill switch na tela se o POST falhar', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (!init?.method || init.method === 'GET') {
+        return { ok: true, json: async () => ({ killSwitchActive: false, alertEmail: null }) } as Response;
+      }
+      return { ok: false, json: async () => ({ error: 'Erro ao salvar' }) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<WhatsAppSafetySection />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toHaveAttribute('data-state', 'unchecked');
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    // Otimista: liga na hora do clique...
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toHaveAttribute('data-state', 'checked');
+    });
+
+    // ...mas volta pro estado anterior quando o POST falha.
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toHaveAttribute('data-state', 'unchecked');
+    });
+  });
 });

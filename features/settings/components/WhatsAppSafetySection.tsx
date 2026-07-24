@@ -43,7 +43,7 @@ export const WhatsAppSafetySection: React.FC = () => {
     };
   }, []);
 
-  const save = async (updates: Partial<{ killSwitchActive: boolean; alertEmail: string }>) => {
+  const save = async (updates: Partial<{ killSwitchActive: boolean; alertEmail: string }>): Promise<boolean> => {
     setIsSaving(true);
     try {
       const res = await fetch('/api/settings/whatsapp-safety', {
@@ -54,17 +54,22 @@ export const WhatsAppSafetySection: React.FC = () => {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         addToast(body.error || 'Erro ao salvar', 'error');
-        return;
+        return false;
       }
       addToast('Configuração salva', 'success');
+      return true;
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleToggleKillSwitch = (checked: boolean) => {
+  const handleToggleKillSwitch = async (checked: boolean) => {
+    const previous = state.killSwitchActive;
     setState((prev) => ({ ...prev, killSwitchActive: checked }));
-    save({ killSwitchActive: checked });
+    const ok = await save({ killSwitchActive: checked });
+    if (!ok) {
+      setState((prev) => ({ ...prev, killSwitchActive: previous }));
+    }
   };
 
   const handleSaveEmail = () => {

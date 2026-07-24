@@ -196,4 +196,11 @@ describe('POST /api/settings/whatsapp-safety', () => {
 
     expect(res.status).toBe(400)
   })
+
+  it('retorna 400 para e-mail de alerta com formato inválido', async () => {
+    const res = await callPost({ alertEmail: 'nao-e-email' })
+
+    expect(res.status).toBe(400)
+    expect(upsertSpy).not.toHaveBeenCalled()
+  })
 })

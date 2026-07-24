@@ -97,6 +97,11 @@ export async function POST(req: Request) {
 
   const updates = parsed.data;
 
+  const trimmedEmail = updates.alertEmail?.trim() || null;
+  if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    return json({ error: 'E-mail de alerta inválido' }, 400);
+  }
+
   const dbUpdates: Record<string, unknown> = {
     organization_id: profile.organization_id,
     updated_at: new Date().toISOString(),
@@ -106,7 +111,7 @@ export async function POST(req: Request) {
     dbUpdates.whatsapp_kill_switch_active = updates.killSwitchActive;
   }
   if (updates.alertEmail !== undefined) {
-    dbUpdates.alert_email = updates.alertEmail?.trim() || null;
+    dbUpdates.alert_email = trimmedEmail;
   }
 
   const { error: upsertError } = await supabase
