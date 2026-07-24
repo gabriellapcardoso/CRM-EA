@@ -20,6 +20,7 @@
  * - Exemplo: `supabase functions deploy messaging-webhook-evolution --no-verify-jwt`
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { matchesOptOutKeyword } from "./opt-out-parser.ts";
 
 // =============================================================================
 // TYPES
@@ -665,6 +666,34 @@ async function handleMessagesUpsert(
 
   if (convUpdateErr) {
     console.error("[Evolution] Failed to update conversation:", convUpdateErr, { conversationId });
+  }
+
+  // Opt-out inbound (T4 — LGPD): pedido de opt-out vira supressão e não
+  // repassa pro agente IA. Roda antes do trigger da IA (early return).
+  if (!isFromMe && contentType === "text") {
+    const textContent = content.text as string | undefined;
+    if (textContent && matchesOptOutKeyword(textContent)) {
+      const { error: suppressionErr } = await supabase
+        .from("whatsapp_suppression_list")
+        .upsert(
+          {
+            organization_id: channel.organization_id,
+            phone_e164: phone,
+            reason: "opt_out",
+            source: "inbound_keyword",
+            contact_id: contactId,
+          },
+          { onConflict: "organization_id,phone_e164", ignoreDuplicates: true }
+        );
+
+      if (suppressionErr) {
+        console.error("[Evolution] Failed to register opt-out:", suppressionErr, { conversationId });
+      } else {
+        console.log(`[Evolution] Opt-out registered for phone ${phone}`);
+      }
+
+      return;
+    }
   }
 
   // Only trigger AI for inbound text messages
