@@ -18,7 +18,7 @@ O hook que intercepta comandos (`rtk`) reescreve `npx eslint ...` numa checagem 
 
 **Como checar rápido antes de testar qualquer feature nova**: `list_migrations` (MCP) vs `ls supabase/migrations/ | tail -N` — se a migration mais recente do repo não aparecer na lista aplicada, é isso.
 
-**Pendência que sobrou**: outras migrations locais recentes também não apareceram na lista aplicada — `20260715170000_fix_handle_new_user_org_lookup.sql`, `20260715173000_pg_cron_stage_evaluations.sql`, `20260723235000_t4_draft_index.sql`. Não bloquearam nada até agora (features relacionadas não foram testadas ainda), mas conferir antes do T5.
+**Auditoria concluída (2026-07-25)**: `fix_handle_new_user_org_lookup` e `t4_draft_index` aplicadas e confirmadas no remoto — ambas idempotentes (`CREATE OR REPLACE`/`CREATE INDEX IF NOT EXISTS`), sem risco. **Pendência real que sobrou**: `pg_cron_stage_evaluations.sql` contém secret placeholder (`__CRON_SECRET__`) — precisa do valor real do `CRON_SECRET` (mesmo da env Vercel) antes de aplicar, pra não criar cron job com string literal quebrada/insegura. Aplicar manualmente com o secret real antes do T5.
 
 ## Layout do `/messaging`: `min-w-0` obrigatório na coluna central (2026-07-24)
 
