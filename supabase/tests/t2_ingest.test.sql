@@ -36,7 +36,7 @@ INSERT INTO integration_inbound_sources (id, organization_id, name, entry_board_
 -- 1) Fonte inativa: RAISE T2_INVALID_SOURCE
 -- ----------------------------------------------------------------------------
 SELECT throws_ok(
-  format('SELECT ingest_lead_prospeccao(%L::uuid, %s)', '00000000-0000-0000-0000-000000000005', :payload),
+  format('SELECT ingest_lead_prospeccao(%L::uuid, %L)', '00000000-0000-0000-0000-000000000005', :payload),
   'T2_INVALID_SOURCE',
   'fonte inativa deve rejeitar com T2_INVALID_SOURCE'
 );
@@ -45,7 +45,7 @@ SELECT throws_ok(
 -- 2) Caminho feliz: cria contato + deal em "Novo" + rascunho (sem canal WhatsApp ativo -> custom_fields)
 -- ----------------------------------------------------------------------------
 SELECT lives_ok(
-  format('SELECT ingest_lead_prospeccao(%L::uuid, %s)', '00000000-0000-0000-0000-000000000004', :payload),
+  format('SELECT ingest_lead_prospeccao(%L::uuid, %L)', '00000000-0000-0000-0000-000000000004', :payload),
   'caminho feliz não deve lançar exceção'
 );
 
@@ -57,8 +57,8 @@ SELECT is(
 
 SELECT is(
   (SELECT phone FROM contacts WHERE prospect_correlation_id = 'aaaaaaaa-0000-0000-0000-000000000001'),
-  '+553198887777',
-  't2_normalize_phone_br normaliza "(31) 98888-7777" para +553198887777'
+  '+5531988887777',
+  't2_normalize_phone_br normaliza "(31) 98888-7777" para +5531988887777'
 );
 
 SELECT is(

@@ -36,14 +36,11 @@ CREATE INDEX IF NOT EXISTS idx_deals_organization_id
 CREATE INDEX IF NOT EXISTS idx_leads_organization_id
   ON public.leads(organization_id);
 
--- ai_decisions.organization_id
-CREATE INDEX IF NOT EXISTS idx_ai_decisions_organization_id
-  ON public.ai_decisions(organization_id);
+-- ai_decisions has no organization_id column (isolated via user_id RLS,
+-- see fix_rls_org_scoping.sql "ai_decisions_user_isolate") — no index needed here.
 
--- messaging_webhook_events.organization_id
--- Used in webhook dedup checks and audit queries.
-CREATE INDEX IF NOT EXISTS idx_messaging_webhook_events_organization_id
-  ON public.messaging_webhook_events(organization_id);
+-- messaging_webhook_events has no organization_id column either — it's
+-- scoped via channel_id (messaging_channels.organization_id), not directly.
 
 
 -- ============================================================

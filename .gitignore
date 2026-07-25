@@ -61,6 +61,7 @@ testsprite_tests/tmp/
 
 # supabase local temp artifacts
 supabase/.temp/
+supabase/.branches/
 
 # typescript
 *.tsbuildinfo

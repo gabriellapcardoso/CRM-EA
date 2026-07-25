@@ -13,15 +13,24 @@
 -- Rotate by re-running with a new secret after
 -- `select cron.unschedule('stage-evaluations-drain');`.
 
-select cron.schedule(
-  'stage-evaluations-drain',
-  '* * * * *',
-  $$
-  select net.http_get(
-    url := 'https://crm.aaagencia.com.br/api/cron/stage-evaluations',
-    headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || '__CRON_SECRET__'
-    )
+-- Guarded like the other pg_cron migration (hitl_pending_alerts): local dev
+-- Postgres doesn't ship the cron schema, so skip gracefully instead of
+-- failing `supabase start`/pgTAP on environments without the extension.
+DO $$
+BEGIN
+  PERFORM cron.schedule(
+    'stage-evaluations-drain',
+    '* * * * *',
+    $cron$
+    select net.http_get(
+      url := 'https://crm.aaagencia.com.br/api/cron/stage-evaluations',
+      headers := jsonb_build_object(
+        'Authorization', 'Bearer ' || '__CRON_SECRET__'
+      )
+    );
+    $cron$
   );
-  $$
-);
+  RAISE NOTICE 'Created cron job: stage-evaluations-drain (every minute)';
+EXCEPTION WHEN undefined_object OR invalid_schema_name THEN
+  RAISE NOTICE 'pg_cron extension not available. Schedule stage-evaluations-drain manually in production.';
+END $$;
