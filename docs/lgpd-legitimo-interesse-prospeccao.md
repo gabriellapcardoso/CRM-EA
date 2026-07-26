@@ -59,9 +59,9 @@ preserváveis. Mecanismos já implementados no T4 (`crm-ea-tmp`):
   número, em nenhum fluxo (reaquecimento, cadência, IA), enforced no único
   ponto de envio (`ChannelRouterService.sendMessage()`).
 - **Sem retenção indevida**: dado de lead que não vira negócio segue as
-  regras normais de retenção do CRM (fora do escopo deste documento —
-  ver política de retenção cross-banco, ainda pendente de decisão, listada
-  no `CLAUDE.md` da pasta mãe).
+  regras normais de retenção do CRM — ver
+  [`lgpd-retencao-exclusao.md`](./lgpd-retencao-exclusao.md) (decidido
+  2026-07-26: 24 meses sem interação → exclusão).
 - **Kill switch manual**: a fundadora pode interromper todo envio automático
   a qualquer momento (`organization_settings.whatsapp_kill_switch_active`),
   independente de decisão técnica.
@@ -87,7 +87,5 @@ preserváveis. Mecanismos já implementados no T4 (`crm-ea-tmp`):
   escalada — a análise de proporcionalidade muda com a escala.
 - Se houver reclamação formal (ANPD, Procon, ou notificação direta) sobre
   um contato específico.
-- Se a política de retenção cross-banco (pendente) for decidida — este
-  documento deve linkar pra ela.
 - Antes do T5 (piloto com leads reais) rodar de fato — ver `T4-EXECUCAO.md`
   e `PLANO-NOVO-FLUXO.md` na pasta mãe.
