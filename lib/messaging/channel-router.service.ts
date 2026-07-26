@@ -25,6 +25,7 @@
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { ChannelProviderFactory } from './channel-factory';
 import { checkWhatsAppSendGuard } from './whatsapp-send-guard';
+import { withOptOutFooterIfFirstMessage } from './whatsapp-optout-footer';
 
 // IMPORTANT: Import providers to trigger automatic factory registration
 // This must be imported before any ChannelProviderFactory.createProvider() calls
@@ -137,6 +138,7 @@ export class ChannelRouterService {
 
       // T4: supressão (LGPD) + kill switch — só se aplica ao canal WhatsApp,
       // e só a esse ponto único (choke point confirmado no /plan-eng-review).
+      let sendParams = params;
       if (channel.channelType === 'whatsapp') {
         const guard = await checkWhatsAppSendGuard(channel.organizationId, params.to);
         if (!guard.allowed) {
@@ -149,10 +151,19 @@ export class ChannelRouterService {
             },
           };
         }
+
+        // Rodapé de opt-out (LGPD) só na 1ª mensagem outbound da conversa.
+        if (params.content.type === 'text') {
+          const textWithFooter = await withOptOutFooterIfFirstMessage(
+            params.conversationId,
+            params.content.text
+          );
+          sendParams = { ...params, content: { ...params.content, text: textWithFooter } };
+        }
       }
 
       const provider = await this.getProviderForChannel(channelId);
-      return await provider.sendMessage(params);
+      return await provider.sendMessage(sendParams);
     } catch (error) {
       console.error('[ChannelRouter] sendMessage error:', error);
       return {
