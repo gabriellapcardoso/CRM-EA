@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Pending (2026-07-26, aguardando deploy único do fim do dia)
+- **Deploy de produção travado desde 2026-07-22** (achado nesta sessão): último deploy READY na Vercel é anterior ao T4 inteiro — todo código pushado depois disso (rascunho no inbox, supressão, kill switch, canal Evolution, rodapé de opt-out) nunca chegou à produção. Causa: `evolution-health` cron a `*/30 * * * *` excede o limite do plano Hobby (1x/dia), travando todo deploy silenciosamente — `git push` "funcionar" não confirma publicação. Corrigido: `vercel.json` cron mudado pra `0 9 * * *` (commit `5673130`, local, aguardando push).
+- **`CRON_SECRET` rotacionado**: a variável antiga estava marcada "Sensitive" na Vercel — ninguém (nem a fundadora, nem via CLI) conseguia mais ler o valor pra reaplicar a migration pendente `pg_cron_stage_evaluations.sql`. Gerado novo secret, salvo na Vercel (produção), migration aplicada em produção com o novo valor. **Falta**: deploy pra ativar o novo valor nas rotas Next.js (`/api/cron/stage-evaluations`, `/api/cron/template-sync`, `/api/cron/evolution-health` continuam lendo o valor antigo até o próximo deploy).
+- **`INTERNAL_API_SECRET`**: decidido pela fundadora ligar junto do deploy do fim do dia — ativa resposta automática da IA no WhatsApp (hoje só grava mensagem inbound, não responde sozinha). Precisa ser configurado em 2 lugares: env Vercel (rota `/api/messaging/ai/process`) + secrets das 3 Supabase Edge Functions de webhook (Evolution/Z-API/Meta lêem via `Deno.env.get`).
+- **Política de retenção/exclusão LGPD**: decidida e documentada (`docs/lgpd-retencao-exclusao.md`) — 24 meses sem interação pra lead não convertido, 5 anos pós-contrato pra cliente fechado, exclusão sob pedido manual. Sem automação ainda (escala do piloto não justifica).
+
 ### Added
+- T4: rodapé de opt-out LGPD (`lib/messaging/whatsapp-optout-footer.ts`) — anexado só na 1ª mensagem outbound entregue de cada conversa WhatsApp, centralizado em `ChannelRouterService.sendMessage()` (mesmo choke point do guard). Texto: "Se preferir não receber mais mensagens, responda SAIR a qualquer momento." Fechava a última pendência de copy/código do T4 (parser inbound de "SAIR" já existia desde `fe5c667`).
 - T4: UI de rascunho no inbox (badge na lista de conversas, bubble diferenciado, ação "enviar rascunho" que move `draft→sent` e o deal pra "Contatado")
 - T4: lista de supressão LGPD (`whatsapp_suppression_list`) + kill switch (`organization_settings.whatsapp_kill_switch_active`), enforcement centralizado em `ChannelRouterService.sendMessage()`
 - T4: health-check da sessão Evolution API (`/api/cron/evolution-health`, 30min) — alerta em `security_alerts` + e-mail via Resend
