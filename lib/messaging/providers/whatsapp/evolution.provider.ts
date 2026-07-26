@@ -292,11 +292,19 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
    */
   async configureWebhook(webhookUrl: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // Body must be wrapped under `webhook` — this server's Evolution version
+      // rejects the flat shape with 400 "instance requires property webhook".
+      // `headers` carries the apiKey so messaging-webhook-evolution's
+      // default-deny auth (x-api-key/apikey check) actually passes; Evolution
+      // does not send any auth header on its own unless told to via this field.
       await this.request('POST', `/webhook/set/${this.instanceName}`, {
-        enabled: true,
-        url: webhookUrl,
-        byEvents: true,
-        events: ['messages.upsert', 'messages.update', 'connection.update'],
+        webhook: {
+          enabled: true,
+          url: webhookUrl,
+          byEvents: true,
+          events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
+          headers: { 'x-api-key': this.apiKey },
+        },
       });
 
       return { success: true };
