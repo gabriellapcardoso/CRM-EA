@@ -41,3 +41,27 @@ export function resolveInitialStageId(
 ): string {
   return targetStageId ?? entryStageId;
 }
+
+/**
+ * Decide qual board usar pra achar/criar o deal.
+ *
+ * Bug achado no /qa (2026-08-03): esta fonte (webhook-in genérico) também
+ * recebe pagamento_recebido, cujo board de entrada configurado é o
+ * pós-venda — não o negociação. Quando o payload manda um target_stage_slug
+ * que resolveu pra um estágio real (evento T3b: enviada/aprovada), o board
+ * certo pra procurar/criar o deal é o board DO ESTÁGIO resolvido, não o
+ * entry_board_id fixo da fonte. Sem isso, a busca de deal existente nunca
+ * olha o board negociação — o deal errado (ou nenhum) é encontrado, e o
+ * move de estágio vira no-op silencioso (confirmado em produção: RPC
+ * rejeita mover deal de um board pro estágio de outro).
+ *
+ * Retrocompatibilidade: sem stageBoardId resolvido (payload antigo, sem
+ * target_stage_slug, ou slug que não resolveu), cai no entryBoardId da
+ * fonte — comportamento inalterado.
+ */
+export function resolveEffectiveBoardId(
+  stageBoardId: string | null,
+  entryBoardId: string,
+): string {
+  return stageBoardId ?? entryBoardId;
+}

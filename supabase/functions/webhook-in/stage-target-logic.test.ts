@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { resolveInitialStageId, shouldMoveExistingDeal } from './stage-target-logic';
+import {
+  resolveEffectiveBoardId,
+  resolveInitialStageId,
+  shouldMoveExistingDeal,
+} from './stage-target-logic';
 
 describe('shouldMoveExistingDeal', () => {
   it('retorna false quando targetStageId é null (payload sem target_stage_slug — retrocompatibilidade)', () => {
@@ -28,5 +32,27 @@ describe('resolveInitialStageId', () => {
     expect(resolveInitialStageId('stage-proposta-enviada', 'entry-stage-padrao')).toBe(
       'stage-proposta-enviada',
     );
+  });
+});
+
+// Regressão: bug achado no /qa (2026-08-03) — a fonte "Gerador de Propostas"
+// também recebe pagamento_recebido (board pós-venda), então usar sempre
+// entry_board_id pra procurar/criar deal fazia target_stage_slug (T3b) nunca
+// achar o deal certo no board negociação. Confirmado em produção: webhook
+// respondia 200 "deal: updated" mas o deal errado (pós-venda) era tocado, e
+// o estágio nunca mudava (RPC rejeita mover pra estágio de outro board).
+describe('resolveEffectiveBoardId', () => {
+  it('usa o entry_board_id da fonte quando não há estágio-alvo resolvido (retrocompatibilidade)', () => {
+    expect(resolveEffectiveBoardId(null, 'board-pos-venda')).toBe('board-pos-venda');
+  });
+
+  it('usa o board do estágio-alvo em vez do board de entrada da fonte', () => {
+    expect(resolveEffectiveBoardId('board-negociacao', 'board-pos-venda')).toBe(
+      'board-negociacao',
+    );
+  });
+
+  it('board do estágio-alvo pode ser igual ao de entrada — segue usando ele sem erro', () => {
+    expect(resolveEffectiveBoardId('board-x', 'board-x')).toBe('board-x');
   });
 });

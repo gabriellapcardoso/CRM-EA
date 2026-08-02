@@ -18,7 +18,11 @@
  * - Este handler usa `SUPABASE_SERVICE_ROLE_KEY` (segredo padrão do Supabase) e ignora RLS.
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { resolveInitialStageId, shouldMoveExistingDeal } from "./stage-target-logic.ts";
+import {
+  resolveEffectiveBoardId,
+  resolveInitialStageId,
+  shouldMoveExistingDeal,
+} from "./stage-target-logic.ts";
 
 type LeadPayload = {
   /**
@@ -254,6 +258,15 @@ Deno.serve(async (req) => {
   // targetStageId fica null e o resto do fluxo se comporta exatamente como
   // antes desta mudança (retrocompatibilidade).
   let targetStageId: string | null = null;
+  // T3b bugfix (achado no /qa 2026-08-03): o board do deal-alvo não é
+  // necessariamente o board_id fixo desta fonte (entry_board_id) — esta
+  // mesma fonte também recebe pagamento_recebido, cujo board de entrada é
+  // o pós-venda, não o negociação. Quando o payload resolve um estágio real
+  // (enviada/aprovada), o board correto é o board DO ESTÁGIO resolvido, não
+  // o board de entrada da fonte. Sem isso, target_stage_slug nunca encontra
+  // o deal certo pra eventos que não sejam pagamento_recebido — no-op
+  // silencioso, confirmado em produção.
+  let effectiveBoardId = source.entry_board_id;
   if (targetStageSlug) {
     const { data: resolvedStageId, error: resolveStageErr } = await supabase.rpc(
       "resolve_negociacao_stage_id",
@@ -263,6 +276,21 @@ Deno.serve(async (req) => {
       console.error("Falha ao resolver target_stage_slug:", resolveStageErr.message);
     } else {
       targetStageId = (resolvedStageId as string | null) ?? null;
+      if (targetStageId) {
+        const { data: stageBoard, error: stageBoardErr } = await supabase
+          .from("board_stages")
+          .select("board_id")
+          .eq("id", targetStageId)
+          .maybeSingle();
+        if (stageBoardErr) {
+          console.error("Falha ao resolver board do target_stage_slug:", stageBoardErr.message);
+        } else {
+          effectiveBoardId = resolveEffectiveBoardId(
+            (stageBoard?.board_id as string | null) ?? null,
+            source.entry_board_id,
+          );
+        }
+      }
     }
   }
 
@@ -425,7 +453,7 @@ Deno.serve(async (req) => {
       .from("deals")
       .select("id, stage_id, is_won, is_lost, custom_fields")
       .eq("organization_id", source.organization_id)
-      .eq("board_id", source.entry_board_id)
+      .eq("board_id", effectiveBoardId)
       .eq("contact_id", contactId)
       .eq("is_won", false)
       .eq("is_lost", false)
@@ -494,7 +522,7 @@ Deno.serve(async (req) => {
         value: dealValue ?? 0,
         probability: 10,
         priority: "medium",
-        board_id: source.entry_board_id,
+        board_id: effectiveBoardId,
         // T3b: nasce direto no estágio-alvo quando o payload manda um
         // (ex: "enviada" chegando sem passar pelo T3 antes) — senão cai no
         // estágio de entrada padrão da fonte, como sempre foi.
