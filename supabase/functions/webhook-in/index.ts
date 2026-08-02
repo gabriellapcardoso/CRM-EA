@@ -18,6 +18,7 @@
  * - Este handler usa `SUPABASE_SERVICE_ROLE_KEY` (segredo padrão do Supabase) e ignora RLS.
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { resolveInitialStageId, shouldMoveExistingDeal } from "./stage-target-logic.ts";
 
 type LeadPayload = {
   /**
@@ -53,6 +54,16 @@ type LeadPayload = {
   title?: string;
   value?: number | string;
   company?: string;
+
+  /**
+   * T3b: estágio do board "negociação" pra onde o deal deve ser movido
+   * (ex: "proposta-enviada", "proposta-aceita", "pagamento-recebido").
+   * Campo opcional — payloads sem ele continuam funcionando exatamente como
+   * antes (retrocompatibilidade total com integrações existentes). Slug
+   * desconhecido/inválido é ignorado silenciosamente (best-effort, não
+   * derruba o resto do webhook).
+   */
+  target_stage_slug?: string;
 };
 
 const corsHeaders = {
@@ -234,6 +245,26 @@ Deno.serve(async (req) => {
   const companyName = getCompanyName(payload);
   const dealTitleFromPayload = getDealTitle(payload);
   const dealValue = getDealValue(payload);
+  const targetStageSlug = toNullableString(payload.target_stage_slug);
+
+  // T3b: resolve o slug (dado externo, não confiável) pro id real do
+  // estágio no board "negociação" dessa org via RPC — retorna null se o
+  // slug não existir/não bater com nenhum board_stage (best-effort, não
+  // falha o webhook). Payloads sem target_stage_slug pulam isso inteiro:
+  // targetStageId fica null e o resto do fluxo se comporta exatamente como
+  // antes desta mudança (retrocompatibilidade).
+  let targetStageId: string | null = null;
+  if (targetStageSlug) {
+    const { data: resolvedStageId, error: resolveStageErr } = await supabase.rpc(
+      "resolve_negociacao_stage_id",
+      { p_org: source.organization_id, p_slug: targetStageSlug },
+    );
+    if (resolveStageErr) {
+      console.error("Falha ao resolver target_stage_slug:", resolveStageErr.message);
+    } else {
+      targetStageId = (resolvedStageId as string | null) ?? null;
+    }
+  }
 
   // 1) Auditoria/dedupe (idempotente quando external_event_id existe)
   if (externalEventId) {
@@ -436,6 +467,21 @@ Deno.serve(async (req) => {
         .eq("id", dealId);
 
       if (updDealErr) return json(500, { error: "Falha ao atualizar deal", details: updDealErr.message });
+
+      // T3b: move o deal pro estágio-alvo via RPC (não por UPDATE direto de
+      // stage_id) — move_deal_to_stage sincroniza is_won/is_lost/closed_at
+      // conforme boards.won_stage_id/lost_stage_id. Best-effort: uma falha
+      // aqui não derruba o resto do webhook (contato/deal já foram
+      // criados/atualizados com sucesso).
+      if (shouldMoveExistingDeal(targetStageId, existingDeal.stage_id ?? null)) {
+        const { error: moveErr } = await supabase.rpc("move_deal_to_stage", {
+          p_deal_id: dealId,
+          p_stage_id: targetStageId,
+        });
+        if (moveErr) {
+          console.error("Falha ao mover deal pro target_stage_slug:", moveErr.message);
+        }
+      }
     }
   }
 
@@ -449,7 +495,10 @@ Deno.serve(async (req) => {
         probability: 10,
         priority: "medium",
         board_id: source.entry_board_id,
-        stage_id: source.entry_stage_id,
+        // T3b: nasce direto no estágio-alvo quando o payload manda um
+        // (ex: "enviada" chegando sem passar pelo T3 antes) — senão cai no
+        // estágio de entrada padrão da fonte, como sempre foi.
+        stage_id: resolveInitialStageId(targetStageId, source.entry_stage_id),
         contact_id: contactId,
         client_company_id: clientCompanyId,
         last_stage_change_date: new Date().toISOString(),
