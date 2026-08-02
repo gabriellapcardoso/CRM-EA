@@ -11,7 +11,7 @@ import { useToast } from '@/context/ToastContext';
  * de Propostas Comerciais. Mesmo padrão "Reenviar" já usado no ecossistema
  * (Propostas → CRM, ver HANDOFF.md do gerador de propostas): lista os
  * últimos eventos que falharam ao notificar o Gerador de Propostas quando um
- * deal entrou em "Topou proposta", com botão pra reciclar pro próximo ciclo
+ * deal entrou em "Topou receber proposta", com botão pra reciclar pro próximo ciclo
  * do dispatcher (Edge Function deal-stage-dispatcher, via pg_cron).
  *
  * Componente isolado de propósito (não integrado ao WebhooksSection.tsx já
@@ -85,7 +85,7 @@ export function DealStageEventsSection() {
     <SettingsSection title="Ponte Propostas Comerciais (T3)" icon={Send}>
       <div className="mt-4 space-y-3">
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Quando um deal entra em &quot;Topou proposta&quot; no board Negociação, o Gerador de
+          Quando um deal entra em &quot;Topou receber proposta&quot; no board Negociação, o Gerador de
           Propostas Comerciais é notificado automaticamente pra criar uma proposta-rascunho.
           Últimos 20 eventos:
         </p>
@@ -95,7 +95,7 @@ export function DealStageEventsSection() {
         )}
 
         {!loading && events.length === 0 && (
-          <p className="text-sm text-slate-400">Nenhum deal entrou em &quot;Topou proposta&quot; ainda.</p>
+          <p className="text-sm text-slate-400">Nenhum deal entrou em &quot;Topou receber proposta&quot; ainda.</p>
         )}
 
         {events.length > 0 && (

@@ -1,6 +1,6 @@
 -- ============================================================================
 -- pgTAP: outbox deal_stage_events (T3 emissor)
--- Cobre: insere só ao entrar em "Topou proposta" (não em outros estágios),
+-- Cobre: insere só ao entrar em "Topou receber proposta" (não em outros estágios),
 -- contador incrementa em 2ª entrada, idempotência do external_event_id,
 -- payload carrega dado do contato/deal, RPC retry_deal_stage_event.
 -- ============================================================================
@@ -38,39 +38,39 @@ SELECT
 FROM boards b WHERE b.organization_id = '00000000-0000-0000-0000-000000000101' AND b.key = 'negociacao';
 
 -- ----------------------------------------------------------------------------
--- 1) Mover para estágio comum ("Contatado") NÃO deve inserir evento
+-- 1) Mover para estágio comum ("Contato") NÃO deve inserir evento
 -- ----------------------------------------------------------------------------
 SELECT move_deal_to_stage(
   '00000000-0000-0000-0000-000000000103',
-  (SELECT bs.id FROM board_stages bs JOIN boards b ON b.id = bs.board_id WHERE b.key = 'negociacao' AND b.organization_id = '00000000-0000-0000-0000-000000000101' AND bs.name = 'Contatado'),
+  (SELECT bs.id FROM board_stages bs JOIN boards b ON b.id = bs.board_id WHERE b.key = 'negociacao' AND b.organization_id = '00000000-0000-0000-0000-000000000101' AND bs.name = 'Contato'),
   NULL
 );
 
 SELECT is(
   (SELECT count(*)::int FROM deal_stage_events WHERE deal_id = '00000000-0000-0000-0000-000000000103'),
   0,
-  'mover para "Contatado" não gera evento'
+  'mover para "Contato" não gera evento'
 );
 
 -- ----------------------------------------------------------------------------
--- 2) Mover para "Topou proposta" gera 1 evento com contador=1
+-- 2) Mover para "Topou receber proposta" gera 1 evento com contador=1
 -- ----------------------------------------------------------------------------
 SELECT move_deal_to_stage(
   '00000000-0000-0000-0000-000000000103',
-  (SELECT bs.id FROM board_stages bs JOIN boards b ON b.id = bs.board_id WHERE b.key = 'negociacao' AND b.organization_id = '00000000-0000-0000-0000-000000000101' AND bs.name = 'Topou proposta'),
+  (SELECT bs.id FROM board_stages bs JOIN boards b ON b.id = bs.board_id WHERE b.key = 'negociacao' AND b.organization_id = '00000000-0000-0000-0000-000000000101' AND bs.name = 'Topou receber proposta'),
   NULL
 );
 
 SELECT is(
   (SELECT count(*)::int FROM deal_stage_events WHERE deal_id = '00000000-0000-0000-0000-000000000103'),
   1,
-  'mover para "Topou proposta" gera exatamente 1 evento'
+  'mover para "Topou receber proposta" gera exatamente 1 evento'
 );
 
 SELECT is(
   (SELECT contador FROM deal_stage_events WHERE deal_id = '00000000-0000-0000-0000-000000000103'),
   1,
-  '1ª entrada em "Topou proposta" tem contador=1'
+  '1ª entrada em "Topou receber proposta" tem contador=1'
 );
 
 SELECT is(
@@ -104,7 +104,7 @@ SELECT is(
 );
 
 -- ----------------------------------------------------------------------------
--- 3) Sair e voltar a "Topou proposta" gera 2º evento com contador=2
+-- 3) Sair e voltar a "Topou receber proposta" gera 2º evento com contador=2
 -- ----------------------------------------------------------------------------
 SELECT move_deal_to_stage(
   '00000000-0000-0000-0000-000000000103',
@@ -113,7 +113,7 @@ SELECT move_deal_to_stage(
 );
 SELECT move_deal_to_stage(
   '00000000-0000-0000-0000-000000000103',
-  (SELECT bs.id FROM board_stages bs JOIN boards b ON b.id = bs.board_id WHERE b.key = 'negociacao' AND b.organization_id = '00000000-0000-0000-0000-000000000101' AND bs.name = 'Topou proposta'),
+  (SELECT bs.id FROM board_stages bs JOIN boards b ON b.id = bs.board_id WHERE b.key = 'negociacao' AND b.organization_id = '00000000-0000-0000-0000-000000000101' AND bs.name = 'Topou receber proposta'),
   NULL
 );
 
@@ -126,7 +126,7 @@ SELECT is(
 SELECT is(
   (SELECT contador FROM deal_stage_events WHERE deal_id = '00000000-0000-0000-0000-000000000103' AND external_event_id = 'deal:00000000-0000-0000-0000-000000000103:topou:2'),
   2,
-  '2ª entrada em "Topou proposta" tem contador=2'
+  '2ª entrada em "Topou receber proposta" tem contador=2'
 );
 
 -- ----------------------------------------------------------------------------
