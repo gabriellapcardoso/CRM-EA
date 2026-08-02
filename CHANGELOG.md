@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### T3 + T3b — CRM ↔ Gerador de Propostas conectados, board Negociação expandido pra 14 estágios — 2026-08-02
+
+Decidido e implementado via `/plan-eng-review` + agentes em paralelo, depois
+testado com `/qa` direto em produção (não mock). T3 (deal "topou receber
+proposta" no CRM → cria proposta rascunho no Gerador) e T3b (proposta
+"enviada"/"aprovada" no Gerador → move o deal de estágio no CRM) estão os
+dois em produção, ponta a ponta, verificados contra dado real.
+
+**Arquitetura decidida no `/plan-eng-review`:**
+- T3 segue o padrão rigoroso do T2 (RPC transacional + contrato tipado
+  testado nos 2 lados), não o `webhook-in` genérico — decisão travada antes
+  de codar.
+- Disparo via padrão outbox: trigger na tabela `deals` (não na RPC
+  `move_deal_to_stage`, porque o cockpit de deals move estágio via `UPDATE`
+  direto, não chama essa RPC) grava em `deal_stage_events` na mesma
+  transação; dispatcher (Edge Function + `pg_cron` a cada 2min) envia de
+  fato, fora da transação. Chave de idempotência com contador:
+  `deal:{id}:topou:{n}`.
+- T3b estende o `webhook-in` genérico já existente com campo opcional
+  `target_stage_slug`, retrocompatível — decisão consciente de não
+  reescrever esse endpoint (usado por outras integrações).
+- Board `negociacao` expandido de 7 para 14 estágios (pedido direto da
+  fundadora): Novo → Contato → Negociando → Topou receber proposta →
+  Proposta enviada → Proposta aceita → Rodar contrato → Enviar contrato →
+  Contrato aprovado → Contrato assinado → Pagamento recebido → Ganho →
+  Onboarding (+ Perdido). Migration preserva os ids determinísticos dos
+  estágios que já existiam (rename de label, ex: "Topou proposta"→"Topou
+  receber proposta", sem quebrar referência).
+
+**Deploy em produção:** migrations aplicadas nos 2 bancos Supabase (CRM
+`zuuqcwxletrfmpcqagxc`, Propostas `qfcylvhfnmzbazdkwzgt`); secrets
+configurados (`PROPOSTAS_INGEST_URL`/`PROPOSTAS_INGEST_SECRET` aqui,
+`TOPOU_CRM_WEBHOOK_SECRET` no Gerador de Propostas — mesmo valor nos 2
+lados); Edge Functions `deal-stage-dispatcher` e `webhook-in` publicadas;
+deploy do código nos 2 Vercel (`crm-ea-v2`, `gerador-de-propostas-comerciais`)
+com READY confirmado.
+
+**Verificado ponta a ponta em produção real** (dados de teste criados e
+depois limpos): deal criado no board Negociação → movido pro estágio "Topou
+receber proposta" → outbox → dispatcher → proposta rascunho criada de
+verdade no banco das Propostas com cliente vinculado → evento "enviada"
+moveu o MESMO deal pro estágio "Proposta enviada" certo → evento "aceita"
+moveu pro estágio "Proposta aceita" certo, sem duplicar contato. 437 testes
+(429 pré-existentes + 8 de regressão novos), typecheck e lint limpos nos 2
+repos.
+
+### Added (T3/T3b — 2026-08-02)
+- Outbox `deal_stage_events` (`supabase/migrations/20260802120000_t3_deal_stage_events_outbox.sql`) + trigger `emit_deal_stage_event` (dispara em `AFTER UPDATE` de `deals`, cobre tanto o agente IA quanto o humano arrastando o card) + RPC `retry_deal_stage_event` pra reenvio manual.
+- Dispatcher (`supabase/functions/deal-stage-dispatcher/`) + `pg_cron` a cada 2min (`supabase/migrations/20260802121000_t3_deal_stage_dispatcher_cron.sql`) — timeout 5s, retry com teto, nunca rebaixa evento já `enviado`.
+- Board `negociacao` expandido pra 14 estágios (`supabase/migrations/20260803100000_t1b_negociacao_board_fluxo_completo.sql`).
+- RPC `resolve_negociacao_stage_id` (`supabase/migrations/20260803120000_t3b_resolve_negociacao_stage_id.sql`) — resolve `target_stage_slug` pro id real do estágio.
+- `webhook-in` (`supabase/functions/webhook-in/index.ts`) estendido com campo opcional `target_stage_slug`, retrocompatível.
+- UI de reenvio manual dos eventos T3 em Configurações (`features/settings/components/DealStageEventsSection.tsx`).
+
+### Fixed (achados do `/qa` em produção real, T3/T3b, 2026-08-02)
+- **Drift de migration history causou duplicata de estágios**: `supabase db push --dry-run` revelou que várias migrations (incluindo T1 board semantics e T2 inteiro) nunca tinham sido tracked pelo CLI — foram aplicadas direto via Management API meses atrás. Ao reconciliar (`migration repair` + `db push --include-all`), a migration original do T1 (não-RFC4122) foi reaplicada e criou duplicatas do board `negociacao` (21 linhas em vez de 14, id ligeiramente diferente da fórmula determinística da versão corrigida). Limpo direto via API em produção (checado antes: só 2 deals reais no board inteiro, nenhum nos ids duplicados removidos).
+- **Secrets em cofre errado**: a Edge Function `deal-stage-dispatcher` lê `PROPOSTAS_INGEST_URL`/`SECRET` dos secrets do Supabase (`supabase secrets set`), não das env vars da Vercel — dois cofres separados. Configurar só a Vercel não bastava; a função rodava mas não processava nada (`"motivo":"PROPOSTAS_INGEST_URL/SECRET não configurados"`).
+- **Telefone sem normalização E.164**: o trigger `emit_deal_stage_event` passava `contacts.phone` direto pro payload sem `+`. Contatos reais deste banco têm telefone salvo sem `+` — o receptor exige E.164 estrito, rejeitava com 422. Fix: normaliza no trigger (só dígitos, 10-15 chars → prefixa `+`).
+- **Board errado no `webhook-in` pro T3b**: a fonte inbound usada pelo T3b é a mesma já usada pra `pagamento_recebido` (`entry_board_id` fixo, board pós-venda). O lookup de deal existente usava sempre esse board fixo — T3b nunca encontrava/movia o deal certo no board Negociação (respondia 200 "ok", mas não achava nada). Fix: usa o board DO ESTÁGIO resolvido via `target_stage_slug` (nova função pura `resolveEffectiveBoardId`), com fallback pro board de entrada quando não há `target_stage_slug` (retrocompat total).
+- **Dedupe de contato quebrado por encoding**: `webhook-in` usava `.or("phone.eq.+5511...")` do PostgREST — `+` não é escapado antes de virar querystring HTTP, e `+` em querystring é espaço. O filtro chegava no banco como `"phone.eq. 5511999999999"` (com espaço) e nunca batia contra telefone E.164 real salvo com `+`. Cada webhook repetido criava um contato duplicado (reproduzido ao vivo: 3 contatos "Cliente Teste" duplicados em minutos de teste). Fix: troca `.or()` por duas buscas `.eq()` sequenciais (telefone primeiro, e-mail depois). Função `sanitizePostgrestValue` removida (só existia pra esse `.or()`, ficou sem uso).
+
 ### Deploy de produção — 2026-07-27
 
 Deploy único que destravou o travamento silencioso desde 2026-07-22 (achado

@@ -59,3 +59,27 @@ Achado relacionado no mesmo teste: `pgtap.is()` exige que os dois lados tenham o
 ## Layout do `/messaging`: `min-w-0` obrigatório na coluna central (2026-07-24)
 
 `MessagingPage.tsx` tem 3 colunas (lista `w-80` fixa, thread `flex-1`, painel de contato `w-80` fixo, sempre montado mesmo sem seleção visível de "aberto/fechado"). Sem `min-w-0` na coluna `flex-1`, ela cresce pro conteúdo em vez de encolher, empurrando o painel de contato (e qualquer botão nele) pra fora da viewport em telas ≤1440px — sem scroll, sem erro no console, só invisível/inclicável. Já corrigido (`MessagingPage.tsx:188`), mas o padrão vale registrar: **qualquer nova coluna de largura fixa nesse layout de 3 painéis precisa checar se o `flex-1` do meio tem `min-w-0`.**
+
+## Migration history com drift silencioso duplicou um board inteiro (2026-08-02)
+
+Reconciliando o histórico de migrations do T3/T3b (`supabase db push --dry-run` antes de aplicar as novas), apareceu que várias migrations antigas — incluindo o T1 (board semantics) e o T2 inteiro — nunca tinham sido tracked pelo CLI: foram aplicadas direto via Management API meses atrás, sem passar pelo histórico oficial (`supabase_migrations.schema_migrations`). Rodar `migration repair` + `db push --include-all` pra reconciliar reaplicou a migration original (não-corrigida, com ids não-RFC4122) do board `negociacao` do T1 por cima da versão já corrigida — resultado: 21 linhas no board em vez de 14, com duplicatas de id ligeiramente diferente da fórmula determinística usada pela versão corrigida.
+
+**Como isso não repete**: antes de rodar `migration repair`/`db push --include-all` num projeto onde há suspeita de aplicação manual via Management API (comum neste ecossistema, ver desafios anteriores neste arquivo), comparar `list_migrations` (MCP) inteiro contra `ls supabase/migrations/` — se uma migration "antiga" que já foi corrigida por uma migration posterior aparecer como "nunca aplicada" no reconcile, ela vai rodar de novo e pode reintroduzir o estado que a correção posterior já tinha fechado. Checar dado real (quantas linhas existem, quantos deals referenciam cada id) antes de confiar que o reconcile deixou o schema como esperado — não só que ele rodou sem erro.
+
+## Edge Function lê secrets do cofre do Supabase, não da Vercel — são dois cofres separados (2026-08-02)
+
+Configurar `PROPOSTAS_INGEST_URL`/`PROPOSTAS_INGEST_SECRET` só nas env vars da Vercel (onde ficam as env vars do Next.js) não bastava pro dispatcher T3 (`deal-stage-dispatcher`, Edge Function) funcionar — ela rodava sem erro (cron disparando normalmente) mas não processava nenhum evento, respondendo `{"motivo":"PROPOSTAS_INGEST_URL/SECRET não configurados"}`. Edge Functions do Supabase leem variáveis só do próprio cofre de secrets (`supabase secrets set` / `mcp__plugin_supabase_supabase__*` correspondente), nunca da Vercel — mesmo os dois projetos fazendo parte do mesmo ecossistema.
+
+**Como checar rápido da próxima vez**: qualquer secret que uma Edge Function (não uma API Route Next.js) precisa ler tem que ser configurado via `supabase secrets set` (ou MCP equivalente) no projeto Supabase correspondente — configurar só na Vercel é insuficiente e o erro resultante (função "roda" mas não faz nada) não aponta pra causa óbvia sem checar o log da função.
+
+## Telefone sem `+` quebra silenciosamente qualquer integração que exija E.164 estrito (2026-08-02)
+
+O trigger `emit_deal_stage_event` (T3) passava `contacts.phone` direto pro payload do webhook sem normalizar. Contatos reais deste banco têm telefone salvo sem o prefixo `+` (ex: `"5511999999999"`), mas o receptor (Gerador de Propostas) valida E.164 estrito (`+` obrigatório) e rejeita com `422` qualquer payload fora do formato — nenhum deal com telefone preenchido conseguiria completar o T3 até esse fix, e o erro só aparecia no log do dispatcher, não em lugar nenhum visível pra quem move o card.
+
+**Como isso não repete**: qualquer trigger/integração nova que leia `contacts.phone` direto do banco pra mandar pra fora não pode assumir que já está em E.164 — normalizar (só dígitos, 10-15 chars → prefixar `+`) antes de montar o payload, não confiar que o dado já chega formatado.
+
+## `.or()` do PostgREST não escapa `+` — vira espaço na querystring e quebra dedupe por telefone (2026-08-02)
+
+`webhook-in` (usado pelo T3b) buscava contato existente com `.or("phone.eq.+5511999999999,email.eq....")` do cliente PostgREST/Supabase-js. O caractere `+` não é escapado antes de virar querystring HTTP — e `+` em querystring é espaço (`application/x-www-form-urlencoded`). O filtro chegava no PostgREST como `"phone.eq. 5511999999999"` (com espaço no lugar do `+`) e nunca batia contra o telefone E.164 real salvo com `+` — cada webhook repetido criava um contato duplicado em vez de achar o existente. Reproduzido ao vivo durante o `/qa`: 3 contatos "Cliente Teste" duplicados em poucos minutos de teste repetindo o mesmo evento.
+
+**Como isso não repete**: nunca usar `.or()` do PostgREST/Supabase-js com um valor que contenha `+` (ou outro caractere especial de querystring) sem escapar manualmente — trocar por buscas `.eq()` sequenciais (um campo de cada vez) é mais simples e não tem esse risco de encoding. Vale pra qualquer dedupe futuro por telefone neste projeto, não só o `webhook-in`.
