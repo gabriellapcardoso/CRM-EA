@@ -7,6 +7,7 @@ import { TagsManager } from './components/TagsManager';
 import { CustomFieldsManager } from './components/CustomFieldsManager';
 import { ApiKeysSection } from './components/ApiKeysSection';
 import { WebhooksSection } from './components/WebhooksSection';
+import { DealStageEventsSection } from './components/DealStageEventsSection';
 import { McpSection } from './components/McpSection';
 import { ChannelsSection } from './components/ChannelsSection';
 import { BusinessUnitsSection } from './components/BusinessUnitsSection';
@@ -166,7 +167,12 @@ const IntegrationsSettings: React.FC = () => {
 
       {subTab === 'channels' && <ChannelsSection />}
       {subTab === 'api' && <ApiKeysSection />}
-      {subTab === 'webhooks' && <WebhooksSection />}
+      {subTab === 'webhooks' && (
+        <>
+          <WebhooksSection />
+          <DealStageEventsSection />
+        </>
+      )}
       {subTab === 'mcp' && <McpSection />}
       {subTab === 'whatsapp-safety' && <WhatsAppSafetySection />}
     </div>

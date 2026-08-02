@@ -61,6 +61,11 @@ vi.mock('./components/WebhooksSection', () => ({
   ),
 }))
 
+// Evita depender de providers (Toast/Supabase) ao renderizar a aba Webhooks no teste.
+vi.mock('./components/DealStageEventsSection', () => ({
+  DealStageEventsSection: () => null,
+}))
+
 vi.mock('./components/McpSection', () => ({
   McpSection: () => (
     <div>
