@@ -131,15 +131,6 @@ async function secretsIguais(a: string, b: string): Promise<boolean> {
   return diff === 0;
 }
 
-/**
- * Hardening T2: remove caracteres especiais do PostgREST antes de interpolar
- * em `.or()` (mesma regra de `lib/utils/sanitize.ts` do app — `(11) 98765-4321`
- * quebrava/injetava no filtro).
- */
-function sanitizePostgrestValue(value: string): string {
-  return value.replace(/[,()*\\]/g, "");
-}
-
 function toNullableString(v: unknown) {
   if (typeof v !== "string") return null;
   const s = v.trim();
@@ -381,19 +372,39 @@ Deno.serve(async (req) => {
   }
 
   if (leadEmail || leadPhone) {
-    // Hardening T2: sanitiza antes de interpolar no `.or()` do PostgREST
-    const filters: string[] = [];
-    if (leadEmail) filters.push(`email.eq.${sanitizePostgrestValue(leadEmail)}`);
-    if (leadPhone) filters.push(`phone.eq.${sanitizePostgrestValue(leadPhone)}`);
+    // Bugfix achado no /qa (2026-08-03): `.or("phone.eq.+5511...")` do
+    // PostgREST/supabase-js não escapa '+' antes de virar querystring — '+'
+    // em querystring HTTP é espaço, então "phone.eq.+5511999999999" chegava
+    // no banco como "phone.eq. 5511999999999" e NUNCA batia com telefone
+    // E.164 real (todo contato criado por integração usa '+'). Cada retry
+    // criava um contato duplicado em vez de achar o existente. Trocado por
+    // duas buscas .eq() sequenciais (telefone primeiro, e-mail depois) —
+    // sem string interpolation, sem risco de encoding.
+    let existingContacts:
+      | { id: string; name: string | null; email: string | null; phone: string | null; organization_id: string }[]
+      | null = null;
 
-    const { data: existingContacts, error: findErr } = await supabase
-      .from("contacts")
-      .select("id, name, email, phone, organization_id")
-      .eq("organization_id", source.organization_id)
-      .or(filters.join(","))
-      .limit(1);
+    if (leadPhone) {
+      const { data, error: findByPhoneErr } = await supabase
+        .from("contacts")
+        .select("id, name, email, phone, organization_id")
+        .eq("organization_id", source.organization_id)
+        .eq("phone", leadPhone)
+        .limit(1);
+      if (findByPhoneErr) return json(500, { error: "Falha ao buscar contato", details: findByPhoneErr.message });
+      existingContacts = data;
+    }
 
-    if (findErr) return json(500, { error: "Falha ao buscar contato", details: findErr.message });
+    if ((!existingContacts || existingContacts.length === 0) && leadEmail) {
+      const { data, error: findByEmailErr } = await supabase
+        .from("contacts")
+        .select("id, name, email, phone, organization_id")
+        .eq("organization_id", source.organization_id)
+        .eq("email", leadEmail)
+        .limit(1);
+      if (findByEmailErr) return json(500, { error: "Falha ao buscar contato", details: findByEmailErr.message });
+      existingContacts = data;
+    }
 
     if (existingContacts && existingContacts.length > 0) {
       const existing = existingContacts[0];
