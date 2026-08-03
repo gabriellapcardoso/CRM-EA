@@ -14,7 +14,7 @@
  * HTTP status desta function.
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { decidirResultado, elegivelParaEnvio, montarCorpoRequisicao, type DealStageEventPayload } from "./dispatcher-logic.ts";
+import { decidirResultado, elegivelParaEnvio, montarCorpoRequisicao, resolverDestino, type DealStageEventPayload } from "./dispatcher-logic.ts";
 
 const LOTE_MAX = 50;
 
@@ -26,27 +26,27 @@ interface DealStageEventRow {
   id: string;
   status: "pendente" | "enviado" | "falhou";
   attempt_count: number;
+  stage_slug: string;
   payload: DealStageEventPayload;
 }
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const destinoUrl = Deno.env.get("PROPOSTAS_INGEST_URL");
-  const destinoSecret = Deno.env.get("PROPOSTAS_INGEST_SECRET");
+  const env = {
+    PROPOSTAS_INGEST_URL: Deno.env.get("PROPOSTAS_INGEST_URL") ?? undefined,
+    PROPOSTAS_INGEST_SECRET: Deno.env.get("PROPOSTAS_INGEST_SECRET") ?? undefined,
+    PROSPECCAO_REAQUECER_URL: Deno.env.get("PROSPECCAO_REAQUECER_URL") ?? undefined,
+    PROSPECCAO_REAQUECER_SECRET: Deno.env.get("PROSPECCAO_REAQUECER_SECRET") ?? undefined,
+  };
 
   if (!supabaseUrl || !serviceKey) return json(500, { error: "Supabase não configurado no runtime" });
-  if (!destinoUrl || !destinoSecret) {
-    // Configuração pendente dos dois lados (ver HANDOFF.md do gerador de
-    // propostas) — não é erro de código, não falha alto, só não processa nada.
-    return json(200, { ok: true, processado: 0, motivo: "PROPOSTAS_INGEST_URL/SECRET não configurados" });
-  }
 
   const supabase = createClient(supabaseUrl, serviceKey);
 
   const { data: candidatos, error: erroLeitura } = await supabase
     .from("deal_stage_events")
-    .select("id, status, attempt_count, payload")
+    .select("id, status, attempt_count, stage_slug, payload")
     .in("status", ["pendente", "falhou"])
     .order("created_at", { ascending: true })
     .limit(LOTE_MAX * 2); // busca uma folga porque filtra elegibilidade em memória (attempt_count por status)
@@ -62,16 +62,29 @@ Deno.serve(async (_req) => {
 
   let enviados = 0;
   let falhas = 0;
+  let semDestino = 0;
 
   for (const row of elegiveis) {
+    // Roteamento por stage_slug (T3c): "perdido" vai pra prospecção,
+    // resto (topou-proposta e o que vier depois) vai pro Gerador de
+    // Propostas — ver resolverDestino em dispatcher-logic.ts.
+    const destino = resolverDestino(row.stage_slug, env);
+    if (!destino.url || !destino.secret) {
+      // Configuração pendente só desse destino — não falha o evento (não
+      // gasta attempt_count), só deixa pendente pra próxima rodada do cron
+      // depois que as envs forem configuradas.
+      semDestino++;
+      continue;
+    }
+
     const corpo = montarCorpoRequisicao(row.payload);
     let httpStatus: number | null = null;
     let erroMsg: string | null = null;
 
     try {
-      const resposta = await fetch(destinoUrl, {
+      const resposta = await fetch(destino.url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Webhook-Secret": destinoSecret },
+        headers: { "Content-Type": "application/json", "X-Webhook-Secret": destino.secret },
         body: JSON.stringify(corpo),
         signal: AbortSignal.timeout(5000),
       });
@@ -115,5 +128,5 @@ Deno.serve(async (_req) => {
     else falhas++;
   }
 
-  return json(200, { ok: true, processado: elegiveis.length, enviados, falhas });
+  return json(200, { ok: true, processado: elegiveis.length, enviados, falhas, semDestino });
 });

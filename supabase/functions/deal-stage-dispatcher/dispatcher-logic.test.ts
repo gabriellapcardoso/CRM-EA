@@ -3,6 +3,7 @@ import {
   decidirResultado,
   elegivelParaEnvio,
   montarCorpoRequisicao,
+  resolverDestino,
   MAX_ATTEMPTS,
   MAX_422_ATTEMPTS,
   type DealStageEventPayload,
@@ -96,5 +97,39 @@ describe('montarCorpoRequisicao', () => {
       topou_em: '2026-08-02T12:00:00Z',
     };
     expect(montarCorpoRequisicao(payload)).toBe(payload);
+  });
+});
+
+describe('resolverDestino', () => {
+  const env = {
+    PROPOSTAS_INGEST_URL: 'https://propostas.test/webhook',
+    PROPOSTAS_INGEST_SECRET: 'segredo-propostas',
+    PROSPECCAO_REAQUECER_URL: 'https://prospeccao.test/webhook',
+    PROSPECCAO_REAQUECER_SECRET: 'segredo-prospeccao',
+  };
+
+  it("roteia stage_slug 'perdido' pro destino da prospecção (T3c)", () => {
+    expect(resolverDestino('perdido', env)).toEqual({
+      url: 'https://prospeccao.test/webhook',
+      secret: 'segredo-prospeccao',
+    });
+  });
+
+  it("roteia stage_slug 'topou-proposta' pro destino do gerador de propostas (T3)", () => {
+    expect(resolverDestino('topou-proposta', env)).toEqual({
+      url: 'https://propostas.test/webhook',
+      secret: 'segredo-propostas',
+    });
+  });
+
+  it('qualquer stage_slug futuro não mapeado cai no destino padrão (propostas)', () => {
+    expect(resolverDestino('estagio-novo-desconhecido', env)).toEqual({
+      url: 'https://propostas.test/webhook',
+      secret: 'segredo-propostas',
+    });
+  });
+
+  it('retorna undefined quando a env do destino resolvido não está configurada', () => {
+    expect(resolverDestino('perdido', {})).toEqual({ url: undefined, secret: undefined });
   });
 });

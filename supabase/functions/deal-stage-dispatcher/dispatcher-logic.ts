@@ -77,6 +77,40 @@ export interface DealStageEventPayload {
   topou_em: string;
 }
 
+/** Payload do evento T3c (deal perdido → reaquecer lead na prospecção). */
+export interface DealLostEventPayload {
+  external_event_id: string;
+  deal_id: string;
+  correlation_id: string;
+  motivo: string | null;
+  perdido_em: string;
+}
+
+export interface DestinoEnv {
+  PROPOSTAS_INGEST_URL?: string;
+  PROPOSTAS_INGEST_SECRET?: string;
+  PROSPECCAO_REAQUECER_URL?: string;
+  PROSPECCAO_REAQUECER_SECRET?: string;
+}
+
+export interface Destino {
+  url: string | undefined;
+  secret: string | undefined;
+}
+
+/**
+ * T3c: `deal_stage_events` agora carrega eventos de 2 direções diferentes
+ * (T3 topou-proposta → Gerador de Propostas, T3c perdido → Prospecção).
+ * Roteamento por `stage_slug`, não por tabela nova — mesmo outbox, mesmo
+ * cron, destino HTTP diferente por linha.
+ */
+export function resolverDestino(stageSlug: string, env: DestinoEnv): Destino {
+  if (stageSlug === "perdido") {
+    return { url: env.PROSPECCAO_REAQUECER_URL, secret: env.PROSPECCAO_REAQUECER_SECRET };
+  }
+  return { url: env.PROPOSTAS_INGEST_URL, secret: env.PROPOSTAS_INGEST_SECRET };
+}
+
 /**
  * O `payload` gravado pelo trigger SQL (emit_deal_stage_event, migration
  * 20260802120000) já é o corpo exato esperado pelo receptor — não precisa
