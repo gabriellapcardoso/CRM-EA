@@ -19,7 +19,10 @@
 - **One cache per entity**: All operations (CRUD, Realtime, optimistic) use the SAME cache
 - **Deals**: Always use `[...queryKeys.deals.lists(), 'view']` for all mutations
 - **Other entities**: Use `queryKeys.{entity}.lists()` for mutations
+- **Entities with extra sub-caches** (contacts, activities, businessUnits, messagingChannels, messagingConversations): use `entityCachesExceptDetail(entity)` predicate instead of `.lists()` alone
+- **NEVER use** `queryKeys.*.all` — prefix-matches everything including open `detail(id)` views, causes unnecessary refetches
 - **NEVER use** `queryKeys.*.list({ filter })` for optimistic updates - those are separate caches
+- **If `onMutate` writes to `entity.detail(id)`**: also `cancelQueries({ queryKey: entity.detail(id) })` explicitly — `.lists()`/the predicate don't cover it, unlike `.all`, and an in-flight detail fetch can silently overwrite the optimistic write otherwise
 - **Prefer** `setQueryData` over `invalidateQueries` for instant UI updates
 
 ## Code Style

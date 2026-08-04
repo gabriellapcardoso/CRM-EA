@@ -92,11 +92,14 @@ SUPABASE_SECRET_KEY                   → fallback: SUPABASE_SERVICE_ROLE_KEY
 
 **Auth**: `useAuth()` de `@/context/AuthContext` retorna `{ user, profile, organizationId, signOut }`
 
-**Query Keys**: todas as queries usam o factory em `lib/query/queryKeys.ts`
+**Query Keys**: todas as queries usam o factory em `lib/query/queryKeys.ts`. **Nunca usar `.all`** em `invalidateQueries`/`cancelQueries` — invalida/cancela o cache inteiro da entidade (todo `detail(id)` aberto incluso), causando refetch/race desnecessários. Usar `.lists()` (entidades simples) ou, pra entidades com sub-caches além de `lists()`/`detail()` (ex: `contacts.paginated()`, `activities.byDeal()`, `messagingConversations.byChannel()`), o predicate `entityCachesExceptDetail(entity)`:
 ```typescript
-queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() })
+queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') })
 queryClient.invalidateQueries({ queryKey: queryKeys.deals.list({ boardId }) })
 ```
+
+**Cuidado ao cancelar/invalidar com key estreita**: se o `onMutate` também escreve otimisticamente em `entity.detail(id)` via `setQueryData`, `.lists()`/`entityCachesExceptDetail()` **não cobrem esse cache** (ao contrário de `.all`, que cobria por prefix-match). Sem um `cancelQueries({ queryKey: entity.detail(id) })` adicional, um fetch de detail em andamento pode sobrescrever a escrita otimista depois — race condition real, já achada e corrigida em `useUpdateDeal`/`useMoveDeal`/`useUpdateConversation` (ver `DESAFIOS.md`).
 
 **Deals — source of truth única**:
 ```typescript

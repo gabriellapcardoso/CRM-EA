@@ -1,5 +1,33 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Estreitar `cancelQueries`/`invalidateQueries` de `.all` pra `.lists()`/predicate pode reabrir race condition se a mutation escreve em `detail(id)` (2026-08-04)
+
+Corrigindo a violação "invalidação de cache com `.all`" do `docs/audit-report.md`
+(trocar `queryKeys.deals.all` por `queryKeys.deals.lists()` em ~90 pontos), a
+revisão adversarial do `/review` (subagente Claude, confirmado depois pelo
+Codex antes dele expirar) achou um bug real que a própria correção introduziu:
+`.all` é só `['entity']`, e o TanStack Query faz *prefix match* por padrão —
+então `cancelQueries({queryKey: entity.all})` cancelava **qualquer** query em
+andamento daquela entidade, inclusive `entity.detail(id)`. Trocar pra
+`entity.lists()` (`['entity', 'list']`) ou pro predicate novo
+`entityCachesExceptDetail()` (que exclui `detail` de propósito) para de
+cobrir o `detail(id)` — mas 3 mutations (`useUpdateDeal`, `useMoveDeal`,
+`useUpdateConversation`) continuam escrevendo otimisticamente nesse mesmo
+cache de detalhe no mesmo `onMutate`. Resultado: um fetch de `detail(id)`
+que já estava em andamento (ex: usuário com o cockpit do deal aberto numa
+aba) não é mais cancelado, pode terminar depois da escrita otimista e
+sobrescrever ela silenciosamente com o dado pré-mutation. `useMoveDeal` é o
+drag-and-drop do Kanban — a mutation mais comum do app.
+
+**Como isso não repete**: sempre que estreitar um `cancelQueries`/
+`invalidateQueries` de uma key ampla (`.all`) pra uma mais específica
+(`.lists()` ou um predicate), grep no arquivo por `setQueryData` /
+`setQueriesData` dentro do mesmo `onMutate` — se algum desses escrever num
+cache que a key nova não cobre (tipicamente `detail(id)`), a mutation
+precisa de um `cancelQueries` adicional específico pra esse cache. A key
+ampla "por acidente" cobria tudo; a específica não cobre nada que não
+esteja explicitamente nela.
+
 ## Barrel `@/lib/supabase` não pode reexportar `createClient`/`createStaticAdminClient` — quebra o boundary client/server do Next.js (2026-08-04)
 
 O `docs/audit-report.md` (violação média #6) recomendava migrar os ~99 imports diretos de `@/lib/supabase/{client,server,staticAdminClient}` para o barrel `@/lib/supabase`, mesma orientação do `CLAUDE.md` ("Importar sempre de `@/lib/supabase`"). Tentativa real de fazer isso (adicionar `createClient`/`createAdminClient`/`createStaticAdminClient` ao barrel `lib/supabase.ts` e migrar todos os call sites) passou limpo em typecheck/lint/testes, mas **quebrou o `npm run build`**: o Next.js analisa `lib/supabase.ts` como módulo único, então qualquer arquivo que importe *qualquer coisa* do barrel (mesmo só `supabase`, o client de browser) arrasta transitivamente o `import 'server-only'` de `server.ts`/`staticAdminClient.ts` pro bundle do client component — erro `'server-only' cannot be imported from a Client Component module`.

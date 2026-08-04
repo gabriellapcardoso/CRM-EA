@@ -3,6 +3,8 @@ Data: 2026-04-17 | Branch: feature/004-goal-oriented-agent | Modo: completo
 
 > **ATUALIZAÇÃO 2026-07-22**: violações críticas **1 e 2 FECHADAS** (commit `04705a3`) — sanitização + preamble em 15 entry points (os 7 auditados + 11 adicionais encontrados na execução, incl. `stage-evaluator.ts`). Violações 3-7 seguem abertas.
 
+> **ATUALIZAÇÃO 2026-08-04**: violação crítica **7 FECHADA** (store de UI duplicado removido). Violação crítica **6 AVALIADA E REVERTIDA CONSCIENTEMENTE** — não é mais recomendação válida, ver nota na seção 6. Violações críticas 3, 4, 5 seguem abertas (fora do escopo desta sessão, focada nas médias/baixas). Violações médias **1, 2, 3 FECHADAS** (parcial na #3, ver nota), violação média **4 AVALIADA, sem mudança necessária**. Detalhe completo em `CHANGELOG.md`, seção "Fechamento das violações médias/baixas do audit-report.md (2026-04)".
+
 ## Sumário Executivo
 - 🔴 Crítico: 7 violações
 - 🟡 Médio: 4 violações
@@ -151,6 +153,18 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 ---
 
 ### 6. Imports diretos de subcaminhos Supabase (barrel violation)
+
+> **STATUS (2026-08-04): NÃO É MAIS RECOMENDAÇÃO VÁLIDA.** Tentativa real de
+> aplicar essa migração (adicionar `createClient`/`createStaticAdminClient`
+> ao barrel `lib/supabase.ts`, migrar os ~99 call sites) passou limpo em
+> typecheck/lint/testes mas **quebrou `npm run build`**: o Next.js analisa
+> o barrel como módulo único, então qualquer import dele arrasta
+> `server-only` pro bundle de client components. Revertido. Detalhe em
+> `DESAFIOS.md` e `CHANGELOG.md`. A regra segue válida só pra **services**
+> (`boardsService` etc., já é o padrão hoje) e pro client singleton de
+> browser (`supabase`) — não para as funções `createClient`/
+> `createStaticAdminClient`, que precisam continuar em import direto por
+> subcaminho.
 **Domínio**: Supabase  
 **Regra**: Sempre importar de `@/lib/supabase` (barrel), nunca de subcaminhos diretamente.  
 **Ocorrências** (22 arquivos):
@@ -190,6 +204,12 @@ import { supabase, createClient, createStaticAdminClient } from '@/lib/supabase'
 ---
 
 ### 7. store/uiState.ts fora de lib/stores/ (duplicata arquitetural)
+
+> **STATUS (2026-08-04): FECHADA.** `store/uiState.ts` removido. Os campos
+> reais (usados em produção) foram migrados pro `useUIStore` oficial —
+> os campos homônimos que já existiam em `useUIStore` (`sidebarOpen`,
+> `aiAssistantOpen`) nunca eram usados em lugar nenhum, eram os que
+> estavam mortos, não o inverso. Ver `CHANGELOG.md`.
 **Domínio**: Zustand v5  
 **Regra**: Todos os stores Zustand devem residir em `lib/stores/`. Stores fora desse diretório fragmentam o estado e duplicam responsabilidades.  
 **Ocorrências**:
@@ -202,6 +222,14 @@ import { supabase, createClient, createStaticAdminClient } from '@/lib/supabase'
 ## 🟡 Médio
 
 ### 1. invalidateQueries/cancelQueries com `.all` (55 ocorrências)
+
+> **STATUS (2026-08-04): FECHADA.** ~90 ocorrências reais corrigidas (o
+> código cresceu desde abril). Deals usam `.lists()`; entidades com
+> sub-caches extras usam o predicate novo `entityCachesExceptDetail()`
+> (`lib/query/queryKeys.ts`). A própria correção introduziu uma race
+> condition real (3 mutations continuaram escrevendo em `detail(id)` sem
+> mais cancelar esse cache) — achada pela revisão adversarial do `/review`
+> e corrigida no mesmo dia. Ver `CHANGELOG.md`.
 **Domínio**: TanStack Query  
 **Regra**: Nunca invalidar com `.all` — invalida caches inteiros causando refetch desnecessário. Usar a key mais específica possível ou `setQueryData`.  
 **Ocorrências** (55 hits confirmados):
@@ -228,6 +256,9 @@ queryClient.setQueryData<DealView[]>(DEALS_VIEW_KEY, updater)
 ---
 
 ### 2. Zod v4 — API v3 (58 ocorrências)
+
+> **STATUS (2026-08-04): FECHADA.** 59 ocorrências corrigidas em 18
+> arquivos, substituição mecânica sem ambiguidade. Ver `CHANGELOG.md`.
 **Domínio**: Zod v4  
 **Regra**: No Zod v4, os validators de string viraram top-level. `z.string().uuid()` → `z.uuid()`, etc.  
 **Ocorrências** (58 hits em 10+ arquivos):
@@ -255,6 +286,14 @@ z.url()
 ---
 
 ### 3. .single() em lookups que podem retornar 0 rows
+
+> **STATUS (2026-08-04): PARCIALMENTE FECHADA.** ~150 ocorrências
+> revisadas nas camadas de maior risco (`lib/supabase`, `lib/mcp`,
+> `lib/ai`, `lib/messaging`, `lib/query/hooks`), 48 trocadas por
+> `.maybeSingle()` — incluindo 2 bugs reais confirmados (canal
+> deletado/inexistente lançava erro em vez de retornar `null`). **Falta**
+> `app/api/**` (114 ocorrências) e resto de `features/**` — mesmo padrão
+> de risco, pendente pra sessão futura. Ver `CHANGELOG.md`.
 **Domínio**: Supabase  
 **Regra**: Usar `.maybeSingle()` para lookups que podem retornar 0 rows. `.single()` lança PGRST116 se não encontrar.  
 **Ocorrências** (20+ hits em vários arquivos):
@@ -281,6 +320,12 @@ z.url()
 ---
 
 ### 4. 'use client' em páginas (6 ocorrências)
+
+> **STATUS (2026-08-04): AVALIADA, SEM MUDANÇA NECESSÁRIA.** As 6 páginas
+> são 100% interativas por natureza (wizard de instalação, login, setup,
+> harness de teste) — não há conteúdo estático que ganhe com o split em
+> componente filho. A própria recomendação original já dizia "avaliar",
+> não "sempre corrigir".
 **Domínio**: Next.js 16  
 **Regra**: `'use client'` deve estar no menor componente possível. Em páginas inteiras, quebra o Server Components tree desnecessariamente.  
 **Ocorrências**:

@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fechamento das violações médias/baixas do audit-report.md (2026-04) — 2026-08-04
+
+Sessão dedicada a fechar os achados da auditoria de segurança de abril/2026
+(`docs/audit-report.md`) que ainda estavam abertos, verificados via `/review`
+com passe adversarial (Claude + Codex). 7 commits, `npm run precheck` limpo
+em todas as etapas.
+
+**Fechado:**
+1. **Zod v3→v4** (violação média #2): `z.string().uuid()/.email()/.url()`
+   → `z.uuid()/z.email()/z.url()` em 18 arquivos. Mecânico, sem risco.
+2. **Store de UI duplicado** (violação crítica #7): `store/uiState.ts`
+   duplicava `useUIStore` (`lib/stores/index.ts`) com nomes de campo
+   diferentes — os campos de `store/uiState.ts` (`isGlobalAIOpen`,
+   `sidebarCollapsed`, `activeBoardId`) eram os que de fato dirigiam a UI
+   real (Layout, Inbox, Cockpit, modais); os do `useUIStore`
+   (`aiAssistantOpen`, `sidebarOpen`) nunca eram usados em lugar nenhum.
+   Migrados os campos reais pro store oficial, arquivo duplicado apagado.
+3. **Invalidação de cache com `.all`** (violação média #1): ~90 ocorrências
+   reais (mais que as 77 estimadas em abril) de `invalidateQueries`/
+   `cancelQueries` usando a key genérica `.all` — invalidava o cache
+   inteiro da entidade a cada mutation. Deals passam a usar `.lists()`;
+   entidades com sub-caches além de `lists()`/`detail()` (contacts,
+   activities, businessUnits, messagingChannels, messagingConversations)
+   ganharam um predicate novo, `entityCachesExceptDetail()`
+   (`lib/query/queryKeys.ts`), que invalida tudo da entidade exceto
+   `detail(id)` — preserva a invalidação real desses sub-caches sem tocar
+   em detalhes abertos não relacionados.
+4. **`.single()` em lookups que podem não achar linha** (violação média #3):
+   ~150 ocorrências revisadas nas camadas de maior risco (`lib/supabase`,
+   `lib/mcp`, `lib/ai`, `lib/messaging`, `lib/query/hooks`), 48 trocadas
+   por `.maybeSingle()` — eram bugs reais: lookup por ID vindo de chamada
+   de ferramenta de IA, input de usuário ou config opcional, onde "não
+   achou" é resultado normal, mas `.single()` lançava um erro Postgrest
+   não tratado em vez de cair no `if (!data)` já escrito no código.
+   Dois bugs concretos achados assim: `channel-router.service.ts` e
+   `useChannelsQuery.ts` lançavam erro em vez de retornar `null` (o tipo
+   de retorno já declarado) quando um canal era excluído/não existia.
+   **Pendente**: `app/api/**` (114 ocorrências) e o resto de `features/**`
+   ficaram fora do escopo desta sessão — mesmo padrão de risco, revisar
+   numa sessão futura começando por `app/api/messaging/**` e
+   `app/api/ai/**`.
+5. **`'use client'` em 6 páginas** (violação média #4): revisado — são
+   telas 100% interativas por natureza (wizard de instalação, login,
+   setup, harness de teste), sem conteúdo estático que ganhe com o split
+   em componente filho. Sem mudança de código.
+
+**Revertido conscientemente (não é mais recomendação válida):**
+- **Barrel `@/lib/supabase` reexportando `createClient`/
+  `createStaticAdminClient`** (violação média #6): tentativa real de
+  migrar os ~99 imports diretos de subcaminho pro barrel, seguindo a
+  própria orientação deste `CLAUDE.md`, passou limpo em typecheck/lint/
+  testes mas **quebrou o build de produção** — o Next.js analisa
+  `lib/supabase.ts` como módulo único, então qualquer import do barrel
+  (mesmo só o client de browser) arrasta `server-only` pro bundle de
+  client components. Revertido; detalhe completo em `DESAFIOS.md`.
+  Achado de brinde (mantido, correto de qualquer jeito): arquivo
+  `lib/supabase/index.ts` morto (sombreado, nunca importado) removido, e
+  duas implementações divergentes de `createStaticAdminClient`
+  consolidadas numa só (a versão com cache, em
+  `lib/supabase/staticAdminClient.ts`).
+
+**Bug real achado pela revisão adversarial (`/review`), não pela
+auditoria original:** ao estreitar `cancelQueries` de `.all` (que cobre
+tudo, inclusive `detail(id)`) pra `.lists()`/`entityCachesExceptDetail()`
+(que exclui `detail(id)` de propósito), 3 mutations —
+`useUpdateDeal`, `useMoveDeal` (drag-and-drop do Kanban, a interação mais
+comum do app) e `useUpdateConversation` — continuaram escrevendo
+otimisticamente no cache `detail(id)` sem mais cancelar o fetch em
+andamento desse mesmo cache, reabrindo a race de sobrescrita que o
+cancelamento amplo existia pra evitar. Achado de forma independente pelo
+subagente adversarial do Claude e pelo Codex (que expirou em 5min antes
+de terminar, mas confirmou o mesmo problema em texto parcial). Corrigido
+cancelando o `detail(id)` específico junto com a key estreitada nos 3
+pontos. Também adicionado teste direto pro `entityCachesExceptDetail()`
+(lógica nova sem nenhuma cobertura própria, achado pelo especialista de
+testes do `/review`).
+
+**Verificação**: typecheck/lint/440 testes (7 novos)/build limpos em
+todas as etapas. 7 commits, sem push ainda.
+
 ### T3c — reaquecimento automático na prospecção quando deal é marcado "Perdido" — 2026-08-03
 
 Reusa o outbox/dispatcher do T3 (`deal_stage_events` + Edge Function
