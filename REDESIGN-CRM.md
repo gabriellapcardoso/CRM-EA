@@ -156,22 +156,44 @@ nenhuma.
 Reverificado depois do fix: `tsc`/`eslint`/`vitest`/`next build` continuam
 verdes (445/450 testes, 5 skipped, 110 rotas).
 
-**Pendências que ainda exigem revisão visual humana** (não abertas nesta
-passada de QA):
-- `/messaging`, `/decisions` com itens reais na fila, `/ai`, `/reports`,
-  `/settings` (abas configuração de IA/integrações/produtos — só "geral" foi
-  vista, e só como usuário não-admin), `/profile`, e o cockpit de negócio
-  (`/deals/[id]/cockpit-v2`) — risco de scroll duplo/`min-width` empurrando
-  layout em telas estreitas, principalmente no cockpit (3 colunas, min-width
-  1180px) e mensagens (thread + context-pane).
+**2ª rodada de QA** (mesmo dia, `/messaging`, `/boards` → modal de detalhe do
+negócio, `/reports`, `/decisions` de novo): achado o bug mais sério da sessão
+— **modo escuro persistido travando usuárias sem forma de sair** (commit
+`a7516b1`, detalhe em `CHANGELOG.md`/`DESAFIOS.md`). O Chrome real do QA tinha
+`crm_dark_mode: true` salvo de antes do redesign; trocar o *default* pra
+`false` no código não migra quem já tinha o valor antigo, e como o toggle da
+topbar foi removido, não havia mais controle de UI pra sair do escuro —
+`DealDetailModal.tsx` (conteúdo ainda não restilizado) renderizava com texto
+quase invisível sobre fundo azul-marinho. `ThemeProvider` corrigido pra forçar
+light sempre e limpar a chave antiga do localStorage. `/messaging` foi aberto
+mas sem conversas reais no banco de teste pra validar a thread de mensagens de
+fato; `/reports` e `/decisions` (vazio) sem problema visual novo achado. A
+extensão do Chrome caiu no meio da 2ª rodada (desconexão transitória, não
+reconectou em 2 tentativas) — parado aí conforme a diretriz de não insistir
+além de 2-3 tentativas em falha de ferramenta.
+
+**Pendências que ainda exigem revisão visual humana** (não abertas em
+nenhuma das 2 passadas de QA):
+- `/messaging` com conversa real de verdade (o banco de teste não tinha
+  nenhuma conversa — thread/bolhas/composer nunca renderizaram com dado real).
+- `/deals/[id]/cockpit-v2` (página cheia, 3 colunas) — só o modal condensado
+  (`DealDetailModal`) foi visto; o banco de teste não tinha nenhuma decisão
+  "decidida recentemente" com link `ver` pra chegar lá sem construir a URL à
+  mão. Risco de scroll duplo/`min-width` (1180px) em telas estreitas.
+- `/settings` abas "configuração de IA"/"integrações"/"produtos" — só "geral"
+  foi vista, e só como usuário não-admin (essas 2 últimas abas só aparecem
+  pra admin).
+- `/ai`, `/profile`.
 - `features/messaging/components/FocusContextPanel.tsx` (~1900 linhas,
   compartilhado com o cockpit) **não foi restilizado** — ainda no visual
   antigo, mas funcional (renderiza dentro do `.thread__body` novo).
 - `TemplateSelector.tsx`/`TemplateManager.tsx` (messaging) e o conteúdo interno
   de alguns modais herdam só os tokens base, sem reescrita completa de layout.
-- Terminado o commit desses 2 fixes, vale rodar `/qa` de novo cobrindo
-  especificamente cockpit→mensagens (não abertos nesta passada) e as abas de
-  configurações como usuário admin (só "geral" foi vista, sem admin).
+- Cor azul (`#3b82f6`) fora da paleta no gráfico "de onde vieram os deals"
+  (`/reports`) — pré-existente (`useDashboardMetrics.ts`, hardcoded antes do
+  redesign), não corrigido por estar fora do critério de parada desta rodada
+  (não é erro de console nem texto sobreposto) e por ser código não tocado
+  pelo redesign.
 
 ## Progresso
 
