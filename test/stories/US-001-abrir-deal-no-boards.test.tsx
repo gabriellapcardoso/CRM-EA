@@ -89,8 +89,8 @@ vi.mock('@/lib/query/hooks/useProductsQuery', () => ({
   useActiveProducts: () => ({ data: [] }),
 }));
 
-vi.mock('@/store/uiState', () => ({
-  useUIState: () => ({ activeBoardId: 'board-1' }),
+vi.mock('@/lib/stores', () => ({
+  useUIStore: () => ({ activeBoardId: 'board-1' }),
 }));
 
 vi.mock('@/hooks/usePersistedState', () => ({

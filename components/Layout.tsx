@@ -48,7 +48,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { useUIState } from '@/store/uiState';
+import { useUIStore } from '@/lib/stores';
 import { prefetchRoute, RouteName } from '@/lib/prefetch';
 import { isDebugMode, enableDebugMode, disableDebugMode } from '@/lib/debug';
 import { SkipLink } from '@/lib/a11y';
@@ -170,7 +170,7 @@ const NavItem = ({
  */
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { darkMode, toggleDarkMode } = useTheme();
-  const { isGlobalAIOpen, setIsGlobalAIOpen, sidebarCollapsed, setSidebarCollapsed } = useUIState();
+  const { aiAssistantOpen, setAIAssistantOpen, sidebarCollapsed, setSidebarCollapsed } = useUIStore();
   const { user, loading, profile, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -479,8 +479,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => setIsGlobalAIOpen(!isGlobalAIOpen)}
-                className={`p-2 rounded-full transition-all active:scale-95 focus-visible-ring ${isGlobalAIOpen
+                onClick={() => setAIAssistantOpen(!aiAssistantOpen)}
+                className={`p-2 rounded-full transition-all active:scale-95 focus-visible-ring ${aiAssistantOpen
                   ? 'text-lime-700 bg-lime-100 dark:text-lime-500 dark:bg-lime-700/20'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
                   }`}
@@ -528,11 +528,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Right Sidebar (AI Assistant) */}
         <aside
           aria-label="Assistente de IA"
-          aria-hidden={!isGlobalAIOpen}
-          className={`border-l border-[var(--color-border)] bg-surface transition-all duration-300 ease-in-out overflow-hidden flex flex-col ${isGlobalAIOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}`}
+          aria-hidden={!aiAssistantOpen}
+          className={`border-l border-[var(--color-border)] bg-surface transition-all duration-300 ease-in-out overflow-hidden flex flex-col ${aiAssistantOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}`}
         >
           <div className="w-96 h-full">
-            {isGlobalAIOpen && (
+            {aiAssistantOpen && (
               <UIChat />
             )}
           </div>

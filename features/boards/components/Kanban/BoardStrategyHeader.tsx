@@ -13,7 +13,7 @@ import {
 import { Board } from '@/types';
 import { useUpdateBoard } from '@/lib/query/hooks/useBoardsQuery';
 import { useDealsByBoard } from '@/lib/query/hooks/useDealsQuery';
-import { useUIState } from '@/store/uiState';
+import { useUIStore } from '@/lib/stores';
 
 // Performance: reuse formatter instances.
 const BRL_CURRENCY_FORMATTER = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -31,7 +31,7 @@ interface BoardStrategyHeaderProps {
 export const BoardStrategyHeader: React.FC<BoardStrategyHeaderProps> = ({ board }) => {
   const updateBoardMutation = useUpdateBoard();
   const { data: deals = [] } = useDealsByBoard(board.id);
-  const { setIsGlobalAIOpen } = useUIState();
+  const { setAIAssistantOpen } = useUIStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editedBoard, setEditedBoard] = useState(board);
 
@@ -392,7 +392,7 @@ export const BoardStrategyHeader: React.FC<BoardStrategyHeaderProps> = ({ board 
                   </div>
                   {board.agentPersona && (
                     <button
-                      onClick={() => setIsGlobalAIOpen(true)}
+                      onClick={() => setAIAssistantOpen(true)}
                       className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
                     >
                       <MessageSquare size={12} /> Falar

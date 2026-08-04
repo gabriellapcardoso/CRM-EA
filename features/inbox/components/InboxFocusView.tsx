@@ -21,7 +21,7 @@ import {
 import { FocusItem, AISuggestion } from '../hooks/useInboxController';
 import { Activity, DealView } from '@/types';
 import { FocusContextPanel } from './FocusContextPanel';
-import { useUIState } from '@/store/uiState';
+import { useUIStore } from '@/lib/stores';
 import {
   useDealsView,
   useContacts,
@@ -112,7 +112,7 @@ export const InboxFocusView: React.FC<InboxFocusViewProps> = ({
   const { data: contacts = [] } = useContacts();
   const { data: boards = [] } = useBoards();
   const { data: activities = [] } = useActivities();
-  const { activeBoardId } = useUIState();
+  const { activeBoardId } = useUIStore();
   const activeBoard = boards.find(b => b.id === activeBoardId) || boards.find(b => b.isDefault) || boards[0] || null;
   const updateDealMutation = useUpdateDeal();
   const createActivityMutation = useCreateActivity();
@@ -120,7 +120,7 @@ export const InboxFocusView: React.FC<InboxFocusViewProps> = ({
   const updateDeal = (id: string, updates: Partial<import('@/types').Deal>) => updateDealMutation.mutateAsync({ id, updates });
   const addActivity = (activity: Omit<import('@/types').Activity, 'id' | 'createdAt'>) => createActivityMutation.mutateAsync({ activity });
   const updateActivity = (id: string, updates: Partial<import('@/types').Activity>) => updateActivityMutation.mutateAsync({ id, updates });
-  const { setSidebarCollapsed } = useUIState();
+  const { setSidebarCollapsed } = useUIStore();
   const { profile } = useAuth();
 
   useEffect(() => {

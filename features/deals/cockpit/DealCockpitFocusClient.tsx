@@ -2,7 +2,7 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUIState } from '@/store/uiState';
+import { useUIStore } from '@/lib/stores';
 import {
   useDealsView,
   useContacts,
@@ -30,7 +30,7 @@ export default function DealCockpitFocusClient({ dealId }: { dealId: string }) {
   const { data: contacts = [] } = useContacts();
   const { data: boards = [] } = useBoards();
   const { data: activities = [] } = useActivities();
-  const { activeBoardId } = useUIState();
+  const { activeBoardId } = useUIStore();
   const activeBoard = boards.find(b => b.id === activeBoardId) || boards.find(b => b.isDefault) || boards[0] || null;
   const updateDealMutation = useUpdateDeal();
   const createActivityMutation = useCreateActivity();

@@ -48,11 +48,17 @@ interface UIState {
   // Sidebar
   sidebarOpen: boolean;
   toggleSidebar: () => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
 
   // AI Assistant
   aiAssistantOpen: boolean;
   setAIAssistantOpen: (open: boolean) => void;
   toggleAIAssistant: () => void;
+
+  // Board ativo (Kanban)
+  activeBoardId: string;
+  setActiveBoardId: (id: string) => void;
 
   // Modals
   activeModal: string | null;
@@ -91,11 +97,17 @@ export const useUIStore = create<UIState>()(
       // Sidebar
       sidebarOpen: true,
       toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
+      sidebarCollapsed: false,
+      setSidebarCollapsed: collapsed => set({ sidebarCollapsed: collapsed }),
 
       // AI Assistant
       aiAssistantOpen: false,
       setAIAssistantOpen: open => set({ aiAssistantOpen: open }),
       toggleAIAssistant: () => set(state => ({ aiAssistantOpen: !state.aiAssistantOpen })),
+
+      // Board ativo (Kanban)
+      activeBoardId: '',
+      setActiveBoardId: id => set({ activeBoardId: id }),
 
       // Modals
       activeModal: null,
@@ -316,6 +328,10 @@ export const useActiveModal = () => useUIStore(state => state.activeModal);
 export const useModalData = () => useUIStore(state => state.modalData);
 /** @returns {string} Query de busca global */
 export const useGlobalSearch = () => useUIStore(state => state.globalSearchQuery);
+/** @returns {boolean} Se a sidebar está colapsada (modo compacto) */
+export const useSidebarCollapsed = () => useUIStore(state => state.sidebarCollapsed);
+/** @returns {string} ID do board ativo no Kanban */
+export const useActiveBoardId = () => useUIStore(state => state.activeBoardId);
 
 /** @returns {FormDraft | null} Rascunho do formulário especificado */
 export const useFormDraft = (formId: string) => useFormStore(state => state.drafts[formId] ?? null);

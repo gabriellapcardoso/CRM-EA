@@ -13,7 +13,7 @@ import {
   useUpdateActivity,
   useDeleteActivity,
 } from '@/lib/query/hooks';
-import { useUIState } from '@/store/uiState';
+import { useUIStore } from '@/lib/stores';
 import { useActiveProducts } from '@/lib/query/hooks/useProductsQuery';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
@@ -97,7 +97,7 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
   const { data: contacts = [] } = useContacts();
   const { data: activities = [] } = useActivities();
   const { data: boards = [] } = useBoards();
-  const { activeBoardId } = useUIState();
+  const { activeBoardId } = useUIStore();
   const activeBoard = boards.find(b => b.id === activeBoardId) || boards.find(b => b.isDefault) || boards[0] || null;
   const { data: lifecycleStages = [] } = useLifecycleStages();
 
