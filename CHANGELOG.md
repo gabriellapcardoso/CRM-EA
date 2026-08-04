@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### QA final do redesign (3ª e 4ª rodadas) — admin real, mensagens com dado real, zero bug novo — 2026-08-04
+
+Depois dos 2 fixes de CSS acima (commits `dd8e3eb`/`a7516b1`), mais 2 rodadas
+de `/qa` em browser real fecharam a cobertura do redesign:
+
+**3ª rodada** — `/settings` completo (geral, configuração de IA,
+integrações — testado como usuário não-admin, confirmando que o gate
+"disponível apenas para administradores" bloqueia corretamente) e
+`/messaging` de novo. Zero bug novo.
+
+**4ª rodada** — a conta de teste virou admin de fato (`role='admin'` setado
+manualmente no Supabase pela fundadora, depois de eu confundir "usuária
+logada" com "usuária admin" e pedir pra rodar SQL à mão — ver nota de
+processo abaixo). Com admin real, testadas as 5 sub-abas de
+`/settings/integracoes` (Canais — canal WhatsApp real, "desconectado";
+Webhooks — webhook real de entrada de leads da Prospecção, ativo; API; MCP;
+Segurança WhatsApp) e `/settings/products`, todas com dado de produção real.
+`/messaging` reaberto como admin mostrou conversas reais de WhatsApp (ex.:
+212 mensagens numa conversa, "janela expirada") — thread, bolhas, composer e
+painel de contexto renderizando corretamente. **Zero bug novo em nenhuma das
+2 rodadas.**
+
+**Achado fora do escopo do redesign, não corrigido**: `console.error`
+("Error checking initialization: {}") em toda carga de página, origem
+`context/AuthContext.tsx:136` (RPC `is_instance_initialized`) — não é do
+redesign (arquivo não tocado por nenhum dos 6 blocos), não trava nada, mas é
+ruído de console real; provável migration não aplicada no Supabase remoto
+(mesmo padrão já documentado em `DESAFIOS.md`). Detalhe em `DESAFIOS.md`.
+
+**Nota de processo/tooling**: o plugin oficial do Supabase (MCP via OAuth
+hospedado) estava fora do ar (`"Unrecognized client_id"`, bug externo,
+confirmado não ser configuração local). Resolvido conectando via Personal
+Access Token direto no `.mcp.json` do projeto (`@supabase/mcp-server-supabase`,
+arquivo já no `.gitignore`) — conexão persistente pra sessões futuras, sem
+depender do OAuth quebrado. Detalhe completo em `DESAFIOS.md`.
+
+**Ainda sem cobertura visual real**: `/deals/[id]/cockpit-v2` (página cheia
+de 3 colunas — só o modal condensado foi visto), `/ai`, `/profile`. Ver
+`REDESIGN-CRM.md` para detalhe completo de todas as 4 rodadas de QA.
+
 ### fix(ui): modo escuro persistido travava usuárias existentes num visual quebrado, sem forma de desligar — 2026-08-04
 
 Segunda rodada de `/qa` em browser real (Chrome via CDP), cobrindo negociação/
