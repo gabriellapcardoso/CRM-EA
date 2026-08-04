@@ -1,5 +1,13 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Barrel `@/lib/supabase` não pode reexportar `createClient`/`createStaticAdminClient` — quebra o boundary client/server do Next.js (2026-08-04)
+
+O `docs/audit-report.md` (violação média #6) recomendava migrar os ~99 imports diretos de `@/lib/supabase/{client,server,staticAdminClient}` para o barrel `@/lib/supabase`, mesma orientação do `CLAUDE.md` ("Importar sempre de `@/lib/supabase`"). Tentativa real de fazer isso (adicionar `createClient`/`createAdminClient`/`createStaticAdminClient` ao barrel `lib/supabase.ts` e migrar todos os call sites) passou limpo em typecheck/lint/testes, mas **quebrou o `npm run build`**: o Next.js analisa `lib/supabase.ts` como módulo único, então qualquer arquivo que importe *qualquer coisa* do barrel (mesmo só `supabase`, o client de browser) arrasta transitivamente o `import 'server-only'` de `server.ts`/`staticAdminClient.ts` pro bundle do client component — erro `'server-only' cannot be imported from a Client Component module`.
+
+**Conclusão**: a regra do barrel no `CLAUDE.md`/auditoria vale pra **services** (`boardsService`, `dealsService`, etc. — já é o que `lib/supabase.ts` faz hoje) e pro client singleton de browser (`supabase`), mas **não pode ser estendida** pras funções que criam cliente (`createClient` de `client.ts`/`server.ts`, `createStaticAdminClient`) sem quebrar o build — essas têm que continuar importadas por subcaminho direto, porque cada uma só é segura num contexto específico (browser/Server Component/service-role) e o bundler precisa conseguir isolar o `server-only` por arquivo. **Não tentar essa migração de novo sem antes rodar `npm run build`** (typecheck e testes não pegam esse tipo de erro, só o build real).
+
+**Achado colateral (não revertido, correto de qualquer jeito)**: havia dois arquivos de barrel conflitantes, `lib/supabase.ts` (o real, usado) e `lib/supabase/index.ts` (morto, sombreado por resolução de módulo — nada importava por caminho explícito). Removido. Também havia **duas implementações divergentes de `createStaticAdminClient`** (`lib/supabase/server.ts` sem cache, `lib/supabase/staticAdminClient.ts` com cache + validação de env var mais rígida) — se for consolidar no futuro, usar a versão com cache como canônica e trocar os 23 call sites de `server.ts` pra importar de `staticAdminClient.ts` diretamente (sem depender do barrel).
+
 ## Conectar canal Evolution real: `business_units` vazia + webhook rejeitado pelo servidor (2026-07-25)
 
 Primeira vez conectando um canal WhatsApp real (Evolution self-hosted) achou 3 problemas em sequência que só apareciam contra infra de verdade, nunca em teste local/mockado:
