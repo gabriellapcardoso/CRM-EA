@@ -172,6 +172,27 @@ extensão do Chrome caiu no meio da 2ª rodada (desconexão transitória, não
 reconectou em 2 tentativas) — parado aí conforme a diretriz de não insistir
 além de 2-3 tentativas em falha de ferramenta.
 
+**3ª rodada** (mesmo dia, reconectando após a queda da extensão): cobriu
+`/settings` completo (geral, configuração de IA, e `/settings/integracoes` —
+esta última mostrou corretamente o gate "disponível apenas para
+administradores" pro usuário de teste, que não é admin) e `/messaging` de
+novo. **Nenhum bug novo achado** — zero erro de console, zero texto
+sobreposto nas telas abertas. Nota cosmética não corrigida (fora do critério
+de parada): o toggle "IA ativa na organização" em `/settings/ai` usa verde
+em vez do roxo do `.toggle--on` do design system — parece um componente
+`Switch` legado ainda não migrado, não uma classe do redesign com bug.
+
+**O que continua sem cobertura real** (precisa de dado/acesso que esta sessão
+não tinha): `/messaging` com uma conversa de verdade (banco de teste sem
+nenhuma), `/deals/[id]/cockpit-v2` completo (só o modal condensado foi visto —
+não há decisão "decidida recentemente" no banco de teste com link `ver` pra
+essa rota, e construir a URL à mão não foi tentado), e as abas
+Canais/Webhooks/API/MCP/Segurança WhatsApp/Produtos de `/settings` como
+usuário admin de fato (o teste confirmou o gate funciona, mas não o conteúdo
+por trás dele). Pra cobrir isso, precisa de: (a) uma conversa real de teste
+em `messaging_conversations`, (b) um usuário com `role='admin'`, e/ou (c) um
+deal ID conhecido pra montar a URL do cockpit direto.
+
 **Pendências que ainda exigem revisão visual humana** (não abertas em
 nenhuma das 2 passadas de QA):
 - `/messaging` com conversa real de verdade (o banco de teste não tinha
