@@ -10,8 +10,8 @@ export const runtime = 'nodejs';
 const DealPatchSchema = z.object({
   title: z.string().optional(),
   value: z.number().optional(),
-  contact_id: z.string().uuid().optional(),
-  client_company_id: z.string().uuid().nullable().optional(),
+  contact_id: z.uuid().optional(),
+  client_company_id: z.uuid().nullable().optional(),
   loss_reason: z.string().nullable().optional(),
 }).strict();
 

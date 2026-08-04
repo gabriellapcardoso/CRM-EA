@@ -7,7 +7,7 @@ import { moveStageByDealId } from '@/lib/public-api/dealsMoveStage';
 export const runtime = 'nodejs';
 
 const MoveStageSchema = z.object({
-  to_stage_id: z.string().uuid().optional(),
+  to_stage_id: z.uuid().optional(),
   to_stage_label: z.string().min(1).optional(),
   mark: z.enum(['won', 'lost']).optional(),
 }).strict().refine((v) => !!(v.to_stage_id || v.to_stage_label), {

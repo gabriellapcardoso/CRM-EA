@@ -13,9 +13,9 @@ const ActivityCreateSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   date: z.string().optional(), // ISO
-  deal_id: z.string().uuid().optional(),
-  contact_id: z.string().uuid().optional(),
-  client_company_id: z.string().uuid().optional(),
+  deal_id: z.uuid().optional(),
+  contact_id: z.uuid().optional(),
+  client_company_id: z.uuid().optional(),
 }).strict();
 
 export async function GET(request: Request) {

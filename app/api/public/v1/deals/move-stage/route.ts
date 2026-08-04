@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 const MoveStageSchema = z.object({
   // Option A: direct deal id
-  deal_id: z.string().uuid().optional(),
+  deal_id: z.uuid().optional(),
 
   // Option B: identity within a board (no UUID)
   board_key_or_id: z.string().min(1).optional(),
@@ -16,7 +16,7 @@ const MoveStageSchema = z.object({
   email: z.string().optional(),
 
   // Target stage
-  to_stage_id: z.string().uuid().optional(),
+  to_stage_id: z.uuid().optional(),
   to_stage_label: z.string().min(1).optional(),
 
   // Optional explicit close flag (independent of stage)

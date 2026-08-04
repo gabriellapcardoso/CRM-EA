@@ -11,7 +11,7 @@ const CreateInviteSchema = z
   .object({
     role: z.enum(['admin', 'vendedor']).default('vendedor'),
     expiresAt: z.union([z.string().datetime(), z.null()]).optional(),
-    email: z.string().email().optional(),
+    email: z.email().optional(),
   })
   .strict();
 

@@ -14,7 +14,7 @@ const ContactPatchSchema = z.object({
   phone: z.string().optional(),
   role: z.string().optional(),
   company_name: z.string().optional(),
-  client_company_id: z.string().uuid().nullable().optional(),
+  client_company_id: z.uuid().nullable().optional(),
   avatar: z.string().optional(),
   status: z.string().optional(),
   stage: z.string().optional(),

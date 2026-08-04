@@ -12,7 +12,7 @@ function json<T>(body: T, status = 200): Response {
 const AcceptInviteSchema = z
   .object({
     token: z.string().min(1),
-    email: z.string().email(),
+    email: z.email(),
     password: z.string().min(6),
     name: z.string().min(1).max(200).optional(),
   })

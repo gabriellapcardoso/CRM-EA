@@ -17,7 +17,7 @@ const ResolveSchema = z
   .object({
     installerToken: z.string().optional(),
     accessToken: z.string().min(1),
-    supabaseUrl: z.string().url().optional(),
+    supabaseUrl: z.url().optional(),
     projectRef: z.string().min(1).optional(),
   })
   .strict();

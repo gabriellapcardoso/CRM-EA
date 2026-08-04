@@ -12,7 +12,7 @@ function json<T>(body: T, status = 200): Response {
 const SetupSchema = z
   .object({
     companyName: z.string().min(1).max(200),
-    email: z.string().email(),
+    email: z.email(),
     password: z.string().min(6),
   })
   .strict();

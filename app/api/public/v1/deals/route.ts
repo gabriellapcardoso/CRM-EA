@@ -15,18 +15,18 @@ const ContactInlineSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
   role: z.string().optional(),
-  client_company_id: z.string().uuid().optional(),
+  client_company_id: z.uuid().optional(),
 }).strict();
 
 const DealCreateSchema = z.object({
   title: z.string().min(1),
   value: z.number().optional(),
-  board_id: z.string().uuid().optional(),
+  board_id: z.uuid().optional(),
   board_key: z.string().min(1).optional(),
-  stage_id: z.string().uuid().optional(),
-  contact_id: z.string().uuid().optional(),
+  stage_id: z.uuid().optional(),
+  contact_id: z.uuid().optional(),
   contact: ContactInlineSchema.optional(),
-  client_company_id: z.string().uuid().optional(),
+  client_company_id: z.uuid().optional(),
 }).strict();
 
 export async function GET(request: Request) {

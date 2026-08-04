@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 
 const HealthCheckSchema = z.object({
   supabase: z.object({
-    url: z.string().url(),
+    url: z.url(),
     accessToken: z.string().min(1),
     projectRef: z.string().optional(),
     dbUrl: z.string().optional(),

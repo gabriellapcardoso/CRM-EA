@@ -9,7 +9,7 @@ const MoveStageByIdentitySchema = z.object({
   board_key_or_id: z.string().min(1),
   phone: z.string().optional(),
   email: z.string().optional(),
-  to_stage_id: z.string().uuid().optional(),
+  to_stage_id: z.uuid().optional(),
   to_stage_label: z.string().min(1).optional(),
   mark: z.enum(['won', 'lost']).optional(),
 }).strict().refine((v) => !!(v.phone || v.email), { message: 'phone or email is required' })

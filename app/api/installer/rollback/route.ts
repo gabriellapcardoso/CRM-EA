@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 const RollbackSchema = z.object({
   supabase: z.object({
-    url: z.string().url(),
+    url: z.url(),
     serviceRoleKey: z.string().min(1),
   }),
   actions: z.array(z.enum([

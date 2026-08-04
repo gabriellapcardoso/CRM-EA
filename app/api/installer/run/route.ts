@@ -34,7 +34,7 @@ const RunSchema = z
       targets: z.array(z.enum(['production', 'preview'])).min(1),
     }),
     supabase: z.object({
-      url: z.string().url(),
+      url: z.url(),
       anonKey: z.string().min(1).optional(),
       serviceRoleKey: z.string().min(1).optional(),
       dbUrl: z.string().min(1).optional(),
@@ -44,7 +44,7 @@ const RunSchema = z
     }),
     admin: z.object({
       companyName: z.string().min(1).max(200),
-      email: z.string().email(),
+      email: z.email(),
       password: z.string().min(6),
     }),
   })

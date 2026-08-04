@@ -15,7 +15,7 @@ const ContactUpsertSchema = z.object({
   phone: z.string().optional(),
   role: z.string().optional(),
   company_name: z.string().optional(),
-  client_company_id: z.string().uuid().optional(),
+  client_company_id: z.uuid().optional(),
   avatar: z.string().optional(),
   status: z.string().optional(),
   stage: z.string().optional(),

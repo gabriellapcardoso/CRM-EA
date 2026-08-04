@@ -71,7 +71,7 @@ export interface CallOptions {
 export const CRMCallOptionsSchema = z.object({
     // Multi-tenant security (REQUIRED): always injected server-side from profile
     // NEVER trust organizationId from the client.
-    organizationId: z.string().uuid(),
+    organizationId: z.uuid(),
 
     // Core IDs
     boardId: z.string().optional(),
