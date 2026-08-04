@@ -137,19 +137,41 @@ antes de causar perda — confirmado depois por `git status` que todo o trabalho
 dos 6 blocos estava intacto. Stash remanescente `qa-session-stash: mudanças
 pré-existentes não relacionadas` — não tocado (não é desta sessão).
 
-**Pendências que exigem revisão visual humana (não verificável por
-tsc/lint/test/build):**
-- `/inbox` e `/messaging`: agente reportou que ninguém abriu no navegador —
-  risco de scroll duplo / `min-width` empurrando layout em telas estreitas.
+## QA em browser real (2026-08-04, `/qa` + claude-in-chrome via CDP no Chrome real)
+
+Login real (`gcardosomktdigital`), dev server real (`next dev`, não build).
+Telas abertas de fato e inspecionadas: `/login`, `/join` (smoke), `/inbox`
+(visão geral), `/boards` (kanban), `/contacts` (lista + painel de detalhe,
+clique num contato real), `/decisions` (estado vazio). Sem erro de console em
+nenhuma.
+
+**2 bugs de CSS reais achados e corrigidos** (detalhe completo em
+`CHANGELOG.md`/`DESAFIOS.md`, commit `dd8e3eb`):
+1. Texto de campos diferentes colado sem espaço em `.card-conv__body`/
+   `.feed__body` (inbox) — faltava `display:flex;flex-direction:column`.
+2. Sidebar com texto rosa/roxo em vez de branco — `.app a`/`.app button`/
+   `.app input` tinham especificidade CSS maior que `.nav__item`/`.btn`/`.tab`,
+   invertendo a cascata. Trocado por `:where(.app)`.
+
+Reverificado depois do fix: `tsc`/`eslint`/`vitest`/`next build` continuam
+verdes (445/450 testes, 5 skipped, 110 rotas).
+
+**Pendências que ainda exigem revisão visual humana** (não abertas nesta
+passada de QA):
+- `/messaging`, `/decisions` com itens reais na fila, `/ai`, `/reports`,
+  `/settings` (abas configuração de IA/integrações/produtos — só "geral" foi
+  vista, e só como usuário não-admin), `/profile`, e o cockpit de negócio
+  (`/deals/[id]/cockpit-v2`) — risco de scroll duplo/`min-width` empurrando
+  layout em telas estreitas, principalmente no cockpit (3 colunas, min-width
+  1180px) e mensagens (thread + context-pane).
 - `features/messaging/components/FocusContextPanel.tsx` (~1900 linhas,
   compartilhado com o cockpit) **não foi restilizado** — ainda no visual
   antigo, mas funcional (renderiza dentro do `.thread__body` novo).
 - `TemplateSelector.tsx`/`TemplateManager.tsx` (messaging) e o conteúdo interno
   de alguns modais herdam só os tokens base, sem reescrita completa de layout.
-- Nenhuma tela foi vista de fato num browser real além do smoke test de
-  `/login`/`/join` acima — recomenda-se `/qa` ou `/browse` cobrindo pelo menos
-  boards→cockpit, inbox→messaging e configurações antes de considerar pronto
-  pra produção.
+- Terminado o commit desses 2 fixes, vale rodar `/qa` de novo cobrindo
+  especificamente cockpit→mensagens (não abertos nesta passada) e as abas de
+  configurações como usuário admin (só "geral" foi vista, sem admin).
 
 ## Progresso
 
