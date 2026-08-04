@@ -77,7 +77,7 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
     .from('profiles')
     .select('organization_id')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   if (profileError || !profile?.organization_id) {
     throw new AITaskHttpError(404, 'PROFILE_NOT_FOUND', 'Profile not found');
@@ -89,7 +89,7 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
     .from('organization_settings')
     .select('ai_enabled, ai_model, ai_google_key')
     .eq('organization_id', organizationId)
-    .single();
+    .maybeSingle();
 
   const aiEnabled = typeof orgSettings?.ai_enabled === 'boolean' ? orgSettings.ai_enabled : true;
   if (!aiEnabled) {

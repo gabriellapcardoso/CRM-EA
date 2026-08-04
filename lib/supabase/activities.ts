@@ -29,7 +29,7 @@ async function getCurrentOrganizationId(): Promise<string | null> {
     .from('profiles')
     .select('organization_id')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
   return (profile as any)?.organization_id ?? null;
 }
 
@@ -278,7 +278,7 @@ export const activitiesService = {
         .from('activities')
         .select('completed')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !current) {
         return { data: null, error: new Error('Activity not found') };

@@ -279,7 +279,7 @@ async function buildContextFromDeal(
     )
     .eq('id', dealId)
     .eq('organization_id', organizationId)
-    .single();
+    .maybeSingle();
 
   if (!deal) {
     return { leadContext: null, stageConfig: null };
@@ -293,7 +293,7 @@ async function buildContextFromDeal(
     .contains('metadata', { deal_id: dealId })
     .order('last_message_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   let leadContext: LeadContext | null = null;
 
@@ -328,7 +328,7 @@ async function buildContextFromContact(
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (deal) {
     return buildContextFromDeal(supabase, deal.id, organizationId);
@@ -342,7 +342,7 @@ async function buildContextFromContact(
     .eq('organization_id', organizationId)
     .order('last_message_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (conversation) {
     const leadContext = await buildLeadContext({
@@ -373,7 +373,7 @@ async function getConversationFromMessage(
     `
     )
     .eq('id', messageId)
-    .single();
+    .maybeSingle();
 
   if (!message) return null;
 
@@ -396,7 +396,7 @@ async function getStageConfig(
     .select('*')
     .eq('stage_id', stageId)
     .eq('enabled', true)
-    .single();
+    .maybeSingle();
 
   if (!data) return null;
 
@@ -443,7 +443,7 @@ async function fetchUnresolvedConversations(
         .neq('status', 'draft')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       const content = lastMessage?.content as Record<string, unknown> | null;
       const messageText =

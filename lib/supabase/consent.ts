@@ -74,9 +74,9 @@ export async function hasConsent(type: ConsentType): Promise<boolean> {
     .eq('user_id', user.id)
     .eq('consent_type', type)
     .is('revoked_at', null)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+  if (error) {
     console.error('Error checking consent:', error);
   }
 

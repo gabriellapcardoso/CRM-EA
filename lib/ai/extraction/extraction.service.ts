@@ -105,7 +105,7 @@ export async function extractAndUpdateBANT(params: ExtractBANTParams): Promise<{
       .from('deals')
       .select('ai_extracted')
       .eq('id', dealId)
-      .single();
+      .maybeSingle();
 
     const currentExtracted = (deal?.ai_extracted as AIExtractedData) || {};
 

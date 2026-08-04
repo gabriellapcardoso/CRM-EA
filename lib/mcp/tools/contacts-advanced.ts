@@ -96,8 +96,8 @@ export function registerContactsAdvancedTools(server: McpServer) {
       description:
         'Writes data. Merges two contacts: moves all deals and conversation links from the source contact to the target contact, then deletes the source contact. Scoped to the authenticated organization.',
       inputSchema: {
-        sourceId: z.string().uuid(),
-        targetId: z.string().uuid(),
+        sourceId: z.uuid(),
+        targetId: z.uuid(),
       },
     },
     async (args) => {
@@ -216,7 +216,7 @@ export function registerContactsAdvancedTools(server: McpServer) {
           .array(
             z.object({
               name: z.string().min(1),
-              email: z.string().email().optional(),
+              email: z.email().optional(),
               phone: z.string().optional(),
               company_name: z.string().optional(),
               source: z.string().optional(),

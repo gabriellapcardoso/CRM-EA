@@ -503,7 +503,7 @@ export class ChannelRouterService {
       .select('*')
       .eq('id', channelId)
       .is('deleted_at', null)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.error('[ChannelRouter] fetchChannel error:', error);

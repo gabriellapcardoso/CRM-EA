@@ -111,7 +111,7 @@ async function buildDealContext(
       )
     `)
     .eq('id', dealId)
-    .single();
+    .maybeSingle();
 
   if (dealError || !deal) {
     console.error('[Briefing] Deal not found:', dealError);
@@ -127,7 +127,7 @@ async function buildDealContext(
       .from('organizations')
       .select('id, name')
       .eq('id', deal.organization_id)
-      .single(),
+      .maybeSingle(),
 
     // 2b. Fetch contact (se vinculado)
     deal.contact_id
@@ -135,7 +135,7 @@ async function buildDealContext(
           .from('contacts')
           .select('name, email, phone, company_name, position')
           .eq('id', deal.contact_id)
-          .single()
+          .maybeSingle()
       : Promise.resolve({ data: null }),
 
     // 2c. Find conversation for this deal
@@ -150,7 +150,7 @@ async function buildDealContext(
       .from('stage_ai_config')
       .select('stage_goal, advancement_criteria')
       .eq('stage_id', stageData.id)
-      .single(),
+      .maybeSingle(),
   ]);
 
   const org = orgResult.data;

@@ -112,7 +112,7 @@ function buildSupabaseMock({
           const chain = () => stageConfigQB
           stageConfigQB.select = vi.fn(chain)
           stageConfigQB.eq     = vi.fn(chain)
-          stageConfigQB.single = vi.fn(async () => ({
+          const stageConfigResolver = vi.fn(async () => ({
             data: hasStageConfig ? {
               id: 'sac-001',
               organization_id: ORG_ID,
@@ -135,6 +135,8 @@ function buildSupabaseMock({
             } : null,
             error: null,
           }))
+          stageConfigQB.single = stageConfigResolver
+          stageConfigQB.maybeSingle = stageConfigResolver
           return stageConfigQB
         }
 

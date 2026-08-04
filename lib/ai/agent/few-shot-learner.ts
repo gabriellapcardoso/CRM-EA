@@ -295,7 +295,7 @@ export async function getLearnedPatterns(
     .from('organization_settings')
     .select('ai_learned_patterns')
     .eq('organization_id', organizationId)
-    .single();
+    .maybeSingle();
 
   if (error || !data?.ai_learned_patterns) {
     return null;

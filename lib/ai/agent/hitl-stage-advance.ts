@@ -27,11 +27,11 @@ import type { StageAdvancementEvaluation } from './stage-evaluator';
  * Estes são os dados que a AI produz e que serão mostrados ao usuário.
  */
 export const StageAdvanceSuggestionSchema = z.object({
-  dealId: z.string().uuid(),
+  dealId: z.uuid(),
   dealTitle: z.string(),
-  currentStageId: z.string().uuid(),
+  currentStageId: z.uuid(),
   currentStageName: z.string(),
-  targetStageId: z.string().uuid(),
+  targetStageId: z.uuid(),
   targetStageName: z.string(),
   confidence: z.number().min(0).max(1),
   reason: z.string(),
@@ -43,7 +43,7 @@ export const StageAdvanceSuggestionSchema = z.object({
       evidence: z.string().nullable(),
     })
   ),
-  conversationId: z.string().uuid().optional(),
+  conversationId: z.uuid().optional(),
 });
 
 export type StageAdvanceSuggestion = z.infer<typeof StageAdvanceSuggestionSchema>;
@@ -54,7 +54,7 @@ export type StageAdvanceSuggestion = z.infer<typeof StageAdvanceSuggestionSchema
  */
 export const UserEditsSchema = z.object({
   approved: z.boolean(),
-  targetStageId: z.string().uuid().optional(),
+  targetStageId: z.uuid().optional(),
   reason: z.string().optional(),
   additionalNotes: z.string().optional(),
 });
@@ -65,17 +65,17 @@ export type UserEdits = z.infer<typeof UserEditsSchema>;
  * Schema para registro de pending advance no banco.
  */
 export const PendingAdvanceSchema = z.object({
-  id: z.string().uuid(),
-  organization_id: z.string().uuid(),
-  deal_id: z.string().uuid(),
-  conversation_id: z.string().uuid().nullable(),
-  current_stage_id: z.string().uuid(),
-  suggested_stage_id: z.string().uuid(),
+  id: z.uuid(),
+  organization_id: z.uuid(),
+  deal_id: z.uuid(),
+  conversation_id: z.uuid().nullable(),
+  current_stage_id: z.uuid(),
+  suggested_stage_id: z.uuid(),
   confidence: z.number(),
   reason: z.string(),
   criteria_evaluation: z.array(z.unknown()),
   status: z.enum(['pending', 'approved', 'rejected', 'expired', 'auto_approved']),
-  resolved_by: z.string().uuid().nullable(),
+  resolved_by: z.uuid().nullable(),
   resolved_at: z.string().nullable(),
   resolution_notes: z.string().nullable(),
   user_edits: z.unknown().nullable(),
@@ -245,7 +245,7 @@ export async function resolvePendingAdvance(
     `)
     .eq('id', pendingAdvanceId)
     .eq('status', 'pending')
-    .single();
+    .maybeSingle();
 
   if (fetchError || !pending) {
     return { success: false, error: 'Sugestão não encontrada ou já resolvida' };

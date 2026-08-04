@@ -7,6 +7,10 @@ const profileQueryBuilder = {
     data: { first_name: 'Maria', nickname: null },
     error: null,
   })),
+  maybeSingle: vi.fn(async () => ({
+    data: { first_name: 'Maria', nickname: null },
+    error: null,
+  })),
 }
 
 const dealsQueryBuilder = {
@@ -14,6 +18,10 @@ const dealsQueryBuilder = {
   eq: vi.fn().mockReturnThis(),
   select: vi.fn().mockReturnThis(),
   single: vi.fn(async () => ({
+    data: { title: 'Negócio X' },
+    error: null,
+  })),
+  maybeSingle: vi.fn(async () => ({
     data: { title: 'Negócio X' },
     error: null,
   })),

@@ -86,7 +86,7 @@ export function registerAITools(server: McpServer) {
       description:
         'Writes data. Approves or rejects an AI-suggested stage advance. On approval, moves the deal to the target stage. Records resolved_by, resolved_at, and optional notes. Scoped to the authenticated organization.',
       inputSchema: {
-        advanceId: z.string().uuid(),
+        advanceId: z.uuid(),
         action: z.enum(['approved', 'rejected']),
         notes: z.string().optional(),
       },
@@ -215,7 +215,7 @@ export function registerAITools(server: McpServer) {
       description:
         'Calls AI. Generates a pre-meeting briefing for a deal using the BANT framework. Analyzes conversation history and returns actionable insights. Scoped to the authenticated organization.',
       inputSchema: {
-        dealId: z.string().uuid(),
+        dealId: z.uuid(),
       },
     },
     async (args) => {

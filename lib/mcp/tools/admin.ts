@@ -90,7 +90,7 @@ export function registerAdminTools(server: McpServer) {
         ai_config_mode: z
           .enum(['zero_config', 'template', 'auto_learn', 'advanced'])
           .optional(),
-        ai_template_id: z.string().uuid().nullable().optional(),
+        ai_template_id: z.uuid().nullable().optional(),
         ai_hitl_threshold: z.number().min(0).max(1).optional(),
       },
     },

@@ -59,7 +59,7 @@ export async function buildLeadContext(
       )
     `)
     .eq('id', conversationId)
-    .single();
+    .maybeSingle();
 
   if (convError || !conversation) {
     console.error('[ContextBuilder] Conversation not found:', convError);
@@ -76,7 +76,7 @@ export async function buildLeadContext(
           .from('contacts')
           .select('id, name, email, phone, company_name, role, notes')
           .eq('id', conversation.contact_id)
-          .single()
+          .maybeSingle()
       : Promise.resolve({ data: null }),
 
     // 2b. Buscar deal associado via metadata
@@ -95,7 +95,7 @@ export async function buildLeadContext(
             )
           `)
           .eq('id', dealId)
-          .single()
+          .maybeSingle()
       : Promise.resolve({ data: null }),
 
     // 2c. Buscar histórico de mensagens
@@ -114,7 +114,7 @@ export async function buildLeadContext(
       .from('organizations')
       .select('name')
       .eq('id', organizationId)
-      .single(),
+      .maybeSingle(),
   ]);
 
   // 3. Processar contato
@@ -166,7 +166,7 @@ export async function buildLeadContext(
       .from('stage_ai_config')
       .select('stage_goal, advancement_criteria')
       .eq('stage_id', deal.stage_id)
-      .single();
+      .maybeSingle();
 
     stage = {
       id: deal.stage_id,

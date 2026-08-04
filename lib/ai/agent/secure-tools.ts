@@ -120,8 +120,8 @@ export const SearchDealsSchema = z.object({
 });
 
 export const AdvanceStageSchema = z.object({
-  dealId: z.string().uuid().describe('ID do deal a ser avançado'),
-  targetStageId: z.string().uuid().describe('ID do estágio destino'),
+  dealId: z.uuid().describe('ID do deal a ser avançado'),
+  targetStageId: z.uuid().describe('ID do estágio destino'),
   reason: z.string().describe('Motivo do avanço'),
   confidence: z.number().min(0).max(1).describe('Confiança da avaliação (0-1)'),
   criteriaEvaluation: z
@@ -137,12 +137,12 @@ export const AdvanceStageSchema = z.object({
 });
 
 export const SendMessageSchema = z.object({
-  conversationId: z.string().uuid().describe('ID da conversa'),
+  conversationId: z.uuid().describe('ID da conversa'),
   content: z.string().min(1).max(2000).describe('Conteúdo da mensagem'),
 });
 
 export const GetDealContextSchema = z.object({
-  dealId: z.string().uuid().describe('ID do deal'),
+  dealId: z.uuid().describe('ID do deal'),
 });
 
 export const SearchContactsSchema = z.object({
@@ -282,7 +282,7 @@ export function createSecureToolCollection(context: ToolContext) {
           .select('id, stage_id, title')
           .eq('id', params.dealId)
           .eq('organization_id', organizationId) // SEMPRE filtrado!
-          .single();
+          .maybeSingle();
 
         if (dealError || !deal) {
           return {
@@ -296,7 +296,7 @@ export function createSecureToolCollection(context: ToolContext) {
           .from('board_stages')
           .select('id, name, board_id')
           .eq('id', finalStageId)
-          .single();
+          .maybeSingle();
 
         if (stageError || !targetStage) {
           return {
@@ -310,7 +310,7 @@ export function createSecureToolCollection(context: ToolContext) {
           .from('board_stages')
           .select('board_id')
           .eq('id', deal.stage_id)
-          .single();
+          .maybeSingle();
 
         if (currentStage && targetStage.board_id !== currentStage.board_id) {
           return {
@@ -416,7 +416,7 @@ export function createSecureToolCollection(context: ToolContext) {
           .select('id, channel_id')
           .eq('id', params.conversationId)
           .eq('organization_id', organizationId) // SEMPRE filtrado!
-          .single();
+          .maybeSingle();
 
         if (convError || !conversation) {
           return {
@@ -509,7 +509,7 @@ export function createSecureToolCollection(context: ToolContext) {
           )
           .eq('id', params.dealId)
           .eq('organization_id', organizationId) // SEMPRE filtrado!
-          .single();
+          .maybeSingle();
 
         if (error || !deal) {
           return {

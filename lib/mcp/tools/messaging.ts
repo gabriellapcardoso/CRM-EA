@@ -117,8 +117,8 @@ export function registerMessagingTools(server: McpServer) {
       description:
         'Read-only. Lists messaging conversations with optional filters (channelId, contactId, status). Includes contact name via join. Scoped to the authenticated organization.',
       inputSchema: {
-        channelId: z.string().uuid().optional(),
-        contactId: z.string().uuid().optional(),
+        channelId: z.uuid().optional(),
+        contactId: z.uuid().optional(),
         status: z.enum(['open', 'resolved']).optional(),
         limit: z.number().int().min(1).max(100).default(50),
       },
@@ -156,7 +156,7 @@ export function registerMessagingTools(server: McpServer) {
       description:
         'Read-only. Returns a single conversation with its most recent messages, contact, and channel info. Scoped to the authenticated organization.',
       inputSchema: {
-        conversationId: z.string().uuid(),
+        conversationId: z.uuid(),
         messageLimit: z.number().int().min(1).max(100).default(50),
       },
     },
@@ -202,7 +202,7 @@ export function registerMessagingTools(server: McpServer) {
       description:
         'Writes data. Queues a text message for sending in an existing conversation. The message is inserted as "pending" and will be dispatched by the messaging worker. Scoped to the authenticated organization.',
       inputSchema: {
-        conversationId: z.string().uuid(),
+        conversationId: z.uuid(),
         text: z.string().min(1).max(4096),
       },
     },
@@ -280,7 +280,7 @@ export function registerMessagingTools(server: McpServer) {
       description:
         'Writes data. Resets a failed message back to "pending" status so it will be retried by the messaging worker. Scoped to the authenticated organization.',
       inputSchema: {
-        messageId: z.string().uuid(),
+        messageId: z.uuid(),
       },
     },
     async (args) => {
@@ -320,7 +320,7 @@ export function registerMessagingTools(server: McpServer) {
       description:
         'Read-only. Lists HSM (WhatsApp) message templates, optionally filtered by channel. Scoped to the authenticated organization via channel ownership.',
       inputSchema: {
-        channelId: z.string().uuid().optional(),
+        channelId: z.uuid().optional(),
       },
     },
     async (args) => {
@@ -352,7 +352,7 @@ export function registerMessagingTools(server: McpServer) {
       description:
         'Initiates a template sync with the provider (Meta). This operation requires Meta API credentials and must be performed via the web UI.',
       inputSchema: {
-        channelId: z.string().uuid().optional(),
+        channelId: z.uuid().optional(),
       },
     },
     async () => {

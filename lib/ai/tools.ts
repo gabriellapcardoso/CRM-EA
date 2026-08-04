@@ -634,7 +634,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     `)
                     .eq('organization_id', organizationId)
                     .eq('id', targetDealId)
-                    .single();
+                    .maybeSingle();
 
                 if (error || !deal) {
                     return { error: 'Deal não encontrado.' };
@@ -679,7 +679,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .select('board_id, title')
                     .eq('organization_id', organizationId)
                     .eq('id', targetDealId)
-                    .single();
+                    .maybeSingle();
 
                 if (!deal) {
                     return { error: 'Deal não encontrado.' };
@@ -963,7 +963,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .eq('organization_id', organizationId)
                     .eq('id', targetDealId)
                     .select('title, value')
-                    .single();
+                    .maybeSingle();
 
                 if (error || !deal) {
                     return { success: false, error: error?.message || 'Deal não encontrado' };
@@ -1005,7 +1005,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .eq('organization_id', organizationId)
                     .eq('id', targetDealId)
                     .select('title')
-                    .single();
+                    .maybeSingle();
 
                 if (error || !deal) {
                     return { success: false, error: error?.message || 'Deal não encontrado' };
@@ -1039,7 +1039,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .select('first_name, nickname')
                     .eq('organization_id', organizationId)
                     .eq('id', newOwnerId)
-                    .single();
+                    .maybeSingle();
 
                 const ownerName = ownerProfile?.nickname || ownerProfile?.first_name || 'Novo responsável';
 
@@ -1052,7 +1052,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .eq('organization_id', organizationId)
                     .eq('id', targetDealId)
                     .select('title')
-                    .single();
+                    .maybeSingle();
 
                 if (error || !deal) {
                     return { success: false, error: error?.message || 'Deal não encontrado' };
@@ -1422,7 +1422,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
             description: 'Cria um novo contato. Requer aprovação no card (Aprovar/Negar) — não peça confirmação em texto.',
             inputSchema: z.object({
                 name: z.string().min(1),
-                email: z.string().email().optional(),
+                email: z.email().optional(),
                 phone: z.string().optional(),
                 role: z.string().optional(),
                 companyName: z.string().optional(),
@@ -1461,7 +1461,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
             inputSchema: z.object({
                 contactId: z.string(),
                 name: z.string().optional(),
-                email: z.string().email().optional(),
+                email: z.email().optional(),
                 phone: z.string().optional(),
                 role: z.string().optional(),
                 companyName: z.string().optional(),

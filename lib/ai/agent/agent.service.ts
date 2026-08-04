@@ -226,7 +226,7 @@ export async function processIncomingMessage(
     .from('messaging_conversations')
     .select('metadata, assigned_user_id, assigned_at, contact_id')
     .eq('id', conversationId)
-    .single();
+    .maybeSingle();
 
   // 0b. Check if AI is paused for this conversation (metadata) or contact
   const conversationMetadata = (conversation?.metadata || {}) as Record<string, unknown>;
@@ -278,7 +278,7 @@ export async function processIncomingMessage(
     .from('deals')
     .select('id, stage_id, board_id')
     .eq('id', dealId)
-    .single();
+    .maybeSingle();
 
   if (!deal?.stage_id) {
     return {
@@ -326,7 +326,7 @@ export async function processIncomingMessage(
     .select('*')
     .eq('stage_id', deal.stage_id)
     .eq('enabled', true)
-    .single();
+    .maybeSingle();
 
   if (!stageConfig) {
     console.log('[AIAgent] AI not enabled for this stage');
@@ -894,7 +894,7 @@ async function sendAIResponse(params: {
     .from('messaging_conversations')
     .select('channel_id, external_contact_id')
     .eq('id', conversationId)
-    .single();
+    .maybeSingle();
 
   if (!conversation?.channel_id) {
     return {
@@ -1030,7 +1030,7 @@ async function handleHandoff(
     .from('messaging_conversations')
     .select('metadata')
     .eq('id', conversationId)
-    .single();
+    .maybeSingle();
 
   const existingMetadata = (existing?.metadata as Record<string, unknown>) ?? {};
 
