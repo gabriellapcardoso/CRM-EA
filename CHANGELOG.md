@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Redesign em produção — deploy verificado em crm.aaagencia.com.br — 2026-08-04
+
+10 commits (`d924a86`..`201f5d5`) enviados pra `main` e implantados via
+integração git da Vercel (projeto `crm-ea-v2`, sem fluxo de PR neste repo —
+push direto na `main` sempre disparou o deploy, confirmado pelo histórico).
+Deploy `dpl_HrgESb2GNxCyDiCyogu6nBZPUZdS`, `READY` em ~95s, alias pros 4
+domínios (incluindo `crm.aaagencia.com.br`) sem erro.
+
+**Canary check contra produção real** (não preview): `/login` responde 200
+com as classes do redesign no HTML servido; `/dashboard` (sessão real já
+autenticada no Chrome) renderiza a barra lateral e os cards do redesign
+corretamente com **dados reais de produção** (2 negócios reais, R$ 5.600 em
+pipeline, feed "acontecendo agora" com atividade real) — sem texto
+sobreposto, sem erro de console.
+
+Verificação local antes do push (repetida, mesmos 4 comandos de todas as
+rodadas de QA): `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run`
+(445/450), `next build` (110 rotas) — todos limpos.
+
 ### fix(ui): 5ª rodada de QA — cockpit de negócio completo testado com deal real, 1 bug achado e corrigido — 2026-08-04
 
 `/deals/[id]/cockpit-v2` (página cheia, 3 colunas) nunca tinha sido aberta com

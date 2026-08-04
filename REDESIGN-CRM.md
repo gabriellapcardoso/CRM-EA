@@ -114,6 +114,16 @@ supera o ganho visual, e não há especificação de design pra seguir com fidel
 `app/install/page.tsx` (redirect intermediário) também ficou como estava — é só
 um loading que decide para onde redirecionar.
 
+## Deploy em produção (2026-08-04)
+
+Enviado pra `main` e no ar em `crm.aaagencia.com.br` (Vercel, projeto
+`crm-ea-v2`, deploy `dpl_HrgESb2GNxCyDiCyogu6nBZPUZdS`, commit `201f5d5`).
+Canary check confirmou `/login` (200, classes novas no HTML) e `/dashboard`
+(sessão real, dados reais, sem erro de console). Ver `CHANGELOG.md` pra
+detalhe completo. Repositório não usa fluxo de PR — push direto na `main`
+sempre disparou o deploy (confirmado pelo histórico de deployments antes
+desta sessão).
+
 ## Status final (2026-08-04): redesign completo
 
 Todos os 11 blocos de trabalho concluídos. Sessão teve várias quedas transitórias
