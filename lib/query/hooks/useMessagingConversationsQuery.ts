@@ -13,7 +13,7 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from '@tanstack/react-query';
-import { queryKeys } from '../queryKeys';
+import { queryKeys, entityCachesExceptDetail } from '../queryKeys';
 import { getClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import type {
@@ -231,12 +231,10 @@ export function useMessagingConversation(conversationId: string | undefined) {
           )
         `)
         .eq('id', conversationId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
-      }
+      if (error) throw error;
+      if (!data) return null;
 
       const base = transformConversation(data);
       const channel = data.channel as { id?: string; channel_type?: string; name?: string; provider?: string } | null;
@@ -336,7 +334,7 @@ export function useUpdateConversation() {
     onSettled: (conversation) => {
       // Invalidate filtered queries
       queryClient.invalidateQueries({
-        queryKey: queryKeys.messagingConversations.all,
+        predicate: entityCachesExceptDetail('messagingConversations'),
       });
       // Update detail cache
       if (conversation) {
@@ -375,7 +373,7 @@ export function useMarkConversationRead() {
       });
       // Invalidate filtered queries
       queryClient.invalidateQueries({
-        queryKey: queryKeys.messagingConversations.all,
+        predicate: entityCachesExceptDetail('messagingConversations'),
       });
     },
   });
@@ -399,7 +397,7 @@ export function useResolveConversation() {
       return transformConversation(data);
     },
     onSettled: (conversation) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingConversations'), });
       if (conversation) {
         queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.detail(conversation.id) });
       }
@@ -425,7 +423,7 @@ export function useReopenConversation() {
       return transformConversation(data);
     },
     onSettled: (conversation) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingConversations'), });
       if (conversation) {
         queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.detail(conversation.id) });
       }
@@ -461,7 +459,7 @@ export function useAssignConversation() {
       return transformConversation(data);
     },
     onSettled: (conversation) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingConversations'), });
       if (conversation) {
         queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.detail(conversation.id) });
       }
@@ -502,7 +500,7 @@ export function useToggleConversationAiPause() {
         queryKey: queryKeys.messagingConversations.detail(conversationId),
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.messagingConversations.all,
+        predicate: entityCachesExceptDetail('messagingConversations'),
       });
     },
   });

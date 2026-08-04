@@ -246,7 +246,7 @@ export function useCreateLeadRoutingRule() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.leadRoutingRules.all,
+        queryKey: queryKeys.leadRoutingRules.lists(),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.leadRoutingRules.channelsWithoutRules(),
@@ -284,7 +284,7 @@ export function useUpdateLeadRoutingRule() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.leadRoutingRules.all,
+        queryKey: queryKeys.leadRoutingRules.lists(),
       });
     },
   });
@@ -308,7 +308,7 @@ export function useDeleteLeadRoutingRule() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.leadRoutingRules.all,
+        queryKey: queryKeys.leadRoutingRules.lists(),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.leadRoutingRules.channelsWithoutRules(),

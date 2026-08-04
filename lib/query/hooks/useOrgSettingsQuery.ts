@@ -102,7 +102,7 @@ export const useUpdateUserSettings = () => {
       return updates;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.orgSettings.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orgSettings.lists() });
     },
   });
 };
@@ -193,7 +193,7 @@ export const useUpdateAISettings = () => {
       return res.json();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.orgSettings.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orgSettings.lists() });
     },
   });
 };

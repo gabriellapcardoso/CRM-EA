@@ -7,7 +7,7 @@
  * - Automatic cache invalidation
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '../index';
+import { queryKeys, entityCachesExceptDetail } from '../index';
 import { activitiesService } from '@/lib/supabase';
 import { sortActivitiesSmart } from '@/lib/utils/activitySort';
 import { useAuth } from '@/context/AuthContext';
@@ -144,7 +144,7 @@ export const useCreateActivity = () => {
       return data!;
     },
     onMutate: async ({ activity: newActivity }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.activities.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('activities') });
       const previousActivities = queryClient.getQueryData<Activity[]>(queryKeys.activities.lists());
 
       const tempActivity: Activity = {
@@ -185,7 +185,7 @@ export const useCreateActivity = () => {
       
       // Invalidate to ensure Realtime updates are picked up
       // This is a no-op if data is already fresh, but ensures consistency
-      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('activities') });
     },
     onError: (_error, _params, context) => {
       if (context?.previousActivities) {
@@ -194,7 +194,7 @@ export const useCreateActivity = () => {
     },
     onSettled: () => {
       // Final invalidation to ensure Realtime updates are picked up
-      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('activities') });
     },
   });
 };
@@ -212,7 +212,7 @@ export const useUpdateActivity = () => {
       return { id, updates };
     },
     onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.activities.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('activities') });
       const previousActivities = queryClient.getQueryData<Activity[]>(queryKeys.activities.lists());
       queryClient.setQueryData<Activity[]>(queryKeys.activities.lists(), (old = []) => {
         const updated = old.map(activity => (activity.id === id ? { ...activity, ...updates } : activity));
@@ -227,7 +227,7 @@ export const useUpdateActivity = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('activities') });
     },
   });
 };
@@ -245,7 +245,7 @@ export const useToggleActivity = () => {
       return { id, completed: data! };
     },
     onMutate: async id => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.activities.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('activities') });
       const previousActivities = queryClient.getQueryData<Activity[]>(queryKeys.activities.lists());
       queryClient.setQueryData<Activity[]>(queryKeys.activities.lists(), (old = []) =>
         old.map(activity =>
@@ -260,7 +260,7 @@ export const useToggleActivity = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('activities') });
     },
   });
 };
@@ -278,7 +278,7 @@ export const useDeleteActivity = () => {
       return id;
     },
     onMutate: async id => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.activities.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('activities') });
       const previousActivities = queryClient.getQueryData<Activity[]>(queryKeys.activities.lists());
       queryClient.setQueryData<Activity[]>(queryKeys.activities.lists(), (old = []) =>
         old.filter(activity => activity.id !== id)
@@ -291,7 +291,7 @@ export const useDeleteActivity = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('activities') });
     },
   });
 };

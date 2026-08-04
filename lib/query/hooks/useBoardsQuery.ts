@@ -100,7 +100,7 @@ export const useCreateBoard = () => {
       return data!;
     },
     onMutate: async ({ board, clientTempId }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.boards.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.boards.lists() });
 
       const previousBoards = queryClient.getQueryData<Board[]>(queryKeys.boards.lists());
 
@@ -133,7 +133,7 @@ export const useCreateBoard = () => {
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
     },
   });
 };
@@ -151,7 +151,7 @@ export const useUpdateBoard = () => {
       return { id, updates };
     },
     onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.boards.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.boards.lists() });
 
       const previousBoards = queryClient.getQueryData<Board[]>(queryKeys.boards.lists());
 
@@ -167,7 +167,7 @@ export const useUpdateBoard = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
     },
   });
 };
@@ -185,7 +185,7 @@ export const useDeleteBoard = () => {
       return id;
     },
     onMutate: async id => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.boards.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.boards.lists() });
 
       const previousBoards = queryClient.getQueryData<Board[]>(queryKeys.boards.lists());
 
@@ -201,9 +201,9 @@ export const useDeleteBoard = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
       // Also invalidate deals since they reference boards
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
     },
   });
 };
@@ -221,8 +221,8 @@ export const useDeleteBoardWithMove = () => {
       return boardId;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
     },
   });
 };
@@ -257,7 +257,7 @@ export const useAddBoardStage = () => {
       return { boardId, stage: data! };
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
     },
   });
 };
@@ -275,7 +275,7 @@ export const useUpdateBoardStage = () => {
       return { stageId, updates };
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
     },
   });
 };
@@ -293,7 +293,7 @@ export const useDeleteBoardStage = () => {
       return stageId;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
     },
   });
 };
@@ -305,5 +305,5 @@ export const useDeleteBoardStage = () => {
  */
 export const useInvalidateBoards = () => {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+  return () => queryClient.invalidateQueries({ queryKey: queryKeys.boards.lists() });
 };

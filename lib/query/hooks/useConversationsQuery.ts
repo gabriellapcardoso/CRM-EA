@@ -15,7 +15,7 @@ import {
   useQueryClient,
   keepPreviousData,
 } from '@tanstack/react-query';
-import { queryKeys } from '../index';
+import { queryKeys, entityCachesExceptDetail } from '../index';
 import { supabase } from '@/lib/supabase';
 import { sanitizePostgrestValue } from '@/lib/utils/sanitize';
 import { useAuth } from '@/context/AuthContext';
@@ -297,7 +297,7 @@ export function useUpdateConversation() {
     onMutate: async ({ conversationId, updates }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({
-        queryKey: queryKeys.messagingConversations.all,
+        predicate: entityCachesExceptDetail('messagingConversations'),
       });
 
       // Snapshot previous value
@@ -339,7 +339,7 @@ export function useUpdateConversation() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.messagingConversations.all,
+        predicate: entityCachesExceptDetail('messagingConversations'),
       });
     },
   });
@@ -363,7 +363,7 @@ export function useMarkConversationRead() {
     },
     onMutate: async (conversationId) => {
       await queryClient.cancelQueries({
-        queryKey: queryKeys.messagingConversations.all,
+        predicate: entityCachesExceptDetail('messagingConversations'),
       });
 
       // Optimistically set unread to 0
@@ -384,7 +384,7 @@ export function useMarkConversationRead() {
       // fully deleted, causing it to flash back into the list.
       if (pendingDeletionIds.size === 0) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.messagingConversations.all,
+          predicate: entityCachesExceptDetail('messagingConversations'),
         });
       }
       queryClient.invalidateQueries({
@@ -480,7 +480,7 @@ export function useDeleteConversation() {
       // The messaging_messages DELETE event fires before the conversation is deleted,
       // causing a refetch that returns the conversation still in the list and overwrites
       // the optimistic removal. Cancelling here prevents that race condition.
-      queryClient.cancelQueries({ queryKey: queryKeys.messagingConversations.all });
+      queryClient.cancelQueries({ predicate: entityCachesExceptDetail('messagingConversations') });
 
       // Remove detail query so onSettled invalidateQueries doesn't refetch it
       queryClient.removeQueries({

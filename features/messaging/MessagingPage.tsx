@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Modal } from '@/components/ui/Modal';
 import { useRealtimeSyncMessaging } from '@/lib/realtime/useRealtimeSync';
-import { queryKeys } from '@/lib/query';
+import { queryKeys, entityCachesExceptDetail } from '@/lib/query';
 import { useContactPresence } from '@/lib/messaging/hooks/useContactPresence';
 import type { ConversationView } from '@/lib/messaging/types';
 
@@ -91,7 +91,7 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
     router.push('/messaging', { scroll: false });
 
     // Cancel in-flight refetches so they don't overwrite the optimistic removal below
-    queryClient.cancelQueries({ queryKey: queryKeys.messagingConversations.all });
+    queryClient.cancelQueries({ predicate: entityCachesExceptDetail('messagingConversations') });
 
     // Optimistically remove from list cache immediately
     queryClient.setQueriesData(
@@ -141,7 +141,7 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
 
     // Invalidate queries to refresh data
     queryClient.invalidateQueries({
-      queryKey: queryKeys.messagingConversations.all,
+      predicate: entityCachesExceptDetail('messagingConversations'),
     });
   }, [selectedConversationId, queryClient]);
 

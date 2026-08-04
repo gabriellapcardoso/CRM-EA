@@ -1,6 +1,7 @@
 import { createQueryKeys, createExtendedQueryKeys } from './createQueryKeys';
 import { PaginationState, ContactsServerFilters } from '@/types';
 import type { ConversationFilters } from '@/lib/messaging/types';
+import type { Query } from '@tanstack/react-query';
 
 /**
  * Query keys centralizadas para gerenciamento de cache.
@@ -246,3 +247,24 @@ export const queryKeys = {
  * ```
  */
 export const DEALS_VIEW_KEY = [...queryKeys.deals.lists(), 'view'] as const;
+
+/**
+ * Predicate para invalidar/cancelar TODAS as queries de uma entidade
+ * EXCETO os caches de detalhe (`entity.detail(id)`).
+ *
+ * Usar para entidades com sub-caches extras além de `lists()`/`list(filters)`
+ * (ex: `contacts.paginated()`, `activities.byDeal()`, `messagingConversations.byChannel()`)
+ * onde uma mutation precisa continuar invalidando esses sub-caches — não apenas
+ * `lists()` — mas não deveria invalidar o detalhe de registros não relacionados.
+ *
+ * @example
+ * ```typescript
+ * queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
+ * ```
+ */
+export function entityCachesExceptDetail(entity: string) {
+    return (query: Query) =>
+        Array.isArray(query.queryKey) &&
+        query.queryKey[0] === entity &&
+        query.queryKey[1] !== 'detail';
+}

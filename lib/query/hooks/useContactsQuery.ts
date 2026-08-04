@@ -7,7 +7,7 @@
  * - Automatic cache invalidation
  */
 import { useQuery, useMutation, useQueryClient, keepPreviousData, type QueryKey } from '@tanstack/react-query';
-import { queryKeys, DEALS_VIEW_KEY } from '../index';
+import { queryKeys, DEALS_VIEW_KEY, entityCachesExceptDetail } from '../index';
 import { contactsService, companiesService } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import type { Contact, ContactStage, Company, PaginationState, PaginatedResponse, ContactsServerFilters } from '@/types';
@@ -246,7 +246,7 @@ export const useCreateContact = () => {
       return data!;
     },
     onMutate: async newContact => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.contacts.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('contacts') });
       const previousContacts = queryClient.getQueryData<Contact[]>(queryKeys.contacts.lists());
 
       const tempContact: Contact = {
@@ -345,7 +345,7 @@ export const useCreateContact = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
     },
   });
 };
@@ -363,7 +363,7 @@ export const useUpdateContact = () => {
       return { id, updates };
     },
     onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.contacts.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('contacts') });
       const previousContacts = queryClient.getQueryData<Contact[]>(queryKeys.contacts.lists());
       queryClient.setQueryData<Contact[]>(queryKeys.contacts.lists(), (old = []) =>
         old.map(contact => (contact.id === id ? { ...contact, ...updates } : contact))
@@ -398,7 +398,7 @@ export const useUpdateContact = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
     },
   });
 };
@@ -416,7 +416,7 @@ export const useUpdateContactStage = () => {
       return { id, stage };
     },
     onMutate: async ({ id, stage }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.contacts.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('contacts') });
       const previousContacts = queryClient.getQueryData<Contact[]>(queryKeys.contacts.lists());
       queryClient.setQueryData<Contact[]>(queryKeys.contacts.lists(), (old = []) =>
         old.map(contact => (contact.id === id ? { ...contact, stage } : contact))
@@ -429,7 +429,7 @@ export const useUpdateContactStage = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
     },
   });
 };
@@ -454,7 +454,7 @@ export const useDeleteContact = () => {
       return id;
     },
     onMutate: async ({ id }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.contacts.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('contacts') });
       const previousContacts = queryClient.getQueryData<Contact[]>(queryKeys.contacts.lists());
       queryClient.setQueryData<Contact[]>(queryKeys.contacts.lists(), (old = []) =>
         old.filter(contact => contact.id !== id)
@@ -491,7 +491,7 @@ export const useDeleteContact = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
       // Use DEALS_VIEW_KEY — é a única source of truth para deals (SSOT)
       queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
     },
@@ -547,7 +547,7 @@ export const useBulkDeleteContacts = () => {
       return { successCount, errorCount };
     },
     onMutate: async ({ ids }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.contacts.all });
+      await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('contacts') });
       const previousLists = queryClient.getQueryData<Contact[]>(queryKeys.contacts.lists());
 
       // Optimistically remove from list cache
@@ -588,7 +588,7 @@ export const useBulkDeleteContacts = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
       // Use DEALS_VIEW_KEY — é a única source of truth para deals (SSOT)
       queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
     },
@@ -636,7 +636,7 @@ export const useBulkDeleteCompanies = () => {
       return { successCount, errorCount };
     },
     onMutate: async ({ ids }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.companies.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.companies.lists() });
       const previousCompanies = queryClient.getQueryData<Company[]>(queryKeys.companies.lists());
 
       // Optimistically remove from companies list cache
@@ -652,8 +652,8 @@ export const useBulkDeleteCompanies = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
       // Use DEALS_VIEW_KEY — é a única source of truth para deals (SSOT)
       queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
     },
@@ -688,7 +688,7 @@ export const useCreateCompany = () => {
       return data!;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
     },
   });
 };
@@ -706,7 +706,7 @@ export const useUpdateCompany = () => {
       return { id, updates };
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
     },
   });
 };
@@ -724,8 +724,8 @@ export const useDeleteCompany = () => {
       return id;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
     },
   });
 };

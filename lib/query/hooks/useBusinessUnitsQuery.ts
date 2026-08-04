@@ -12,7 +12,7 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
-import { queryKeys } from '../queryKeys';
+import { queryKeys, entityCachesExceptDetail } from '../queryKeys';
 import { getClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import type {
@@ -117,12 +117,10 @@ export function useBusinessUnit(unitId: string | undefined) {
         .select('*')
         .eq('id', unitId)
         .is('deleted_at', null)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') return null; // Not found
-        throw error;
-      }
+      if (error) throw error;
+      if (!data) return null; // Not found
 
       return transform(data);
     },
@@ -194,7 +192,7 @@ export function useCreateBusinessUnit() {
       const { data: profile } = await supabase
         .from('profiles')
         .select('organization_id')
-        .single();
+        .maybeSingle();
 
       if (!profile?.organization_id) {
         throw new Error('Organization not found');
@@ -223,7 +221,7 @@ export function useCreateBusinessUnit() {
       return transform(data);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.businessUnits.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('businessUnits') });
     },
   });
 }
@@ -258,7 +256,7 @@ export function useUpdateBusinessUnit() {
       return transform(data);
     },
     onSettled: (_, _err, { unitId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.businessUnits.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('businessUnits') });
       queryClient.invalidateQueries({
         queryKey: queryKeys.businessUnits.detail(unitId),
       });
@@ -284,7 +282,7 @@ export function useDeleteBusinessUnit() {
       if (error) throw error;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.businessUnits.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('businessUnits') });
     },
   });
 }

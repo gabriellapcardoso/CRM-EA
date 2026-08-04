@@ -141,7 +141,7 @@ export function useResolvePendingAdvanceMutation() {
     onSuccess: (data) => {
       // Se foi aprovado, invalidar deals também
       if (data?.newStageId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
       }
     },
     onSettled: () => {

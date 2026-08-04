@@ -10,7 +10,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '../queryKeys';
+import { queryKeys, entityCachesExceptDetail } from '../queryKeys';
 import { useAuth } from '@/context/AuthContext';
 import type {
   MessagingTemplate,
@@ -193,7 +193,7 @@ export function useSendTemplateMutation() {
       });
       // Invalidate conversation (last message updated)
       queryClient.invalidateQueries({
-        queryKey: queryKeys.messagingConversations.all,
+        predicate: entityCachesExceptDetail('messagingConversations'),
       });
     },
   });

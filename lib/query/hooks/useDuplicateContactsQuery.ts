@@ -8,7 +8,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { queryKeys, DEALS_VIEW_KEY } from '../queryKeys';
+import { queryKeys, DEALS_VIEW_KEY, entityCachesExceptDetail } from '../queryKeys';
 import { supabase } from '@/lib/supabase';
 
 // =============================================================================
@@ -80,14 +80,15 @@ export function useMergeContactsMutation() {
     },
     onSettled: () => {
       // Full invalidation list — merge touches 8+ tables
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.lists() });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
       // Use DEALS_VIEW_KEY — é a única source of truth para deals (SSOT)
       // queryKeys.deals.all e deals.lists() são redundantes quando DEALS_VIEW_KEY já está presente
       queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.activities.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingConversations') });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('activities') });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats });
+      // contactDuplicates tem apenas `all`/`list(orgId)` (sem factory .lists()/.detail());
+      // `.all` já é a chave mais específica disponível para essa entidade — sem violação real.
       queryClient.invalidateQueries({ queryKey: queryKeys.contactDuplicates.all });
     },
   });

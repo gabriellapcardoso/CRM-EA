@@ -240,7 +240,7 @@ export const useCreateDeal = () => {
       return data!;
     },
     onMutate: async newDeal => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.deals.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.deals.lists() });
 
       // Usa DEALS_VIEW_KEY - a única fonte de verdade
       const previousDeals = queryClient.getQueryData<DealView[]>(DEALS_VIEW_KEY);
@@ -355,7 +355,7 @@ export const useUpdateDeal = () => {
       return { id, updates };
     },
     onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.deals.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.deals.lists() });
 
       // Usa DEALS_VIEW_KEY - a única fonte de verdade
       const previousDeals = queryClient.getQueryData<DealView[]>(DEALS_VIEW_KEY);
@@ -431,7 +431,7 @@ export const useUpdateDealStatus = () => {
       return { id, status, lossReason, isWon, isLost };
     },
     onMutate: async ({ id, status, lossReason, isWon, isLost }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.deals.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.deals.lists() });
 
       // Usa DEALS_VIEW_KEY - única fonte de verdade
       const previousDeals = queryClient.getQueryData<DealView[]>(DEALS_VIEW_KEY);
@@ -479,7 +479,7 @@ export const useDeleteDeal = () => {
       return id;
     },
     onMutate: async id => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.deals.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.deals.lists() });
 
       // Usa DEALS_VIEW_KEY - a única fonte de verdade
       const previousDeals = queryClient.getQueryData<DealView[]>(DEALS_VIEW_KEY);
@@ -550,7 +550,7 @@ export const useRemoveDealItem = () => {
  */
 export const useInvalidateDeals = () => {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all });
+  return () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
 };
 
 /**
@@ -661,7 +661,7 @@ export const useCreateDealWithContact = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
     },
   });
 };

@@ -23,7 +23,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/query';
+import { queryKeys, entityCachesExceptDetail } from '@/lib/query';
 import {
   useMessagingConversations,
   useMessagingConversation,
@@ -234,7 +234,7 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
 
   const refreshConversations = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: queryKeys.messagingConversations.all,
+      predicate: entityCachesExceptDetail('messagingConversations'),
     });
   }, [queryClient]);
 

@@ -70,14 +70,14 @@ export function useAIConfigQuery() {
         .from('organization_settings')
         .select('*')
         .eq('organization_id', profile.organization_id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('[useAIConfigQuery] Error:', error);
         throw error;
       }
 
-      return data as OrgAIConfig;
+      return data as OrgAIConfig | null;
     },
     enabled: !!profile?.organization_id,
     staleTime: 5 * 60 * 1000, // 5 minutes

@@ -244,7 +244,7 @@ export const useMoveDeal = () => {
       // #endregion
       
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.deals.all });
+      await queryClient.cancelQueries({ queryKey: queryKeys.deals.lists() });
 
       // Snapshot previous state - usa DEALS_VIEW_KEY (única fonte de verdade)
       const previousDeals = queryClient.getQueryData<DealView[]>(DEALS_VIEW_KEY);

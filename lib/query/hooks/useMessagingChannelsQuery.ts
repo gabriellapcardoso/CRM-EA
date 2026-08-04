@@ -12,7 +12,7 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
-import { queryKeys } from '../queryKeys';
+import { queryKeys, entityCachesExceptDetail } from '../queryKeys';
 import { getClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import type {
@@ -156,12 +156,10 @@ export function useMessagingChannel(channelId: string | undefined) {
         .select('*')
         .eq('id', channelId)
         .is('deleted_at', null)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') return null; // Not found
-        throw error;
-      }
+      if (error) throw error;
+      if (!data) return null; // Not found
 
       return transformChannel(data);
     },
@@ -188,7 +186,7 @@ export function useCreateMessagingChannel() {
       const { data: profile } = await supabase
         .from('profiles')
         .select('organization_id')
-        .single();
+        .maybeSingle();
 
       if (!profile?.organization_id) {
         throw new Error('Organization not found');
@@ -207,7 +205,7 @@ export function useCreateMessagingChannel() {
       return transformChannel(data);
     },
     onSettled: (channel) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
       if (channel) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.messagingChannels.byUnit(channel.businessUnitId),
@@ -250,7 +248,7 @@ export function useUpdateMessagingChannel() {
       return transformChannel(data);
     },
     onSettled: (channel) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
       if (channel) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.messagingChannels.detail(channel.id),
@@ -330,7 +328,7 @@ export function useDeleteMessagingChannel() {
       if (error) throw error;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
     },
   });
 }

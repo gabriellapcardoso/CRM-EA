@@ -40,7 +40,7 @@ export const useCreateLifecycleStage = () => {
       return data!;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.lists() });
     },
   });
 };
@@ -55,7 +55,7 @@ export const useUpdateLifecycleStage = () => {
       return { id, updates };
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.lists() });
     },
   });
 };
@@ -70,7 +70,7 @@ export const useDeleteLifecycleStage = () => {
       return id;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.lists() });
     },
   });
 };
@@ -85,7 +85,7 @@ export const useReorderLifecycleStages = () => {
       return stages;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lifecycleStages.lists() });
     },
   });
 };

@@ -10,7 +10,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { queryKeys } from '../queryKeys';
+import { queryKeys, entityCachesExceptDetail } from '../queryKeys';
 import {
   type MessagingChannel,
   type DbMessagingChannel,
@@ -81,7 +81,7 @@ export function useChannelQuery(channelId: string | undefined) {
         .select('*')
         .eq('id', channelId)
         .is('deleted_at', null)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
@@ -156,7 +156,7 @@ export function useCreateChannelMutation() {
       return transformChannel(data as DbMessagingChannel);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
     },
   });
 }
@@ -192,7 +192,7 @@ export function useUpdateChannelMutation() {
       return transformChannel(data as DbMessagingChannel);
     },
     onSettled: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
       if (data) {
         queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.detail(data.id) });
       }
@@ -219,7 +219,7 @@ export function useDeleteChannelMutation() {
       if (error) throw error;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
     },
   });
 }
@@ -253,7 +253,7 @@ export function useToggleChannelStatusMutation() {
       return transformChannel(data as DbMessagingChannel);
     },
     onSettled: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
       if (data) {
         queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.detail(data.id) });
       }

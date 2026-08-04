@@ -61,7 +61,7 @@ export const useCreateProduct = () => {
       return data!;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
     },
   });
 };
@@ -82,7 +82,7 @@ export const useUpdateProduct = () => {
       return { id, updates };
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
     },
   });
 };
@@ -97,7 +97,7 @@ export const useDeleteProduct = () => {
       return id;
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
     },
   });
 };

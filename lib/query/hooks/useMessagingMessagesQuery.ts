@@ -14,7 +14,7 @@ import {
   useInfiniteQuery,
   type InfiniteData,
 } from '@tanstack/react-query';
-import { queryKeys } from '../queryKeys';
+import { queryKeys, entityCachesExceptDetail } from '../queryKeys';
 import { getClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import type {
@@ -155,12 +155,10 @@ export function useMessagingMessage(messageId: string | undefined) {
         .from('messaging_messages')
         .select('*')
         .eq('id', messageId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
-      }
+      if (error) throw error;
+      if (!data) return null;
 
       return transformMessage(data);
     },
@@ -451,7 +449,7 @@ export function useSendDraft() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.messagingMessages.draftConversationIds(),
         });
-        queryClient.invalidateQueries({ queryKey: queryKeys.messagingConversations.all });
+        queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingConversations'), });
       }
     },
   });
