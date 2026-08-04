@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### T3c — reaquecimento automático na prospecção quando deal é marcado "Perdido" — 2026-08-03
+
+Reusa o outbox/dispatcher do T3 (`deal_stage_events` + Edge Function
+`deal-stage-dispatcher`, mesmo cron) em vez de infra nova. Trigger novo
+`emit_deal_lost_event` (migration `20260803170000_t3c_deal_lost_reheat_
+outbox.sql`) emite evento quando um deal do board `negociacao` entra em
+"Perdido" — só se tiver origem rastreável (`contacts.
+prospect_correlation_id` setado pelo T2). Dispatcher (`dispatcher-logic.ts`
+`resolverDestino`) passa a rotear por `stage_slug`: `perdido` vai pra
+`PROSPECCAO_REAQUECER_URL/SECRET` (endpoint novo no `prospeccao-aaagencia`),
+resto (`topou-proposta` e o que vier depois) segue indo pro Gerador de
+Propostas como antes — mesma tabela, mesmo cron, destinos diferentes por
+linha.
+
+**Verificado com deal real em produção**, não só teste unitário: deal
+"Dra Paula Melo" (piloto T5) marcado Perdido via `UPDATE` direto (mesmo
+caminho de um humano arrastando o card no cockpit) → trigger emitiu
+evento → cron processou sozinho em menos de 1 minuto (`status: enviado`,
+`response_status: 200`) → lead correspondente na prospecção virou
+`encerrado` com reaquecimento imediato. Revertido os 2 lados depois do
+teste (deal e lead voltaram ao estado original) — não é dado de piloto
+perdido, foi sinal de teste.
+
+Deploy: migration aplicada, Edge Function redeployada, secrets
+configurados (`PROSPECCAO_REAQUECER_URL`/`_SECRET`, cofre Supabase deste
+projeto). Detalhe completo (incluindo o bug de middleware achado do lado
+prospecção) em `gerador de propostas comerciai/HANDOFF.md` seção "Estado
+atual (2026-08-03)".
+
 ### T3 + T3b — CRM ↔ Gerador de Propostas conectados, board Negociação expandido pra 14 estágios — 2026-08-02
 
 Decidido e implementado via `/plan-eng-review` + agentes em paralelo, depois
