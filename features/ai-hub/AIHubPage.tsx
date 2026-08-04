@@ -57,24 +57,19 @@ const WelcomeMessage: React.FC = () => (
     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white mb-4">
       <Sparkles size={32} />
     </div>
-    <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-      Olá! Sou seu assistente de CRM
-    </h2>
-    <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
+    <h2 className="title-lg mb-2">Olá! Sou seu assistente de CRM</h2>
+    <p className="muted max-w-md mx-auto mb-6">
       Posso ajudar você a gerenciar deals, atividades, contatos e muito mais.
       Experimente perguntar algo!
     </p>
-    <div className="flex flex-wrap justify-center gap-2">
+    <div className="chip-row justify-center">
       {[
         'O que tenho pra fazer hoje?',
         'Mostre meu pipeline',
         'Quais deals estão parados?',
         'Crie uma reunião com Stark amanhã às 14h',
       ].map((suggestion) => (
-        <button
-          key={suggestion}
-          className="px-3 py-1.5 text-sm bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-full transition-colors"
-        >
+        <button key={suggestion} type="button" className="chip">
           {suggestion}
         </button>
       ))}
@@ -95,23 +90,21 @@ const APINotConfigured: React.FC = () => {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-          Configure a Inteligência Artificial
-        </h1>
+        <h1 className="title-lg mb-3">Configure a Inteligência Artificial</h1>
 
         {/* Description */}
-        <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+        <p className="muted mb-8 leading-relaxed">
           Para usar o assistente de IA, você precisa configurar uma chave de API.
-          Suportamos <strong className="text-slate-800 dark:text-slate-200">Google Gemini</strong>, <strong className="text-slate-800 dark:text-slate-200">OpenAI</strong> e <strong className="text-slate-800 dark:text-slate-200">Anthropic</strong>.
+          Suportamos <strong>Google Gemini</strong>, <strong>OpenAI</strong> e <strong>Anthropic</strong>.
         </p>
 
         {/* Card with instructions */}
-        <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-6 border border-slate-200 dark:border-white/10 mb-6 text-left">
-          <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+        <div className="panel mb-6 text-left">
+          <h3 className="title-sm mb-3 flex items-center gap-2">
             <Sparkles size={18} className="text-purple-500" />
             Como configurar:
           </h3>
-          <ol className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+          <ol className="space-y-2 text-sm muted">
             <li className="flex gap-2">
               <span className="font-bold text-purple-500">1.</span>
               Acesse as Configurações
@@ -128,10 +121,7 @@ const APINotConfigured: React.FC = () => {
         </div>
 
         {/* CTA Button */}
-        <button
-          onClick={() => router.push('/settings/ai#ai-config')}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-purple-500/25 transition-all active:scale-95"
-        >
+        <button onClick={() => router.push('/settings/ai#ai-config')} className="btn btn--primary btn--lg">
           <Settings size={18} />
           Ir para Configurações
         </button>
@@ -191,19 +181,13 @@ export const AIHubPage: React.FC = () => {
             <Bot size={20} />
           </div>
           <div>
-            <h1 className="font-bold text-slate-900 dark:text-white">AI Assistant</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Gemini 2.5 Flash • Multi-step Agentic
-            </p>
+            <h1 className="title-sm">AI Assistant</h1>
+            <p className="meta">Gemini 2.5 Flash • Multi-step Agentic</p>
           </div>
         </div>
 
         {messages.length > 0 && (
-          <button
-            onClick={clearMessages}
-            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-            title="Limpar conversa"
-          >
+          <button onClick={clearMessages} className="btn btn--ghost" title="Limpar conversa">
             <Trash2 size={18} />
           </button>
         )}
@@ -228,25 +212,21 @@ export const AIHubPage: React.FC = () => {
 
       {/* Error Display */}
       {error && (
-        <div className="mx-4 mb-4 px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-red-600 dark:text-red-400 text-sm">
-          {error.message}
+        <div className="mx-4 mb-4 banner banner--error">
+          <span className="banner__text">{error.message}</span>
         </div>
       )}
 
       {/* Suggestions when empty */}
       {messages.length === 0 && (
         <div className="px-4 pb-4">
-          <div className="flex flex-wrap gap-2 justify-center">
+          <div className="chip-row justify-center">
             {[
               'O que tenho pra fazer hoje?',
               'Mostre meu pipeline',
               'Quais deals estão parados?',
             ].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="px-3 py-1.5 text-sm bg-slate-100 dark:bg-white/5 hover:bg-primary-100 dark:hover:bg-primary-500/20 text-slate-700 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-full transition-colors border border-transparent hover:border-primary-300 dark:hover:border-primary-500/30"
-              >
+              <button key={suggestion} type="button" className="chip" onClick={() => handleSuggestionClick(suggestion)}>
                 {suggestion}
               </button>
             ))}
@@ -269,19 +249,11 @@ export const AIHubPage: React.FC = () => {
             />
 
             {isLoading ? (
-              <button
-                type="button"
-                onClick={stopGeneration}
-                className="m-1.5 p-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors"
-              >
+              <button type="button" onClick={stopGeneration} className="btn btn--danger m-1.5" style={{ padding: 8, borderRadius: 12 }}>
                 <StopCircle size={20} />
               </button>
             ) : (
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="m-1.5 p-2 bg-primary-500 hover:bg-primary-600 disabled:bg-slate-300 disabled:dark:bg-slate-700 text-white rounded-xl transition-colors disabled:cursor-not-allowed"
-              >
+              <button type="submit" disabled={!input.trim()} className="btn btn--primary m-1.5" style={{ padding: 8, borderRadius: 12 }}>
                 <Send size={20} />
               </button>
             )}

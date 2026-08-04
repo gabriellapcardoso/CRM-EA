@@ -18,31 +18,16 @@ interface InboxSectionProps {
   filterParam?: string; // e.g., 'overdue', 'today', 'upcoming'
 }
 
+/** Cor da régua do `.section-head`, por urgência da seção. */
+const SWATCH_COLOR: Record<InboxSectionProps['color'], string> = {
+  red: 'var(--danger)',
+  green: 'var(--success)',
+  slate: 'var(--ink-300)',
+};
+
 /**
- * Componente React `InboxSection`.
- *
- * @param {InboxSectionProps} {
-  title,
-  activities,
-  color,
-  defaultOpen = true,
-  onToggleComplete,
-  onSnooze,
-  onDiscard,
-  onSelect,
-  filterParam
-} - Parâmetro `{
-  title,
-  activities,
-  color,
-  defaultOpen = true,
-  onToggleComplete,
-  onSnooze,
-  onDiscard,
-  onSelect,
-  filterParam
-}`.
- * @returns {Element | null} Retorna um valor do tipo `Element | null`.
+ * Seção colapsável de atividades do inbox, no vocabulário `.section-head` +
+ * `.conv-list`/`.card-conv` do redesign.
  */
 export const InboxSection: React.FC<InboxSectionProps> = ({
   title,
@@ -59,58 +44,54 @@ export const InboxSection: React.FC<InboxSectionProps> = ({
 
   if (activities.length === 0) return null;
 
-  const colorStyles = {
-    red: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20',
-    green: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-100 dark:border-green-500/20',
-    slate: 'text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700'
-  };
-
   const visibleActivities = activities.slice(0, MAX_ITEMS);
   const hasMore = activities.length > MAX_ITEMS;
-  const remaining = activities.length - MAX_ITEMS;
 
   return (
-    <div className="mb-6">
+    <section>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 w-full mb-3 group"
+        className="section-head w-full"
+        aria-expanded={isOpen}
       >
-        <div className={`p-1 rounded-md transition-colors ${isOpen ? 'bg-slate-100 dark:bg-white/5' : ''}`}>
-          {isOpen ? <ChevronDown size={16} className="text-slate-400" /> : <ChevronRight size={16} className="text-slate-400" />}
-        </div>
-        <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
-          {title}
-          <span className={`text-xs px-2 py-0.5 rounded-full border ${colorStyles[color]}`}>
-            {activities.length}
-          </span>
-        </h2>
-        <div className="flex-1 h-px bg-slate-100 dark:bg-white/5 ml-2 group-hover:bg-slate-200 dark:group-hover:bg-white/10 transition-colors"></div>
+        {isOpen ? (
+          <ChevronDown size={14} aria-hidden="true" />
+        ) : (
+          <ChevronRight size={14} aria-hidden="true" />
+        )}
+        <span className="section-head__swatch" style={{ background: SWATCH_COLOR[color] }} aria-hidden="true" />
+        <span className="section-head__title">{title}</span>
+        <span className="badge-count">{activities.length}</span>
       </button>
 
       {isOpen && (
-        <div className="space-y-3 pl-2">
+        <ul className="conv-list" style={{ overflow: 'visible', padding: 0 }}>
           {visibleActivities.map(activity => (
-            <InboxItem
-              key={activity.id}
-              activity={activity}
-              onToggleComplete={onToggleComplete}
-              onSnooze={onSnooze}
-              onDiscard={onDiscard}
-              onSelect={onSelect}
-            />
+            <li key={activity.id}>
+              <InboxItem
+                activity={activity}
+                onToggleComplete={onToggleComplete}
+                onSnooze={onSnooze}
+                onDiscard={onDiscard}
+                onSelect={onSelect}
+              />
+            </li>
           ))}
 
           {hasMore && (
-            <Link
-              href={filterParam ? `/activities?filter=${filterParam}` : '/activities'}
-              className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
-            >
-              Ver todas as {activities.length} atividades
-              <ArrowRight size={16} />
-            </Link>
+            <li>
+              <Link
+                href={filterParam ? `/activities?filter=${filterParam}` : '/activities'}
+                className="btn btn--ghost btn--block"
+              >
+                ver todas as {activities.length} atividades
+                <ArrowRight size={14} aria-hidden="true" />
+              </Link>
+            </li>
           )}
-        </div>
+        </ul>
       )}
-    </div>
+    </section>
   );
 };

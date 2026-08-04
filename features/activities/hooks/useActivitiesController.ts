@@ -24,7 +24,7 @@ export const useActivitiesController = () => {
   const { profile, organizationId } = useAuth();
 
   // TanStack Query hooks
-  const { data: activities = [], isLoading: activitiesLoading } = useActivities();
+  const { data: activities = [], isLoading: activitiesLoading, isError: activitiesIsError, refetch: refetchActivities } = useActivities();
   const { data: deals = [], isLoading: dealsLoading } = useDeals();
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: companies = [], isLoading: companiesLoading } = useCompanies();
@@ -250,6 +250,8 @@ export const useActivitiesController = () => {
     contacts,
     companies,
     isLoading,
+    isError: activitiesIsError,
+    refetchActivities,
     handleNewActivity,
     handleEditActivity,
     handleDeleteActivity,

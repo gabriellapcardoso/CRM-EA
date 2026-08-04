@@ -9,7 +9,7 @@
  */
 
 import React, { useState } from 'react';
-import { Send, UserPlus, Clock, CheckCircle, MessageSquare, Inbox } from 'lucide-react';
+import { Send, UserPlus, Clock, CheckCircle, Inbox } from 'lucide-react';
 import { useMessagingMetricsQuery, useOrgMembersQuery } from '@/lib/query/hooks';
 import type { PeriodFilter } from '../hooks/useDashboardMetrics';
 
@@ -39,7 +39,6 @@ function MetricCard({
   label,
   value,
   subtext,
-  color = 'primary',
 }: {
   icon: React.ElementType;
   label: string;
@@ -47,35 +46,15 @@ function MetricCard({
   subtext?: string;
   color?: 'primary' | 'green' | 'amber' | 'purple' | 'blue';
 }) {
-  const colorClasses = {
-    primary: 'text-primary-500 bg-primary-100 dark:bg-primary-500/20',
-    green: 'text-green-500 bg-green-100 dark:bg-green-500/20',
-    amber: 'text-amber-500 bg-amber-100 dark:bg-amber-500/20',
-    purple: 'text-purple-500 bg-purple-100 dark:bg-purple-500/20',
-    blue: 'text-blue-500 bg-blue-100 dark:bg-blue-500/20',
-  };
-
   return (
-    <div className="glass p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
-          <Icon size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
-            {label}
-          </p>
-          <p className="text-xl font-bold text-slate-900 dark:text-white">
-            {value}
-          </p>
-          {subtext && (
-            <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-              {subtext}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+    <article className="card-kpi">
+      <h3 className="card-kpi__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon size={14} aria-hidden="true" />
+        {label}
+      </h3>
+      <p className="card-kpi__value num">{value}</p>
+      {subtext && <p className="card-kpi__delta">{subtext}</p>}
+    </article>
   );
 }
 
@@ -171,51 +150,31 @@ export function MessagingMetricsSection({ period }: { period: PeriodFilter }) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3 shrink-0">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
-          <MessageSquare className="text-primary-500" size={20} />
-          Performance de Mensagens
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="glass p-4 rounded-xl border border-slate-200 dark:border-white/5 animate-pulse">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-lg" />
-                <div className="flex-1">
-                  <div className="w-20 h-3 bg-slate-200 dark:bg-slate-700 rounded mb-2" />
-                  <div className="w-12 h-6 bg-slate-200 dark:bg-slate-700 rounded" />
-                </div>
-              </div>
-            </div>
-          ))}
+      <section className="panel">
+        <div className="panel__head">
+          <h3 className="panel__title title-sm">performance de mensagens</h3>
         </div>
-      </div>
+        <div className="skeleton-stack">
+          <span className="skeleton skeleton--kpi" />
+          <span className="skeleton skeleton--kpi" />
+        </div>
+      </section>
     );
   }
 
   if (!data || data.messagesSent.total === 0) {
     return (
-      <div className="space-y-3 shrink-0">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
-          <MessageSquare className="text-primary-500" size={20} />
-          Performance de Mensagens
-        </h2>
-        <div className="glass p-6 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary-100 dark:bg-primary-500/20 rounded-full">
-              <Inbox className="text-primary-500" size={24} />
-            </div>
-            <div>
-              <p className="font-medium text-slate-700 dark:text-slate-200">
-                Nenhuma mensagem registrada neste período
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                As métricas aparecerão quando mensagens forem enviadas pelo sistema.
-              </p>
-            </div>
-          </div>
+      <section className="panel">
+        <div className="panel__head">
+          <h3 className="panel__title title-sm">performance de mensagens</h3>
         </div>
-      </div>
+        <div className="state-empty">
+          <Inbox size={24} aria-hidden="true" />
+          <p className="state-empty__text">
+            nenhuma mensagem registrada neste período — as métricas aparecem quando mensagens forem enviadas pelo sistema.
+          </p>
+        </div>
+      </section>
     );
   }
 
@@ -224,17 +183,17 @@ export function MessagingMetricsSection({ period }: { period: PeriodFilter }) {
   const aiCount = (messagesSent.byType.ai ?? 0) + (messagesSent.byType.agent ?? 0);
 
   return (
-    <div className="space-y-3 shrink-0">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
-          <MessageSquare className="text-primary-500" size={20} />
-          Performance de Mensagens
-        </h2>
+    <section className="panel">
+      <div className="panel__head">
+        <h3 className="panel__title title-sm">performance de mensagens</h3>
+        <span className="spacer" />
         {members.length > 1 && (
           <select
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
-            className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="input"
+            style={{ width: 'auto' }}
+            aria-label="Filtrar por vendedor"
           >
             <option value="all">Todos os vendedores</option>
             {members.map((m) => (
@@ -246,47 +205,41 @@ export function MessagingMetricsSection({ period }: { period: PeriodFilter }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="kpi-grid">
         <MetricCard
           icon={Send}
-          label="Mensagens Enviadas"
+          label="mensagens enviadas"
           value={messagesSent.total}
           subtext={`${humanCount} humanos, ${aiCount} IA`}
-          color="primary"
         />
 
         <MetricCard
           icon={UserPlus}
-          label="Novos Contatos"
+          label="novos contatos"
           value={contacts.new}
           subtext={`${contacts.followUp} follow-ups`}
-          color="blue"
         />
 
         <MetricCard
           icon={Clock}
-          label="First Response Time"
+          label="1ª resposta"
           value={formatSeconds(sla.avgFirstResponseSeconds)}
           subtext={`${sla.conversationsWithFRT} conversas medidas`}
-          color="amber"
         />
 
         <MetricCard
           icon={CheckCircle}
-          label="Taxa de Resposta"
+          label="taxa de resposta"
           value={`${responseRate.rate}%`}
           subtext={`${responseRate.responded} de ${responseRate.total} conversas`}
-          color="green"
         />
       </div>
 
       {/* Sender Distribution */}
-      <div className="glass p-5 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">
-          Distribuição por Remetente
-        </h3>
+      <div style={{ marginTop: 'var(--space-3)' }}>
+        <p className="meta" style={{ marginBottom: 'var(--space-2)' }}>distribuição por remetente</p>
         <SenderDistributionBar byType={messagesSent.byType} total={messagesSent.total} />
       </div>
-    </div>
+    </section>
   );
 }

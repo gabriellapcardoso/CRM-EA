@@ -22,85 +22,46 @@ type StatusLevel = 'unknown' | 'partial' | 'complete';
 interface StatusConfig {
   level: StatusLevel;
   label: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
+  /** Classe `.status-chip--*` do redesign 2026-08. */
+  chip: string;
 }
 
 /**
  * Get status configuration based on status string.
+ *
+ * Redesign 2026-08: as 4 paletas ad-hoc (verde/âmbar/vermelho/azul) foram
+ * mapeadas para os `.status-chip--*` do handoff — não há outras cores de
+ * estado no design system.
  */
 function getStatusConfig(status: string): StatusConfig {
   switch (status) {
     case 'confirmed':
     case 'validated':
-      return {
-        level: 'complete',
-        label: 'Confirmado',
-        color: 'text-green-600 dark:text-green-400',
-        bgColor: 'bg-green-50 dark:bg-green-500/10',
-        borderColor: 'border-green-200 dark:border-green-500/20',
-      };
+      return { level: 'complete', label: 'confirmado', chip: 'status-chip--on' };
     case 'mentioned':
     case 'expressed':
-      return {
-        level: 'partial',
-        label: 'Mencionado',
-        color: 'text-amber-600 dark:text-amber-400',
-        bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-        borderColor: 'border-amber-200 dark:border-amber-500/20',
-      };
+      return { level: 'partial', label: 'mencionado', chip: 'status-chip--warn' };
     case 'identified':
-      return {
-        level: 'partial',
-        label: 'Identificado',
-        color: 'text-amber-600 dark:text-amber-400',
-        bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-        borderColor: 'border-amber-200 dark:border-amber-500/20',
-      };
+      return { level: 'partial', label: 'identificado', chip: 'status-chip--warn' };
     case 'negotiating':
-      return {
-        level: 'partial',
-        label: 'Em negociação',
-        color: 'text-amber-600 dark:text-amber-400',
-        bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-        borderColor: 'border-amber-200 dark:border-amber-500/20',
-      };
+      return { level: 'partial', label: 'em negociação', chip: 'status-chip--warn' };
     case 'urgent':
-      return {
-        level: 'complete',
-        label: 'Urgente',
-        color: 'text-red-600 dark:text-red-400',
-        bgColor: 'bg-red-50 dark:bg-red-500/10',
-        borderColor: 'border-red-200 dark:border-red-500/20',
-      };
+      return { level: 'complete', label: 'urgente', chip: 'status-chip--off' };
     case 'flexible':
-      return {
-        level: 'partial',
-        label: 'Flexível',
-        color: 'text-blue-600 dark:text-blue-400',
-        bgColor: 'bg-blue-50 dark:bg-blue-500/10',
-        borderColor: 'border-blue-200 dark:border-blue-500/20',
-      };
+      return { level: 'partial', label: 'flexível', chip: 'status-chip--ia' };
     default:
-      return {
-        level: 'unknown',
-        label: 'Desconhecido',
-        color: 'text-slate-400 dark:text-slate-500',
-        bgColor: 'bg-slate-50 dark:bg-slate-800/50',
-        borderColor: 'border-slate-200 dark:border-slate-700',
-      };
+      return { level: 'unknown', label: 'desconhecido', chip: 'status-chip--muted' };
   }
 }
 
 function StatusIcon({ level }: { level: StatusLevel }) {
   switch (level) {
     case 'complete':
-      return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      return <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--success)' }} aria-hidden="true" />;
     case 'partial':
-      return <AlertCircle className="w-4 h-4 text-amber-500" />;
+      return <AlertCircle className="w-4 h-4" style={{ color: 'var(--warning)' }} aria-hidden="true" />;
     default:
-      return <HelpCircle className="w-4 h-4 text-slate-400" />;
+      return <HelpCircle className="w-4 h-4" style={{ color: 'var(--text-faint)' }} aria-hidden="true" />;
   }
 }
 
@@ -116,48 +77,23 @@ function BANTItem({ icon, title, status, value, notes }: BANTItemProps) {
   const config = getStatusConfig(status);
 
   return (
-    <div
-      className={cn(
-        'p-4 rounded-xl border transition-colors',
-        config.bgColor,
-        config.borderColor
-      )}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className={cn('p-1.5 rounded-lg', config.bgColor, config.color)}>
+    <div className="card-deal" style={{ borderLeftColor: 'var(--stage-proposta)' }}>
+      <div className="card-deal__head">
+        <h4 className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true" style={{ color: 'var(--purple-600)' }}>
             {icon}
-          </div>
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            {title}
           </span>
-        </div>
+          {title}
+        </h4>
         <StatusIcon level={config.level} />
       </div>
 
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'text-xs font-medium px-2 py-0.5 rounded-full',
-              config.bgColor,
-              config.color
-            )}
-          >
-            {config.label}
-          </span>
-          {value && (
-            <span className="text-sm font-bold text-slate-900 dark:text-white">
-              {value}
-            </span>
-          )}
-        </div>
-        {notes && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-            {notes}
-          </p>
-        )}
+      <div className="chip-row">
+        <span className={`status-chip ${config.chip}`}>{config.label}</span>
+        {value && <span className="card-deal__value num">{value}</span>}
       </div>
+
+      {notes && <p className="meta line-clamp-2">{notes}</p>}
     </div>
   );
 }

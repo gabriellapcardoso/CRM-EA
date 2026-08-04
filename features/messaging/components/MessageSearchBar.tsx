@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X, Loader2 } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useSearchMessagesQuery } from '@/lib/query/hooks/useSearchMessagesQuery';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -45,57 +45,64 @@ export function MessageSearchBar({
   }, []);
 
   return (
-    <div className="border-b border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900">
-      <div className="flex items-center gap-2 px-4 py-2">
-        <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+    <div
+      style={{
+        background: 'var(--surface-card)',
+        borderBottom: '1px solid var(--border-subtle)',
+        padding: 'var(--space-2) 18px',
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <Search className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+        <label className="sr-only" htmlFor="message-search">Buscar nas mensagens</label>
         <input
           ref={inputRef}
-          type="text"
+          id="message-search"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar nas mensagens..."
-          className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+          placeholder="buscar nas mensagens…"
+          className="input"
         />
-        {isLoading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded"
-        >
-          <X className="w-4 h-4" />
+        {isLoading && <span className="spinner" aria-hidden="true" />}
+        <button type="button" onClick={onClose} className="btn btn--quiet" aria-label="Fechar busca">
+          <X className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
       {/* Results dropdown */}
       {query.length >= 2 && results && results.length > 0 && (
-        <div className="max-h-64 overflow-y-auto border-t border-slate-100 dark:border-white/5">
+        <ul className="conv-list" style={{ maxHeight: 256, padding: 0, marginTop: 'var(--space-2)' }}>
           {results.map((msg) => (
-            <button
-              key={msg.id}
-              type="button"
-              onClick={() => onResultClick?.(msg.id)}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-400">
-                  {msg.sender_name || (msg.direction === 'inbound' ? 'Contato' : 'Você')}
+            <li key={msg.id}>
+              <button
+                type="button"
+                onClick={() => onResultClick?.(msg.id)}
+                className="card-conv w-full text-left"
+              >
+                <span className="card-conv__body">
+                  <span className="card-conv__top">
+                    <span className="card-conv__name">
+                      {msg.sender_name || (msg.direction === 'inbound' ? 'Contato' : 'Você')}
+                    </span>
+                    <span className="card-conv__time">
+                      {format(new Date(msg.created_at), 'd MMM, HH:mm', { locale: ptBR })}
+                    </span>
+                  </span>
+                  <span className="card-conv__preview">
+                    {highlightMatch(msg.content?.text || '', query)}
+                  </span>
                 </span>
-                <span className="text-xs text-slate-400">
-                  {format(new Date(msg.created_at), "d MMM, HH:mm", { locale: ptBR })}
-                </span>
-              </div>
-              <p className="text-sm text-slate-700 dark:text-slate-300 truncate mt-0.5">
-                {highlightMatch(msg.content?.text || '', query)}
-              </p>
-            </button>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {query.length >= 2 && results && results.length === 0 && !isLoading && (
-        <div className="px-4 py-3 text-center text-xs text-slate-400 border-t border-slate-100 dark:border-white/5">
-          Nenhuma mensagem encontrada
-        </div>
+        <p className="meta" style={{ textAlign: 'center', paddingTop: 'var(--space-2)' }}>
+          nenhuma mensagem encontrada
+        </p>
       )}
     </div>
   );
@@ -113,7 +120,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return (
     <>
       {before}
-      <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-inherit rounded-sm px-0.5">
+      <mark style={{ background: 'var(--hitl-surface)', color: 'inherit', borderRadius: 3, padding: '0 2px' }}>
         {match}
       </mark>
       {after}

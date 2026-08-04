@@ -1,14 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
-import {
-  MessageSquare,
-  Instagram,
-  Mail,
-  Phone,
-  Send,
-  Mic,
-} from 'lucide-react';
+import { MessageSquare, Instagram, Mail, Phone, Send, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChannelType } from '@/lib/messaging/types';
 
@@ -19,62 +12,41 @@ interface ChannelIndicatorProps {
   className?: string;
 }
 
+/**
+ * Vocabulário do redesign: `.badge-channel` (quadradinho colorido com a inicial
+ * do canal). O handoff só especifica WhatsApp/e-mail/Instagram; os demais canais
+ * reais do app (sms/telegram/voz) reusam a mesma forma com cor via token inline.
+ */
 export const CHANNEL_CONFIG: Record<
   ChannelType,
   {
+    /** Inicial exibida dentro do badge */
+    letter: string;
+    /** Modificador do handoff, quando existe */
+    modifier?: 'whatsapp' | 'email' | 'instagram';
+    /** Cor de fundo (só para canais sem modificador no handoff) */
+    color?: string;
+    /**
+     * Ícone do canal. O `.badge-channel` do redesign usa a inicial, não o ícone,
+     * mas telas fora do escopo do redesign (ex.: `Modals/ChannelSetupModal`)
+     * ainda desenham o canal com ícone — por isso o campo continua aqui.
+     */
     icon: React.FC<{ className?: string }>;
-    color: string;
     label: string;
   }
 > = {
-  whatsapp: {
-    icon: MessageSquare,
-    color: 'bg-green-500',
-    label: 'WhatsApp',
-  },
-  instagram: {
-    icon: Instagram,
-    color: 'bg-gradient-to-br from-purple-500 to-pink-500',
-    label: 'Instagram',
-  },
-  email: {
-    icon: Mail,
-    color: 'bg-blue-500',
-    label: 'Email',
-  },
-  sms: {
-    icon: Phone,
-    color: 'bg-yellow-500',
-    label: 'SMS',
-  },
-  telegram: {
-    icon: Send,
-    color: 'bg-sky-500',
-    label: 'Telegram',
-  },
-  voice: {
-    icon: Mic,
-    color: 'bg-slate-500',
-    label: 'Voz',
-  },
+  whatsapp: { letter: 'W', modifier: 'whatsapp', icon: MessageSquare, label: 'WhatsApp' },
+  instagram: { letter: 'I', modifier: 'instagram', icon: Instagram, label: 'Instagram' },
+  email: { letter: 'E', modifier: 'email', icon: Mail, label: 'E-mail' },
+  sms: { letter: 'S', color: 'var(--ink-500)', icon: Phone, label: 'SMS' },
+  telegram: { letter: 'T', color: 'var(--purple-500)', icon: Send, label: 'Telegram' },
+  voice: { letter: 'V', color: 'var(--ink-700)', icon: Mic, label: 'Voz' },
 };
 
-const SIZE_CONFIG = {
-  sm: {
-    container: 'w-4 h-4',
-    icon: 'w-2.5 h-2.5',
-    text: 'text-xs',
-  },
-  md: {
-    container: 'w-6 h-6',
-    icon: 'w-3.5 h-3.5',
-    text: 'text-sm',
-  },
-  lg: {
-    container: 'w-8 h-8',
-    icon: 'w-4 h-4',
-    text: 'text-base',
-  },
+const SIZE_CLASS: Record<'sm' | 'md' | 'lg', string> = {
+  sm: 'badge-channel--sm',
+  md: '',
+  lg: 'badge-channel--lg',
 };
 
 export const ChannelIndicator = memo(function ChannelIndicator({
@@ -84,31 +56,32 @@ export const ChannelIndicator = memo(function ChannelIndicator({
   className,
 }: ChannelIndicatorProps) {
   const config = CHANNEL_CONFIG[type] || CHANNEL_CONFIG.whatsapp;
-  const sizeConfig = SIZE_CONFIG[size];
-  const Icon = config.icon;
+
+  const badge = (
+    <span
+      className={cn(
+        'badge-channel',
+        config.modifier && `badge-channel--${config.modifier}`,
+        SIZE_CLASS[size],
+        !showLabel && className
+      )}
+      style={config.color ? { background: config.color } : undefined}
+      title={config.label}
+      aria-hidden={showLabel ? true : undefined}
+      aria-label={showLabel ? undefined : config.label}
+      role={showLabel ? undefined : 'img'}
+    >
+      {config.letter}
+    </span>
+  );
+
+  if (!showLabel) return badge;
 
   return (
-    <div className={cn('flex items-center gap-1.5', className)}>
-      <div
-        className={cn(
-          'rounded-full flex items-center justify-center',
-          config.color,
-          sizeConfig.container
-        )}
-      >
-        <Icon className={cn('text-white', sizeConfig.icon)} />
-      </div>
-      {showLabel && (
-        <span
-          className={cn(
-            'font-medium text-slate-700 dark:text-slate-300',
-            sizeConfig.text
-          )}
-        >
-          {config.label}
-        </span>
-      )}
-    </div>
+    <span className={cn('inline-flex items-center gap-1.5', className)}>
+      {badge}
+      <span className="message__channel">{config.label}</span>
+    </span>
   );
 });
 

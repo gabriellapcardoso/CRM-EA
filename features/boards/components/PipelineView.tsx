@@ -13,6 +13,7 @@ import { DealView, CustomFieldDefinition, Board, BoardStage } from '@/types';
 import { ExportTemplateModal } from './Modals/ExportTemplateModal';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/PageLoader';
+import { usePendingAdvanceCountQuery } from '@/lib/query/hooks/usePendingAdvancesQuery';
 
 interface PipelineViewProps {
   // Boards
@@ -246,6 +247,8 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
+  // HITL: contagem real de sugestões da IA aguardando aprovação humana.
+  const { data: pendingCount = 0 } = usePendingAdvanceCountQuery();
 
   const handleUpdateStage = (updatedStage: BoardStage) => {
     if (!activeBoard) return;
@@ -262,7 +265,12 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    /**
+     * Redesign 2026-08 — Negociação é FULL-BLEED: `.board-toolbar` + `.board`
+     * direto dentro de `.screen` (sem `.screen__inner`). Ver REDESIGN-CRM.md,
+     * seção "Convenção de wrapper de página".
+     */
+    <div className="flex h-full min-h-full flex-col">
       {boardCreateOverlay && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
@@ -289,23 +297,18 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
         </div>
       )}
       {!activeBoard ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-          <div className="w-24 h-24 bg-primary-50 dark:bg-primary-900/20 rounded-full flex items-center justify-center mb-6">
-            <span className="text-4xl">🚀</span>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-            Bem-vindo ao seu CRM
-          </h2>
-          <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8">
+        <div className="state-empty" style={{ flex: 1, justifyContent: 'center' }}>
+          <p className="eyebrow">negociação</p>
+          <h2 className="state-empty__title">bem-vinda ao seu CRM</h2>
+          <p className="state-empty__text">
             Você ainda não tem nenhum board criado. Comece criando seu primeiro fluxo de trabalho
             para organizar seus negócios.
           </p>
-          <button
-            onClick={() => setIsWizardOpen(true)}
-            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-primary-600/20"
-          >
-            ✨ Criar meu primeiro Board
-          </button>
+          <p className="state-empty__actions">
+            <button type="button" className="btn btn--primary btn--lg" onClick={() => setIsWizardOpen(true)}>
+              criar meu primeiro board
+            </button>
+          </p>
         </div>
       ) : (
         <>
@@ -326,27 +329,33 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
             onNewDeal={() => setIsCreateModalOpen(true)}
+            visibleDealCount={filteredDeals.length}
+            pendingCount={pendingCount}
           />
 
-          <BoardStrategyHeader board={activeBoard} />
+          <div style={{ padding: '12px 24px 0', background: 'var(--surface-card)' }}>
+            <BoardStrategyHeader board={activeBoard} />
+          </div>
 
-          <div className="flex-1 overflow-hidden">
-            {viewMode === 'kanban' ? (
-              <KanbanBoard
-                stages={activeBoard.stages}
-                filteredDeals={filteredDeals}
-                draggingId={draggingId}
-                handleDragStart={handleDragStart}
-                handleDragOver={handleDragOver}
-                handleDrop={handleDrop}
-                setSelectedDealId={setSelectedDealId}
-                openActivityMenuId={openActivityMenuId}
-                setOpenActivityMenuId={setOpenActivityMenuId}
-                handleQuickAddActivity={handleQuickAddActivity}
-                setLastMouseDownDealId={setLastMouseDownDealId}
-                onMoveDealToStage={handleMoveDealToStage}
-              />
-            ) : (
+          {viewMode === 'kanban' ? (
+            <KanbanBoard
+              stages={activeBoard.stages}
+              filteredDeals={filteredDeals}
+              draggingId={draggingId}
+              handleDragStart={handleDragStart}
+              handleDragOver={handleDragOver}
+              handleDrop={handleDrop}
+              setSelectedDealId={setSelectedDealId}
+              openActivityMenuId={openActivityMenuId}
+              setOpenActivityMenuId={setOpenActivityMenuId}
+              handleQuickAddActivity={handleQuickAddActivity}
+              setLastMouseDownDealId={setLastMouseDownDealId}
+              onMoveDealToStage={handleMoveDealToStage}
+              board={activeBoard}
+              onNewDeal={() => setIsCreateModalOpen(true)}
+            />
+          ) : (
+            <div className="table-list__scroll" style={{ background: 'var(--surface-subtle)' }}>
               <KanbanList
                 stages={activeBoard.stages}
                 filteredDeals={filteredDeals}
@@ -356,9 +365,10 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
                 setOpenActivityMenuId={setOpenActivityMenuId}
                 handleQuickAddActivity={handleQuickAddActivity}
                 onMoveDealToStage={handleMoveDealToStage}
+                board={activeBoard}
               />
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
 

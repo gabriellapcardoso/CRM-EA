@@ -48,13 +48,16 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
  * 
  * Gerencia preferência de tema e aplica classe 'dark' ao documento.
  * O tema é persistido em localStorage com a chave 'crm_dark_mode'.
- * O padrão é modo escuro (true).
- * 
+ * O padrão é modo claro (false) — redesign 2026-08 adota um sistema
+ * de design light-only (ver REDESIGN-CRM.md); o toggle foi removido
+ * da topbar, mas o mecanismo continua disponível para widgets legados
+ * que ainda não migraram.
+ *
  * @param {Object} props - Props do componente
  * @param {ReactNode} props.children - Componentes filhos
  */
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [darkMode, setDarkMode] = usePersistedState<boolean>('crm_dark_mode', true);
+  const [darkMode, setDarkMode] = usePersistedState<boolean>('crm_dark_mode', false);
 
   useEffect(() => {
     if (darkMode) {

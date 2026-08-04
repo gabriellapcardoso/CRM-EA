@@ -1,15 +1,17 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import Image from 'next/image';
-import { DealView, CustomFieldDefinition, BoardStage } from '@/types';
+import { DealView, CustomFieldDefinition, BoardStage, Board } from '@/types';
 import { ActivityStatusIcon } from './ActivityStatusIcon';
 import { getActivityStatus } from '@/features/boards/hooks/useBoardsController';
 import { MoveToStageModal } from '../Modals/MoveToStageModal';
+import { type StageGroup, buildStageGroupMap } from '@/features/boards/stageGroups';
+import { formatCurrencyBRL, getInitials } from '@/features/boards/cardFormat';
 
 type QuickAddType = 'CALL' | 'MEETING' | 'EMAIL';
 
 type KanbanListRowProps = {
   deal: DealView;
   stageLabel: string;
+  stageGroup: StageGroup;
   stages: BoardStage[];
   customFieldDefinitions: CustomFieldDefinition[];
   isMenuOpen: boolean;
@@ -27,6 +29,7 @@ type KanbanListRowProps = {
 const KanbanListRow = React.memo(function KanbanListRow({
   deal,
   stageLabel,
+  stageGroup,
   stages,
   customFieldDefinitions,
   isMenuOpen,
@@ -40,25 +43,29 @@ const KanbanListRow = React.memo(function KanbanListRow({
 
   return (
     <>
-      <tr
-        onClick={() => onSelect(deal.id)}
-        className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors cursor-pointer group"
-      >
-        <td className="px-6 py-3 text-center">
-        <ActivityStatusIcon
-          status={getActivityStatus(deal)}
-          type={deal.nextActivity?.type}
-          dealId={deal.id}
-          dealTitle={deal.title}
-          isOpen={isMenuOpen}
-          onToggle={(e) => onToggleMenu(e, deal.id)}
-          onQuickAdd={(type) => onQuickAdd(deal.id, type, deal.title)}
-          onRequestClose={onCloseMenu}
-        />
+      <tr onClick={() => onSelect(deal.id)} style={{ cursor: 'pointer' }}>
+        <td style={{ width: 34 }}>
+          <ActivityStatusIcon
+            status={getActivityStatus(deal)}
+            type={deal.nextActivity?.type}
+            dealId={deal.id}
+            dealTitle={deal.title}
+            isOpen={isMenuOpen}
+            onToggle={(e) => onToggleMenu(e, deal.id)}
+            onQuickAdd={(type) => onQuickAdd(deal.id, type, deal.title)}
+            onRequestClose={onCloseMenu}
+          />
         </td>
-        <td className="px-6 py-3 font-bold text-slate-900 dark:text-white">{deal.title}</td>
-        <td className="px-6 py-3 text-slate-600 dark:text-slate-300">{deal.companyName}</td>
-        <td className="px-6 py-3">
+        <td>
+          <span className="cell-name">
+            <span className="avatar avatar--sm avatar--muted" aria-hidden="true">
+              {getInitials(deal.contactName || deal.companyName || deal.title)}
+            </span>
+            <span className="cell-name__text">{deal.title}</span>
+          </span>
+        </td>
+        <td className="muted">{deal.companyName}</td>
+        <td>
           {onMoveDealToStage ? (
             <button
               type="button"
@@ -66,44 +73,29 @@ const KanbanListRow = React.memo(function KanbanListRow({
                 e.stopPropagation();
                 setMoveToStageOpen(true);
               }}
-              className={`text-xs font-bold px-2 py-1 rounded focus-visible-ring ${
-                deal.isWon
-                  ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300'
-                  : deal.isLost
-                    ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
+              className={`badge-stage badge-stage--${stageGroup}`}
+              style={{ border: 0 }}
               aria-label="Mover estágio"
               title="Mover estágio"
             >
               {stageLabel}
             </button>
           ) : (
-            <span
-              className={`text-xs font-bold px-2 py-1 rounded ${
-                deal.isWon
-                  ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300'
-                  : deal.isLost
-                    ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-              } `}
-            >
-              {stageLabel}
-            </span>
+            <span className={`badge-stage badge-stage--${stageGroup}`}>{stageLabel}</span>
           )}
         </td>
-        <td className="px-6 py-3 font-mono text-slate-700 dark:text-slate-200">
-          ${deal.value.toLocaleString()}
-        </td>
-        <td className="px-6 py-3">
-          <div className="flex items-center gap-2">
-            <Image src={deal.owner.avatar} alt="" width={20} height={20} className="w-5 h-5 rounded-full" unoptimized />
-            <span className="text-xs text-slate-500">{deal.owner.name}</span>
-          </div>
+        <td className="cell-num num">{formatCurrencyBRL(deal.value)}</td>
+        <td>
+          <span className="cell-name">
+            <span className="avatar avatar--sm" aria-hidden="true">
+              {getInitials(deal.owner?.name)}
+            </span>
+            <span className="muted">{deal.owner?.name}</span>
+          </span>
         </td>
         {/* Custom Fields Cells */}
         {customFieldDefinitions.map((field) => (
-          <td key={field.id} className="px-6 py-3 text-right text-slate-600 dark:text-slate-300 text-sm">
+          <td key={field.id} className="cell-num">
             {deal.customFields?.[field.key] || '-'}
           </td>
         ))}
@@ -140,6 +132,8 @@ interface KanbanListProps {
   ) => void;
   /** Keyboard-accessible handler to move a deal to a new stage */
   onMoveDealToStage?: (dealId: string, newStageId: string) => void;
+  /** Board ativo — resolve os estágios de ganho/perda no mapa de cor. */
+  board?: Board | null;
 }
 
 /**
@@ -173,6 +167,7 @@ export const KanbanList: React.FC<KanbanListProps> = ({
   setOpenActivityMenuId,
   handleQuickAddActivity,
   onMoveDealToStage,
+  board = null,
 }) => {
   // Performance: evitar `find` por linha (O(N*S)) ao renderizar tabela.
   const stageLabelById = useMemo(() => {
@@ -182,6 +177,9 @@ export const KanbanList: React.FC<KanbanListProps> = ({
     }
     return map;
   }, [stages]);
+
+  // Redesign: 14 estágios reais → 5 grupos de cor do handoff.
+  const stageGroups = useMemo(() => buildStageGroupMap(stages, board), [stages, board]);
 
   // Performance: callbacks estáveis evitam re-render de subcomponentes memoizados.
   const handleRowClick = useCallback(
@@ -209,57 +207,47 @@ export const KanbanList: React.FC<KanbanListProps> = ({
   );
 
   return (
-    <div className="h-full overflow-hidden glass rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div className="h-full overflow-auto">
-        <table className="w-full text-left text-sm border-collapse">
-          <thead className="bg-slate-50/80 dark:bg-white/5 border-b border-slate-200 dark:border-white/5 sticky top-0 z-10 backdrop-blur-sm">
-            <tr>
-              <th className="px-6 py-3 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider w-10"></th>
-              <th className="px-6 py-3 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Negócio
-              </th>
-              <th className="px-6 py-3 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Empresa
-              </th>
-              <th className="px-6 py-3 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Estágio
-              </th>
-              <th className="px-6 py-3 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Valor
-              </th>
-              <th className="px-6 py-3 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Dono
-              </th>
-              {/* Custom Fields Columns */}
-              {customFieldDefinitions.map(field => (
-                <th
-                  key={field.id}
-                  className="px-6 py-3 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right"
-                >
-                  {field.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-            {filteredDeals.map((deal) => (
-              <KanbanListRow
-                key={deal.id}
-                deal={deal}
-                stageLabel={stageLabelById.get(deal.status) || deal.status}
-                stages={stages}
-                customFieldDefinitions={customFieldDefinitions}
-                isMenuOpen={openActivityMenuId === deal.id}
-                onSelect={handleRowClick}
-                onToggleMenu={handleToggleMenu}
-                onQuickAdd={handleQuickAdd}
-                onCloseMenu={handleCloseMenu}
-                onMoveDealToStage={onMoveDealToStage}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <table className="table-list">
+      <thead>
+        <tr>
+          <th aria-label="Próxima atividade" />
+          <th>negócio</th>
+          <th>empresa</th>
+          <th>estágio</th>
+          <th style={{ textAlign: 'right' }}>valor</th>
+          <th>dono</th>
+          {/* Custom Fields Columns */}
+          {customFieldDefinitions.map(field => (
+            <th key={field.id} style={{ textAlign: 'right' }}>
+              {field.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {filteredDeals.map((deal) => (
+          <KanbanListRow
+            key={deal.id}
+            deal={deal}
+            stageLabel={stageLabelById.get(deal.status) || deal.status}
+            stageGroup={
+              deal.isLost
+                ? 'perdido'
+                : deal.isWon
+                  ? 'ganho'
+                  : (stageGroups.get(deal.status) ?? 'frio')
+            }
+            stages={stages}
+            customFieldDefinitions={customFieldDefinitions}
+            isMenuOpen={openActivityMenuId === deal.id}
+            onSelect={handleRowClick}
+            onToggleMenu={handleToggleMenu}
+            onQuickAdd={handleQuickAdd}
+            onCloseMenu={handleCloseMenu}
+            onMoveDealToStage={onMoveDealToStage}
+          />
+        ))}
+      </tbody>
+    </table>
   );
 };

@@ -77,37 +77,35 @@ export const WhatsAppSafetySection: React.FC = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5" />
-          Segurança do canal WhatsApp
-        </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Kill switch de emergência e e-mail de alerta do health-check da sessão Evolution.
-        </p>
-      </div>
+    <section className="panel">
+      <h2 className="panel__title title-md" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <ShieldAlert className="w-4 h-4" />
+        segurança do canal whatsapp
+      </h2>
+      <p className="meta">
+        Kill switch de emergência e e-mail de alerta do health-check da sessão Evolution.
+      </p>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-900 dark:text-white">Kill switch</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Desliga todo envio de WhatsApp da organização imediatamente.
-          </p>
-        </div>
-        <Switch
-          checked={state.killSwitchActive}
-          onCheckedChange={handleToggleKillSwitch}
-          disabled={isLoading || isSaving}
-          aria-label="Kill switch do canal WhatsApp"
-        />
-      </div>
+      <ul className="panel__body" style={{ marginTop: 'var(--space-3)' }}>
+        <li className="setting-row">
+          <span className="setting-row__text">
+            <span className="setting-row__title">Kill switch</span>
+            <span className="setting-row__desc">Desliga todo envio de WhatsApp da organização imediatamente.</span>
+          </span>
+          <Switch
+            checked={state.killSwitchActive}
+            onCheckedChange={handleToggleKillSwitch}
+            disabled={isLoading || isSaving}
+            aria-label="Kill switch do canal WhatsApp"
+          />
+        </li>
+      </ul>
 
-      <div className="space-y-2">
-        <label htmlFor="whatsapp-alert-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      <div className="field" style={{ marginTop: 'var(--space-3)', maxWidth: 420 }}>
+        <label htmlFor="whatsapp-alert-email" className="field__label">
           E-mail de alerta
         </label>
-        <div className="flex gap-2 max-w-md">
+        <div className="chip-row" style={{ gap: 8 }}>
           <input
             id="whatsapp-alert-email"
             type="email"
@@ -115,19 +113,20 @@ export const WhatsAppSafetySection: React.FC = () => {
             onChange={(e) => setState((prev) => ({ ...prev, alertEmail: e.target.value }))}
             placeholder="ops@aaagencia.com.br"
             disabled={isLoading || isSaving}
-            className="w-full px-4 py-2 bg-white dark:bg-dark-bg border border-slate-300 dark:border-dark-border rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="input"
+            style={{ flex: 1 }}
           />
           <button
             type="button"
             onClick={handleSaveEmail}
             disabled={isLoading || isSaving}
-            className="px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn--primary"
           >
             Salvar
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

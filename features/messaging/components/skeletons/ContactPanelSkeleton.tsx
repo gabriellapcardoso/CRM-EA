@@ -7,85 +7,34 @@ interface ContactPanelSkeletonProps {
   className?: string;
 }
 
-function SkeletonPulse({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        'bg-slate-200 dark:bg-white/10 rounded animate-pulse',
-        className
-      )}
-    />
-  );
-}
-
 export const ContactPanelSkeleton = memo(function ContactPanelSkeleton({ className }: ContactPanelSkeletonProps) {
   return (
-    <div className={cn('flex flex-col h-full', className)}>
-      {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-white/10">
-        {/* Avatar & Name */}
+    <aside className={cn('context-pane', className)} aria-label="Carregando contexto da conversa">
+      <div className="detail-pane__head">
         <div className="flex items-start gap-3">
-          <SkeletonPulse className="w-14 h-14 rounded-full flex-shrink-0" />
-          <div className="flex-1 space-y-2">
-            <SkeletonPulse className="h-5 w-32" />
-            <SkeletonPulse className="h-4 w-24" />
-            <div className="flex gap-2 mt-2">
-              <SkeletonPulse className="h-5 w-16 rounded-full" />
-              <SkeletonPulse className="h-5 w-20 rounded-full" />
-            </div>
+          <span className="skeleton" style={{ width: 44, height: 44, borderRadius: '50%', flex: 'none' }} />
+          <div className="flex-1 skeleton-stack">
+            <span className="skeleton" style={{ display: 'block', height: 18, width: '70%' }} />
+            <span className="skeleton" style={{ display: 'block', height: 13, width: '50%' }} />
           </div>
         </div>
-
-        {/* Quick actions */}
-        <div className="flex items-center gap-2 mt-4">
-          <SkeletonPulse className="flex-1 h-9 rounded-lg" />
-          <SkeletonPulse className="flex-1 h-9 rounded-lg" />
+        <div className="flex items-center gap-2" style={{ marginTop: 'var(--space-3)' }}>
+          <span className="skeleton" style={{ flex: 1, height: 34, borderRadius: 'var(--radius-button)' }} />
+          <span className="skeleton" style={{ flex: 1, height: 34, borderRadius: 'var(--radius-button)' }} />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden p-4 space-y-6">
-        {/* Section 1 */}
-        <div className="space-y-3">
-          <SkeletonPulse className="h-3 w-24" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-start gap-3">
-                <SkeletonPulse className="w-4 h-4 rounded flex-shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <SkeletonPulse className="h-3 w-16" />
-                  <SkeletonPulse className="h-4 w-28" />
-                </div>
-              </div>
+      {[0, 1].map((section) => (
+        <section key={section} className="detail-pane__section">
+          <span className="skeleton" style={{ display: 'block', height: 11, width: 90 }} />
+          <div className="skeleton-stack" style={{ marginTop: 'var(--space-2)' }}>
+            {[0, 1, 2].map((row) => (
+              <span key={row} className="skeleton" style={{ display: 'block', height: 15 }} />
             ))}
           </div>
-        </div>
-
-        {/* Section 2 */}
-        <div className="space-y-3">
-          <SkeletonPulse className="h-3 w-20" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-start gap-3">
-                <SkeletonPulse className="w-4 h-4 rounded flex-shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <SkeletonPulse className="h-3 w-20" />
-                  <SkeletonPulse className="h-4 w-36" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Section 3 */}
-        <div className="space-y-3">
-          <SkeletonPulse className="h-3 w-12" />
-          <div className="flex gap-1.5">
-            <SkeletonPulse className="h-5 w-20 rounded-full" />
-          </div>
-        </div>
-      </div>
-    </div>
+        </section>
+      ))}
+    </aside>
   );
 });
 

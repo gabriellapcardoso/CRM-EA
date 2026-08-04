@@ -1,5 +1,30 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Múltiplos agentes em paralelo na mesma árvore de trabalho: `git stash`/checkout de um pode reverter o progresso de outro (2026-08-04)
+
+Redesign completo da UI (ver `CHANGELOG.md` e `REDESIGN-CRM.md`) rodou com 6
+agentes em background trabalhando em paralelo, cada um num conjunto de
+arquivos diferente, mas todos no **mesmo working tree** (não em worktrees
+isoladas). No meio da execução, algo externo à sessão (provavelmente
+ferramenta de QA de outra sessão rodando ao mesmo tempo na mesma máquina) deu
+um `git stash`/`checkout` que reverteu temporariamente `app/globals.css` (a
+camada de CSS compartilhada por todos os 6 blocos) e deixou `features/**`
+aparentando estar limpo por alguns instantes. Um dos agentes detectou a
+inconsistência, viu que outro processo já tinha restaurado o stash antes dele,
+e confirmou depois via `git status`/diff que nada foi perdido — mas foi sorte
+de timing, não proteção real.
+
+**Como isso não repete**: ao orquestrar múltiplos agentes em paralelo que vão
+editar arquivos no mesmo repositório, ou (a) usar `isolation: "worktree"` por
+agente quando a ferramenta de orquestração suportar (evita colisão de
+verdade), ou (b) instruir explicitamente cada agente a **nunca** rodar
+`git checkout .`, `git stash`/`git stash pop`, `git reset --hard` ou qualquer
+comando destrutivo/de reversão enquanto outros agentes podem estar com
+mudanças não commitadas no mesmo working tree — só operações aditivas (Read/
+Edit/Write) até o orquestrador confirmar que é seguro. Vale sobretudo pra
+`app/globals.css`/arquivos de configuração compartilhados que vários blocos de
+trabalho tocam ao mesmo tempo.
+
 ## Estreitar `cancelQueries`/`invalidateQueries` de `.all` pra `.lists()`/predicate pode reabrir race condition se a mutation escreve em `detail(id)` (2026-08-04)
 
 Corrigindo a violação "invalidação de cache com `.all`" do `docs/audit-report.md`
@@ -56,9 +81,11 @@ Rodar `/qa` (ou qualquer teste em browser) neste projeto do zero, numa máquina/
 2. **`.env.local` sem Supabase configurado** trava o login com `"Supabase não configurado. Configure as variáveis de ambiente."` — mínimo pra login funcionar: `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (públicas, pegar via `mcp__plugin_supabase_supabase__get_project_url`/`get_publishable_keys`, projeto `zuuqcwxletrfmpcqagxc`). `SUPABASE_SECRET_KEY` (service role) não é obtível via MCP — precisa a fundadora colar manualmente pra exercitar caminhos que usam `createStaticAdminClient()` (ex: envio de mensagem de verdade via `ChannelRouterService`).
 3. **Nenhum usuário tem `role='admin'` nem `business_unit_members`** — sem isso, RLS de `messaging_conversations` bloqueia tudo (usuário vê "Nenhuma conversa aberta" mesmo com dados existindo). Pra testar mensageria como usuário não-admin, precisa de linha em `business_unit_members` pra alguma `business_unit_id`.
 
-## `rtk`/pnpm wrapper quebra `npx eslint` (2026-07-24)
+## `rtk`/pnpm wrapper quebra `npx eslint` (2026-07-24, reconfirmado 2026-08-04)
 
 O hook que intercepta comandos (`rtk`) reescreve `npx eslint ...` numa checagem de supply-chain do pnpm que falha com `[ERR_PNPM_IGNORED_BUILDS]` (builds nativos ignorados: `esbuild`, `sharp`, etc — não relacionado ao lint em si). **Bypass**: chamar o binário direto, `./node_modules/.bin/eslint --max-warnings 0 <arquivos>` — não passa pelo wrapper, funciona normal.
+
+**Atualização (2026-08-04, sessão de redesign com 6 agentes em paralelo)**: o mesmo problema aparece em **qualquer** `npx <bin>` nesse ambiente, não só `eslint` — `npx tsc`, `npx vitest`, `npx next build` também disparam o wrapper e falham do mesmo jeito. Bypass idêntico pros três: `./node_modules/.bin/tsc --noEmit`, `./node_modules/.bin/vitest run`, `./node_modules/.bin/next build`. Um dos agentes, tentando resolver o erro do wrapper, criou um `pnpm-workspace.yaml` na raiz do projeto com placeholders (`allowBuilds: {core-js: "set this to true or false", ...}`) — isso não é config real do projeto, é lixo gerado pela tentativa de responder ao prompt interativo do pnpm; **apagar se aparecer de novo**, nunca preencher os placeholders.
 
 ## Migrations locais podem não estar aplicadas no Supabase remoto (2026-07-25)
 

@@ -12,6 +12,10 @@ import { useToast } from '@/context/ToastContext';
 
 /**
  * Componente React `ActivitiesPage`.
+ *
+ * Redesenhado em 2026-08 (ver REDESIGN-CRM.md) a partir de `atividades(+carregando).html`:
+ * timeline agrupada por dia (`.timeline__group`/`.timeline__day` sticky). Página "padded"
+ * — raiz em `screen__inner screen__inner--wide`, como as demais telas dessa categoria.
  * @returns {Element} Retorna um valor do tipo `Element`.
  */
 export const ActivitiesPage: React.FC = () => {
@@ -34,6 +38,9 @@ export const ActivitiesPage: React.FC = () => {
         deals,
         contacts,
         companies,
+        isLoading,
+        isError,
+        refetchActivities,
         handleNewActivity,
         handleEditActivity,
         handleDeleteActivity,
@@ -75,7 +82,7 @@ export const ActivitiesPage: React.FC = () => {
     };
 
     return (
-        <div className="p-8 max-w-400 mx-auto">
+        <div className="screen__inner screen__inner--wide">
             <ActivitiesHeader
                 viewMode={viewMode}
                 setViewMode={setViewMode}
@@ -91,18 +98,42 @@ export const ActivitiesPage: React.FC = () => {
                         filterType={filterType}
                         setFilterType={setFilterType}
                     />
-                    <ActivitiesList
-                        activities={filteredActivities}
-                        deals={deals}
-                        contacts={contacts}
-                        companies={companies}
-                        onToggleComplete={handleToggleComplete}
-                        onEdit={handleEditActivity}
-                        onDelete={handleDeleteActivity}
-                        selectedActivities={selectedActivities}
-                        onSelectActivity={handleSelectActivity}
-                        onAddActivity={handleNewActivity}
-                    />
+
+                    {isError && (
+                        <p className="banner banner--error">
+                            <span className="dot" />
+                            <span className="banner__text">
+                                <strong className="banner__title">o histórico não carregou por completo.</strong>{' '}
+                                mostrando o que está em cache. a sincronização volta sozinha em instantes.
+                            </span>
+                            <span className="spacer" />
+                            <button type="button" onClick={() => refetchActivities()} className="btn btn--ghost">
+                                recarregar
+                            </button>
+                        </p>
+                    )}
+
+                    {isLoading ? (
+                        <div className="skeleton-stack">
+                            <span className="skeleton skeleton--card" />
+                            <span className="skeleton skeleton--card" />
+                            <span className="skeleton skeleton--card" />
+                            <span className="skeleton skeleton--card" />
+                        </div>
+                    ) : (
+                        <ActivitiesList
+                            activities={filteredActivities}
+                            deals={deals}
+                            contacts={contacts}
+                            companies={companies}
+                            onToggleComplete={handleToggleComplete}
+                            onEdit={handleEditActivity}
+                            onDelete={handleDeleteActivity}
+                            selectedActivities={selectedActivities}
+                            onSelectActivity={handleSelectActivity}
+                            onAddActivity={handleNewActivity}
+                        />
+                    )}
                 </>
             ) : (
                 <ActivitiesCalendar

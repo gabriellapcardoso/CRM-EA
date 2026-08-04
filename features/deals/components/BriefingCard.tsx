@@ -34,44 +34,51 @@ interface BriefingCardProps {
 }
 
 /**
- * Priority badge colors.
+ * Redesign 2026-08: prioridade usa `.tag`/`.tag--pink` e `.status-chip--*`
+ * (o handoff não tem escala própria de prioridade).
  */
 function getPriorityBadge(priority: 'high' | 'medium' | 'low') {
   switch (priority) {
     case 'high':
-      return 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400';
+      return 'status-chip status-chip--off';
     case 'medium':
-      return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400';
+      return 'status-chip status-chip--warn';
     case 'low':
-      return 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
+      return 'status-chip status-chip--muted';
   }
 }
 
 /**
- * Alert type colors and icons.
+ * Alertas: reaproveitam `.banner--error`/`.banner--info` + o lime do HITL para
+ * oportunidade, que é a única cor "positiva forte" do design system.
  */
 function getAlertConfig(type: 'warning' | 'opportunity' | 'risk') {
   switch (type) {
     case 'warning':
       return {
-        icon: <AlertTriangle className="w-4 h-4" />,
-        color: 'text-amber-600 dark:text-amber-400',
-        bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-        borderColor: 'border-amber-200 dark:border-amber-500/20',
+        icon: <AlertTriangle className="w-4 h-4" aria-hidden="true" />,
+        className: 'banner',
+        style: {
+          background: 'var(--warning-soft)',
+          border: '1px solid #ecd79a',
+          color: '#8a6200',
+        } as React.CSSProperties,
       };
     case 'opportunity':
       return {
-        icon: <Lightbulb className="w-4 h-4" />,
-        color: 'text-green-600 dark:text-green-400',
-        bgColor: 'bg-green-50 dark:bg-green-500/10',
-        borderColor: 'border-green-200 dark:border-green-500/20',
+        icon: <Lightbulb className="w-4 h-4" aria-hidden="true" />,
+        className: 'banner',
+        style: {
+          background: 'var(--lime-100)',
+          border: '1px solid var(--lime-300)',
+          color: 'var(--ink-800)',
+        } as React.CSSProperties,
       };
     case 'risk':
       return {
-        icon: <TrendingUp className="w-4 h-4 rotate-180" />,
-        color: 'text-red-600 dark:text-red-400',
-        bgColor: 'bg-red-50 dark:bg-red-500/10',
-        borderColor: 'border-red-200 dark:border-red-500/20',
+        icon: <TrendingUp className="w-4 h-4 rotate-180" aria-hidden="true" />,
+        className: 'banner banner--error',
+        style: undefined as React.CSSProperties | undefined,
       };
   }
 }
@@ -90,214 +97,160 @@ export function BriefingCard({
   });
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn('panel__body', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary-100 dark:bg-primary-500/20 rounded-lg">
-            <FileText className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white">
-              Briefing Pré-Conversa
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Gerado em {formattedDate} • {briefing.basedOnMessages} mensagens analisadas
-            </p>
-          </div>
+      <div className="col-head__top">
+        <span className="actor actor--ia" aria-hidden="true">
+          <FileText className="w-3.5 h-3.5" />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 className="title-sm">briefing pré-conversa</h3>
+          <p className="meta">
+            gerado em {formattedDate} · {briefing.basedOnMessages} mensagens analisadas
+          </p>
         </div>
 
         {onRefresh && (
           <button
+            type="button"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
+            className="btn btn--ghost"
             title="Atualizar briefing"
+            aria-label="Atualizar briefing"
           >
-            <RefreshCw
-              className={cn('w-4 h-4', isRefreshing && 'animate-spin')}
-            />
+            <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} aria-hidden="true" />
           </button>
         )}
       </div>
 
       {/* Confidence indicator */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className={cn(
-              'h-full rounded-full transition-all',
-              briefing.confidence >= 0.7
-                ? 'bg-green-500'
-                : briefing.confidence >= 0.4
-                  ? 'bg-amber-500'
-                  : 'bg-red-500'
-            )}
-            style={{ width: `${briefing.confidence * 100}%` }}
+      <div className="confidence">
+        <div className="confidence__track">
+          <span
+            className="confidence__marker"
+            style={{ left: `${Math.min(100, Math.max(0, briefing.confidence * 100))}%` }}
           />
         </div>
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-          {Math.round(briefing.confidence * 100)}% confiança
-        </span>
-      </div>
-
-      {/* Executive Summary */}
-      <div className="bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl p-4">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-          Resumo Executivo
-        </h4>
-        <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-          {briefing.executiveSummary}
+        <p className="confidence__scale">
+          <span>0%</span>
+          <span className="confidence__of">
+            {Math.round(briefing.confidence * 100)}% de confiança
+          </span>
+          <span>100%</span>
         </p>
       </div>
 
+      {/* Executive Summary */}
+      <section className="cockpit__block">
+        <h4 className="label">resumo executivo</h4>
+        <p className="card-approval__preview">{briefing.executiveSummary}</p>
+      </section>
+
       {/* BANT Status */}
-      <div>
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-          Status BANT
-        </h4>
+      <section className="cockpit__block">
+        <h4 className="label">status BANT</h4>
         <BANTStatusGrid bantStatus={briefing.bantStatus} />
-      </div>
+      </section>
 
       {/* Pending Points */}
       {briefing.pendingPoints.length > 0 && (
-        <div>
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-            Pontos Pendentes
-          </h4>
-          <div className="space-y-2">
+        <section className="cockpit__block">
+          <h4 className="label">pontos pendentes</h4>
+          <ul className="feed">
             {briefing.pendingPoints.map((point, idx) => (
-              <div
-                key={idx}
-                className="flex items-start gap-3 p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg"
-              >
-                <ChevronRight className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white">
+              <li key={idx} className="feed__item">
+                <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <div className="feed__body">
+                  <p className="chip-row">
+                    <span className="feed__text" style={{ fontWeight: 600 }}>
                       {point.point}
                     </span>
-                    <span
-                      className={cn(
-                        'text-[10px] font-bold uppercase px-1.5 py-0.5 rounded',
-                        getPriorityBadge(point.priority)
-                      )}
-                    >
+                    <span className={getPriorityBadge(point.priority)}>
                       {point.priority === 'high'
-                        ? 'Alta'
+                        ? 'alta'
                         : point.priority === 'medium'
-                          ? 'Média'
-                          : 'Baixa'}
+                          ? 'média'
+                          : 'baixa'}
                     </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {point.context}
                   </p>
+                  <p className="feed__meta">{point.context}</p>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
       )}
 
       {/* Recommended Approach */}
-      <div className="bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-500/20 rounded-xl p-4">
-        <h4 className="text-xs font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider mb-4">
-          Abordagem Recomendada
+      <section className="note-purple">
+        <h4 className="label" style={{ color: 'var(--purple-700)' }}>
+          abordagem recomendada
         </h4>
 
-        <div className="space-y-4">
-          {/* Opening */}
+        <div className="panel__body" style={{ marginTop: 'var(--space-2)' }}>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <MessageSquare className="w-3 h-3 text-primary-600 dark:text-primary-400" />
-              <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
-                Abertura
-              </span>
-            </div>
-            <p className="text-sm text-slate-700 dark:text-slate-200 pl-5">
-              {briefing.recommendedApproach.opening}
+            <p className="chip-row">
+              <MessageSquare className="w-3 h-3" aria-hidden="true" />
+              <span className="label">abertura</span>
             </p>
+            <p>{briefing.recommendedApproach.opening}</p>
           </div>
 
-          {/* Key Questions */}
           {briefing.recommendedApproach.keyQuestions.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
-                  Perguntas-Chave
-                </span>
-              </div>
-              <ul className="space-y-1.5 pl-5">
+              <p className="label">perguntas-chave</p>
+              <ol className="checklist">
                 {briefing.recommendedApproach.keyQuestions.map((q, idx) => (
-                  <li
-                    key={idx}
-                    className="text-sm text-slate-700 dark:text-slate-200 flex items-start gap-2"
-                  >
-                    <span className="text-primary-500 font-bold">{idx + 1}.</span>
+                  <li key={idx} className="checklist__item">
+                    <span className="num" style={{ fontWeight: 700 }}>
+                      {idx + 1}.
+                    </span>
                     {q}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {briefing.recommendedApproach.objectionsToAnticipate.length > 0 && (
+            <div>
+              <p className="label">objeções a antecipar</p>
+              <ul className="checklist">
+                {briefing.recommendedApproach.objectionsToAnticipate.map((obj, idx) => (
+                  <li key={idx} className="checklist__item">
+                    <AlertTriangle
+                      className="w-3 h-3 shrink-0"
+                      style={{ color: 'var(--warning)' }}
+                      aria-hidden="true"
+                    />
+                    {obj}
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Objections */}
-          {briefing.recommendedApproach.objectionsToAnticipate.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
-                  Objeções a Antecipar
-                </span>
-              </div>
-              <ul className="space-y-1.5 pl-5">
-                {briefing.recommendedApproach.objectionsToAnticipate.map(
-                  (obj, idx) => (
-                    <li
-                      key={idx}
-                      className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2"
-                    >
-                      <AlertTriangle className="w-3 h-3 text-amber-500 mt-1 shrink-0" />
-                      {obj}
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-          )}
-
-          {/* Next Step */}
-          <div className="pt-3 border-t border-primary-200 dark:border-primary-500/20">
-            <div className="flex items-center gap-2 text-primary-700 dark:text-primary-300">
-              <ArrowRight className="w-4 h-4" />
-              <span className="text-sm font-semibold">Próximo Passo:</span>
-            </div>
-            <p className="text-sm text-slate-700 dark:text-slate-200 mt-1 pl-6">
-              {briefing.recommendedApproach.suggestedNextStep}
+          <div style={{ borderTop: '1px solid var(--purple-100)', paddingTop: 'var(--space-2)' }}>
+            <p className="chip-row">
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              <span className="label">próximo passo</span>
             </p>
+            <p>{briefing.recommendedApproach.suggestedNextStep}</p>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Alerts */}
       {briefing.alerts.length > 0 && (
-        <div className="space-y-2">
+        <div className="panel__body">
           {briefing.alerts.map((alert, idx) => {
             const config = getAlertConfig(alert.type);
             return (
-              <div
-                key={idx}
-                className={cn(
-                  'flex items-start gap-3 p-3 rounded-lg border',
-                  config.bgColor,
-                  config.borderColor
-                )}
-              >
-                <div className={cn('mt-0.5', config.color)}>{config.icon}</div>
-                <p className={cn('text-sm flex-1', config.color)}>
-                  {alert.message}
-                </p>
-              </div>
+              <p key={idx} className={config.className} style={config.style}>
+                {config.icon}
+                <span className="banner__text">{alert.message}</span>
+              </p>
             );
           })}
         </div>

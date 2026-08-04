@@ -3,7 +3,6 @@
 import React, { memo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, User, PenLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sanitizeUrl } from '@/lib/utils/sanitize';
 import { ChannelIndicator } from './ChannelIndicator';
@@ -19,6 +18,14 @@ interface ConversationItemProps {
   hasDraft?: boolean;
 }
 
+/** Iniciais para o `.avatar` quando não há foto do contato. */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export const ConversationItem = memo(function ConversationItem({
   conversation,
   isSelected,
@@ -29,7 +36,9 @@ export const ConversationItem = memo(function ConversationItem({
   const {
     externalContactName,
     externalContactAvatar,
+    contactName,
     channelType,
+    channelName,
     lastMessagePreview,
     lastMessageAt,
     lastMessageDirection,
@@ -40,120 +49,74 @@ export const ConversationItem = memo(function ConversationItem({
     status,
   } = conversation;
 
-  const displayName = externalContactName || 'Contato desconhecido';
+  const displayName = contactName || externalContactName || 'Contato desconhecido';
   const timeAgo = lastMessageAt
     ? formatDistanceToNow(new Date(lastMessageAt), { addSuffix: true, locale: ptBR })
     : '';
+  const avatarUrl = sanitizeUrl(externalContactAvatar);
 
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full px-4 py-3 flex items-start gap-3 transition-colors text-left',
-        'hover:bg-slate-50 dark:hover:bg-white/5',
-        'border-b border-slate-100 dark:border-white/5',
-        isSelected && 'bg-primary-50 dark:bg-primary-500/10 border-l-2 border-l-primary-500',
-        status === 'resolved' && 'opacity-60'
+        'card-conv w-full text-left',
+        isSelected && 'card-conv--active',
+        unreadCount > 0 && 'card-conv--unread'
       )}
+      style={status === 'resolved' ? { opacity: 0.6 } : undefined}
+      aria-current={isSelected ? 'true' : undefined}
     >
-      {/* Avatar */}
-      <div className="relative flex-shrink-0">
-        {sanitizeUrl(externalContactAvatar) ? (
+      {/* Avatar + canal */}
+      <span className="card-conv__avatar">
+        {avatarUrl ? (
           <img
-            src={sanitizeUrl(externalContactAvatar)}
+            src={avatarUrl}
             alt={displayName}
-            className="w-10 h-10 rounded-full object-cover"
+            className="avatar avatar--md"
+            style={{ objectFit: 'cover' }}
           />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-            <User className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-          </div>
+          <span className="avatar avatar--md avatar--purple">{initials(displayName)}</span>
         )}
-        {/* Channel indicator */}
-        <div className="absolute -bottom-0.5 -right-0.5">
-          <ChannelIndicator type={channelType} size="sm" />
-        </div>
-        {/* Presence dot */}
+        <ChannelIndicator type={channelType} size="sm" />
         {presenceStatus !== 'offline' && (
-          <div className="absolute -top-0.5 -right-0.5">
+          <span style={{ position: 'absolute', top: -3, right: -3 }}>
             <PresenceIndicator status={presenceStatus} size="sm" />
-          </div>
+          </span>
         )}
-      </div>
+      </span>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {/* Name and time */}
-        <div className="flex items-center justify-between gap-2">
-          <span
-            className={cn(
-              'font-medium truncate text-sm',
-              unreadCount > 0
-                ? 'text-slate-900 dark:text-white'
-                : 'text-slate-700 dark:text-slate-300'
+      {/* Corpo */}
+      <span className="card-conv__body">
+        <span className="card-conv__top">
+          <span className="card-conv__name">{displayName}</span>
+          <span className="card-conv__time">{timeAgo}</span>
+        </span>
+        <span className="card-conv__org">{channelName}</span>
+        <span className="card-conv__preview">
+          {lastMessageDirection === 'outbound' ? 'Você: ' : ''}
+          {lastMessagePreview || 'Sem mensagens'}
+        </span>
+
+        {(hasDraft || isWindowExpired || assignedUserName
+          || (windowMinutesRemaining !== undefined && windowMinutesRemaining <= 60)) && (
+          <span className="chip-row" style={{ marginTop: 6 }}>
+            {hasDraft && <span className="tag-pending">rascunho</span>}
+            {!isWindowExpired && windowMinutesRemaining !== undefined && windowMinutesRemaining <= 60 && (
+              <span className="status-chip status-chip--warn">{windowMinutesRemaining}min</span>
             )}
-          >
-            {displayName}
-          </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">
-            {timeAgo}
-          </span>
-        </div>
-
-        {/* Preview */}
-        <div className="flex items-center gap-1.5 mt-0.5">
-          {lastMessageDirection === 'outbound' && (
-            <span className="text-xs text-slate-400">Você:</span>
-          )}
-          <p
-            className={cn(
-              'text-sm truncate',
-              unreadCount > 0
-                ? 'text-slate-700 dark:text-slate-200 font-medium'
-                : 'text-slate-500 dark:text-slate-400'
+            {isWindowExpired && <span className="status-chip status-chip--off">janela expirada</span>}
+            {assignedUserName && (
+              <span className="status-chip status-chip--muted nowrap">{assignedUserName}</span>
             )}
-          >
-            {lastMessagePreview || 'Sem mensagens'}
-          </p>
-        </div>
+          </span>
+        )}
+      </span>
 
-        {/* Badges */}
-        <div className="flex items-center gap-2 mt-1.5">
-          {/* Rascunho pendente (T2/T4) */}
-          {hasDraft && (
-            <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
-              <PenLine className="w-3 h-3" />
-              Rascunho
-            </span>
-          )}
-
-          {/* Unread badge */}
-          {unreadCount > 0 && (
-            <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-primary-500 text-white">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-
-          {/* Window expiry */}
-          {!isWindowExpired && windowMinutesRemaining !== undefined && windowMinutesRemaining <= 60 && (
-            <span className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
-              <Clock className="w-3 h-3" />
-              {windowMinutesRemaining}min
-            </span>
-          )}
-          {isWindowExpired && (
-            <span className="text-xs text-red-500">Janela expirada</span>
-          )}
-
-          {/* Assigned */}
-          {assignedUserName && (
-            <span className="text-xs text-slate-400 truncate max-w-[80px]">
-              {assignedUserName}
-            </span>
-          )}
-        </div>
-      </div>
+      {unreadCount > 0 && (
+        <span className="card-conv__unread">{unreadCount > 99 ? '99+' : unreadCount}</span>
+      )}
     </button>
   );
 });

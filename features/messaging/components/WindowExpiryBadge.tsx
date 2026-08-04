@@ -43,23 +43,12 @@ function getExpiryInfo(expiresAt: string | null | undefined): {
   return { isExpired: false, minutesRemaining, hoursRemaining, status };
 }
 
+/** Mapeia o status da janela pro vocabulário `.status-chip` do redesign. */
 const STATUS_STYLES = {
-  expired: {
-    container: 'bg-red-100 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400',
-    icon: XCircle,
-  },
-  critical: {
-    container: 'bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20 text-orange-700 dark:text-orange-400',
-    icon: AlertTriangle,
-  },
-  warning: {
-    container: 'bg-yellow-100 dark:bg-yellow-500/10 border-yellow-200 dark:border-yellow-500/20 text-yellow-700 dark:text-yellow-400',
-    icon: Clock,
-  },
-  ok: {
-    container: 'bg-green-100 dark:bg-green-500/10 border-green-200 dark:border-green-500/20 text-green-700 dark:text-green-400',
-    icon: Clock,
-  },
+  expired: { container: 'status-chip status-chip--off', icon: XCircle },
+  critical: { container: 'status-chip status-chip--warn', icon: AlertTriangle },
+  warning: { container: 'status-chip status-chip--warn', icon: Clock },
+  ok: { container: 'status-chip status-chip--on', icon: Clock },
 };
 
 export const WindowExpiryBadge = memo(function WindowExpiryBadge({
@@ -104,32 +93,27 @@ export const WindowExpiryBadge = memo(function WindowExpiryBadge({
   if (variant === 'inline') {
     return (
       <span
-        className={cn(
-          'inline-flex items-center gap-1 text-xs',
-          status === 'expired' ? 'text-red-500' : '',
-          status === 'critical' ? 'text-orange-500' : '',
-          status === 'warning' ? 'text-yellow-600' : '',
-          status === 'ok' ? 'text-green-600' : '',
-          className
-        )}
+        className={cn('inline-flex items-center gap-1', className)}
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color:
+            status === 'expired' ? 'var(--danger)'
+              : status === 'critical' || status === 'warning' ? '#8a6200'
+                : '#1c7a4a',
+        }}
       >
-        <Icon className="w-3 h-3" />
+        <Icon className="w-3 h-3" aria-hidden="true" />
         <span>{displayText}</span>
       </span>
     );
   }
 
   return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium',
-        styles.container,
-        className
-      )}
-    >
-      <Icon className="w-3.5 h-3.5" />
+    <span className={cn(styles.container, 'inline-flex items-center gap-1.5', className)}>
+      <Icon className="w-3 h-3" aria-hidden="true" />
       <span>{displayText}</span>
-    </div>
+    </span>
   );
 });
 

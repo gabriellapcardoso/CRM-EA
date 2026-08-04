@@ -173,130 +173,117 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
     router.push(`/boards?contact=${contactId}`);
   }, [router]);
 
-  return (
-    <div className="h-[calc(100vh-4rem)] flex">
-      {/* Conversation List */}
-      <div className="w-80 flex-shrink-0">
-        <ConversationList
-          selectedId={selectedConversationId}
-          onSelect={handleSelectConversation}
-          getPresence={getPresence}
-        />
-      </div>
+  const headerName = selectedConversation
+    ? selectedConversation.contactName || selectedConversation.externalContactName || 'Contato desconhecido'
+    : '';
+  const headerAvatar = selectedConversation
+    ? sanitizeUrl(selectedConversation.externalContactAvatar)
+    : '';
 
-      {/* Message Thread */}
-      <div className="flex-1 min-w-0 flex flex-col bg-slate-50 dark:bg-slate-900/50">
+  return (
+    <div className="inbox">
+      {/* Lista de conversas */}
+      <ConversationList
+        selectedId={selectedConversationId}
+        onSelect={handleSelectConversation}
+        getPresence={getPresence}
+      />
+
+      {/* Conversa */}
+      <div className="thread">
         {selectedConversation ? (
           <>
-            {/* Header */}
-            <div className="h-16 px-4 flex items-center gap-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-white/10">
-              <div className="relative">
-                {sanitizeUrl(selectedConversation.externalContactAvatar) ? (
+            <header className="thread__head">
+              <span className="relative flex-shrink-0">
+                {headerAvatar ? (
                   <img
-                    src={sanitizeUrl(selectedConversation.externalContactAvatar)}
-                    alt={selectedConversation.externalContactName || 'Contato'}
-                    className="w-10 h-10 rounded-full object-cover"
+                    src={headerAvatar}
+                    alt={headerName}
+                    className="avatar avatar--md"
+                    style={{ objectFit: 'cover' }}
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                    <User className="w-5 h-5 text-slate-400" />
-                  </div>
+                  <span className="avatar avatar--md avatar--purple">
+                    <User className="w-4 h-4" aria-hidden="true" />
+                  </span>
                 )}
-                <div className="absolute -bottom-0.5 -right-0.5">
+                <span style={{ position: 'absolute', right: -3, bottom: -3 }}>
                   <ChannelIndicator type={selectedConversation.channelType} size="sm" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="font-semibold text-slate-900 dark:text-white truncate">
-                  {selectedConversation.contactName || selectedConversation.externalContactName || 'Contato desconhecido'}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {selectedConversation.channelName}
-                  </p>
+                </span>
+              </span>
+              <div className="min-w-0">
+                <h2 className="thread__name truncate">{headerName}</h2>
+                <p className="thread__sub flex items-center gap-2">
+                  {selectedConversation.channelName}
                   <WindowExpiryBadge
                     windowExpiresAt={selectedConversation.windowExpiresAt}
                     variant="inline"
                   />
-                </div>
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <AssignmentDropdown
-                  conversationId={selectedConversation.id}
-                  assignedUserId={selectedConversation.assignedUserId}
-                />
+              <span className="spacer" />
+              <AssignmentDropdown
+                conversationId={selectedConversation.id}
+                assignedUserId={selectedConversation.assignedUserId}
+              />
+              <button
+                type="button"
+                onClick={() => setShowSearch((v) => !v)}
+                className={cn('btn btn--ghost', showSearch && 'chip--ia')}
+                title="Buscar mensagens"
+                aria-label="Buscar mensagens"
+              >
+                <Search className="w-4 h-4" aria-hidden="true" />
+              </button>
+              {selectedConversation.status === 'open' && (
                 <button
                   type="button"
-                  onClick={() => setShowSearch((v) => !v)}
-                  className={cn(
-                    'p-2 rounded-lg transition-colors',
-                    showSearch
-                      ? 'text-primary-500 bg-primary-50 dark:bg-primary-500/10'
-                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
-                  )}
-                  title="Buscar mensagens"
+                  onClick={() => resolveConversation(selectedConversation.id)}
+                  className="btn btn--ghost"
+                  title="Marcar como resolvida"
+                  aria-label="Marcar como resolvida"
                 >
-                  <Search className="w-5 h-5" />
+                  <CheckCircle className="w-4 h-4" aria-hidden="true" />
                 </button>
-                {selectedConversation.status === 'open' && (
-                  <button
-                    type="button"
-                    onClick={() => resolveConversation(selectedConversation.id)}
-                    className="p-2 text-slate-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10 rounded-lg transition-colors"
-                    title="Marcar como resolvida"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                  </button>
-                )}
-                {!selectedConversation.contactId && (
-                  <button
-                    type="button"
-                    onClick={() => setIsLinkModalOpen(true)}
-                    className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
-                    title="Vincular contato"
-                  >
-                    <LinkIcon className="w-5 h-5" />
-                  </button>
-                )}
+              )}
+              {!selectedConversation.contactId && (
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-                  title="Excluir conversa"
+                  onClick={() => setIsLinkModalOpen(true)}
+                  className="btn btn--ghost"
+                  title="Vincular contato"
+                  aria-label="Vincular contato"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <LinkIcon className="w-4 h-4" aria-hidden="true" />
                 </button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {selectedConversation.status === 'resolved' && (
-                      <DropdownMenuItem
-                        onClick={() => reopenConversation(selectedConversation.id)}
-                        className="gap-2"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        Reabrir conversa
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="btn btn--ghost" aria-label="Mais ações">
+                    <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {selectedConversation.status === 'resolved' && (
                     <DropdownMenuItem
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-500/10"
+                      onClick={() => reopenConversation(selectedConversation.id)}
+                      className="gap-2"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      Excluir conversa
+                      <RotateCcw className="w-4 h-4" />
+                      Reabrir conversa
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Excluir conversa
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </header>
 
             {/* Search Bar */}
             {showSearch && (
@@ -309,6 +296,7 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
             {/* Messages */}
             <MessageThread
               conversationId={selectedConversation.id}
+              channelType={selectedConversation.channelType}
               presenceStatus={selectedConversation.contactId ? getPresence(selectedConversation.contactId) : undefined}
               onReply={setReplyToMessage}
             />
@@ -321,24 +309,27 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
             />
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
-            <MessageSquare className="w-16 h-16 mb-4 opacity-50" />
-            <p className="text-lg">Selecione uma conversa</p>
-            <p className="text-sm">Escolha uma conversa da lista para visualizar</p>
+          <div className="thread__body">
+            <div className="state-empty">
+              <h3 className="state-empty__title">
+                nenhuma conversa aberta<span className="dot-accent">.</span>
+              </h3>
+              <p className="state-empty__text">
+                escolha uma conversa na lista à esquerda para ver o histórico dos 3 canais.
+              </p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Contact Panel */}
-      <div className="w-80 border-l border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 flex-shrink-0">
-        <ContactPanel
-          conversation={selectedConversation}
-          isLoading={isConversationLoading && !!selectedConversationId}
-          onLinkContact={() => setIsLinkModalOpen(true)}
-          onViewContact={handleViewContact}
-          onViewDeals={handleViewDeals}
-        />
-      </div>
+      {/* Painel de contexto */}
+      <ContactPanel
+        conversation={selectedConversation}
+        isLoading={isConversationLoading && !!selectedConversationId}
+        onLinkContact={() => setIsLinkModalOpen(true)}
+        onViewContact={handleViewContact}
+        onViewDeals={handleViewDeals}
+      />
 
       {/* Contact Link Modal */}
       <ContactLinkModal
@@ -358,26 +349,26 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
         title="Excluir conversa"
         size="sm"
       >
-        <div className="space-y-4">
-          <p className="text-slate-600 dark:text-slate-300">
+        <div className="panel__body">
+          <p>
             Tem certeza que deseja excluir esta conversa? Todas as mensagens serão perdidas permanentemente.
           </p>
           <div className="flex gap-3 justify-end">
             <button
               type="button"
               onClick={() => setShowDeleteConfirm(false)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              className="btn btn--ghost"
               disabled={isDeleting}
             >
-              Cancelar
+              cancelar
             </button>
             <button
               type="button"
               onClick={handleDeleteConversation}
               disabled={isDeleting}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+              className="btn btn--danger"
             >
-              {isDeleting ? 'Excluindo...' : 'Excluir'}
+              {isDeleting ? 'excluindo…' : 'excluir'}
             </button>
           </div>
         </div>

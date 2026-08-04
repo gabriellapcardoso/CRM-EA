@@ -128,103 +128,93 @@ export const CallModal: React.FC<CallModalProps> = ({
     if (!isOpen) return null;
 
     const outcomeOptions = [
-        { id: 'connected', label: 'Atendeu', icon: Check, color: 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30' },
-        { id: 'no_answer', label: 'Não atendeu', icon: XCircle, color: 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30' },
-        { id: 'voicemail', label: 'Caixa postal', icon: Voicemail, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30' },
-        { id: 'busy', label: 'Ocupado', icon: PhoneOff, color: 'bg-slate-500/20 text-slate-400 border-slate-500/30 hover:bg-slate-500/30' },
+        { id: 'connected', label: 'Atendeu', icon: Check },
+        { id: 'no_answer', label: 'Não atendeu', icon: XCircle },
+        { id: 'voicemail', label: 'Caixa postal', icon: Voicemail },
+        { id: 'busy', label: 'Ocupado', icon: PhoneOff },
     ] as const;
 
     return (
         <div className="fixed inset-0 md:left-[var(--app-sidebar-width,0px)] z-[9999] flex items-center justify-center">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleDiscard} />
+            <div className="absolute inset-0" style={{ background: 'rgba(20,10,35,.45)' }} onClick={handleDiscard} />
 
             {/* Modal */}
-            <div className="relative bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+            <div
+                className="panel relative w-full max-w-xl mx-4 max-h-[90vh] flex flex-col overflow-hidden"
+                style={{ boxShadow: 'var(--shadow-lg)' }}
+            >
                 {/* Header */}
-                <div className="bg-linear-to-r from-yellow-500/10 to-orange-500/10 p-4 border-b border-slate-700/50 shrink-0">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-yellow-500/20 rounded-xl">
-                                <Phone size={20} className="text-yellow-400" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-white">{contactName}</h3>
-                                <div className="mt-0.5 flex items-center gap-2">
-                                    <p className="text-xs text-slate-400">{phone || ''}</p>
-                                    {phone && (
-                                        <>
-                                            <button
-                                                type="button"
-                                                onClick={handleCopyPhone}
-                                                className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                                                title={copied ? 'Copiado' : 'Copiar número'}
-                                                aria-label={copied ? 'Copiado' : 'Copiar número'}
-                                            >
-                                                <Copy size={12} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleOpenPhoneApp}
-                                                className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                                                title="Abrir no discador"
-                                                aria-label="Abrir no discador"
-                                            >
-                                                <ExternalLink size={12} />
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleDiscard}
-                            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
-                        >
-                            <X size={18} />
-                        </button>
+                <div className="panel__head shrink-0">
+                    <span className="actor actor--humano" aria-hidden="true">
+                        <Phone size={13} />
+                    </span>
+                    <div className="min-w-0">
+                        <h3 className="title-sm">{contactName}</h3>
+                        <span className="flex items-center gap-1">
+                            <span className="meta num">{phone || ''}</span>
+                            {phone && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyPhone}
+                                        className="btn btn--quiet"
+                                        title={copied ? 'Copiado' : 'Copiar número'}
+                                        aria-label={copied ? 'Copiado' : 'Copiar número'}
+                                    >
+                                        <Copy size={12} aria-hidden="true" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleOpenPhoneApp}
+                                        className="btn btn--quiet"
+                                        title="Abrir no discador"
+                                        aria-label="Abrir no discador"
+                                    >
+                                        <ExternalLink size={12} aria-hidden="true" />
+                                    </button>
+                                </>
+                            )}
+                        </span>
                     </div>
+                    <span className="spacer" />
+                    <button onClick={handleDiscard} className="btn btn--quiet" aria-label="Fechar">
+                        <X size={16} aria-hidden="true" />
+                    </button>
                 </div>
 
                 {/* Timer */}
-                <div className="flex items-center justify-center py-6 bg-slate-800/50 shrink-0">
-                    <div className="flex flex-col items-center gap-2 px-6 py-3 bg-slate-900 rounded-xl border border-slate-700/50">
-                        <div className="flex items-center gap-3">
-                            <Clock size={18} className="text-yellow-400" />
-                            <span className="text-2xl font-mono font-bold text-white tracking-wider">
-                                {formatTime(dialerOpenedAt ? elapsedTime : 0)}
-                            </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 text-center">
-                            {!phone ? (
-                                'Sem número de telefone para discar.'
-                            ) : dialerOpenedAt ? (
-                                'Tempo desde abrir o discador (a chamada acontece fora do CRM).'
-                            ) : (
-                                'Abra o discador para iniciar a contagem.'
-                            )}
-                        </div>
-                    </div>
+                <div className="banner banner--info shrink-0" style={{ justifyContent: 'center' }}>
+                    <Clock size={16} aria-hidden="true" />
+                    <span className="confidence__value num">
+                        {formatTime(dialerOpenedAt ? elapsedTime : 0)}
+                    </span>
+                    <span className="banner__text">
+                        {!phone ? (
+                            'Sem número de telefone para discar.'
+                        ) : dialerOpenedAt ? (
+                            'Tempo desde abrir o discador (a chamada acontece fora do CRM).'
+                        ) : (
+                            'Abra o discador para iniciar a contagem.'
+                        )}
+                    </span>
                 </div>
 
                 {/* Content */}
-                <div className="p-4 space-y-4 overflow-y-auto">
+                <div className="panel__body overflow-y-auto">
                     {/* Outcome Selection */}
-                    <div>
-                        <label className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 block">
-                            Resultado da ligação
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {outcomeOptions.map(({ id, label, icon: Icon, color }) => (
+                    <div className="field">
+                        <span className="field__label">resultado da ligação</span>
+                        <div className="chip-row">
+                            {outcomeOptions.map(({ id, label, icon: Icon }) => (
                                 <button
                                     key={id}
+                                    type="button"
                                     onClick={() => setOutcome(id)}
-                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-all text-sm font-medium ${outcome === id
-                                            ? color + ' ring-2 ring-current'
-                                            : 'bg-slate-800/50 text-slate-400 border-slate-700/50 hover:border-slate-600'
-                                        }`}
+                                    aria-pressed={outcome === id}
+                                    className={`chip${outcome === id ? ' chip--active' : ''}`}
                                 >
-                                    <Icon size={16} />
+                                    <Icon size={13} aria-hidden="true" />
                                     {label}
                                 </button>
                             ))}
@@ -232,69 +222,73 @@ export const CallModal: React.FC<CallModalProps> = ({
                     </div>
 
                     {/* Title */}
-                    <div>
-                        <label className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 block">
-                            Título da atividade
-                        </label>
+                    <div className="field">
+                        <label className="field__label" htmlFor="call-title">título da atividade</label>
                         <input
+                            id="call-title"
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 text-sm"
+                            className="input"
                             placeholder="Ex: Ligação de follow-up"
                         />
                     </div>
 
                     {/* Notes */}
-                    <div>
-                        <label className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <FileText size={12} />
-                            Notas da ligação
+                    <div className="field">
+                        <label className="field__label flex items-center gap-2" htmlFor="call-notes">
+                            <FileText size={12} aria-hidden="true" />
+                            notas da ligação
                         </label>
                         <textarea
+                            id="call-notes"
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="O que foi discutido? Próximos passos?"
-                            className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 text-sm resize-y min-h-40 max-h-[40vh]"
+                            className="input input--textarea"
+                            style={{ minHeight: 140, maxHeight: '40vh', resize: 'vertical' }}
                             rows={6}
                         />
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-slate-700/50 flex flex-col sm:flex-row gap-2 shrink-0">
-                    <button
-                        onClick={handleDiscard}
-                        className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                    >
+                <div
+                    className="flex flex-col sm:flex-row gap-2 shrink-0"
+                    style={{ paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border-subtle)' }}
+                >
+                    <button onClick={handleDiscard} className="btn btn--quiet" style={{ flex: 1 }}>
                         Descartar
                     </button>
                     <button
                         type="button"
                         onClick={handleCopyPhone}
                         disabled={!phone}
-                        className="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="btn btn--ghost"
+                        style={{ flex: 1 }}
                         title={copied ? 'Copiado' : 'Copiar número'}
                     >
-                        <Copy size={16} />
+                        <Copy size={14} aria-hidden="true" />
                         {copied ? 'Copiado' : 'Copiar número'}
                     </button>
                     <button
                         type="button"
                         onClick={handleOpenPhoneApp}
                         disabled={!phone}
-                        className="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold bg-yellow-500 hover:bg-yellow-600 text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="btn btn--on-lime"
+                        style={{ flex: 1 }}
                         title="Abrir no discador"
                     >
-                        <ExternalLink size={16} />
+                        <ExternalLink size={14} aria-hidden="true" />
                         Abrir no discador
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={!outcome}
-                        className="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="btn btn--primary"
+                        style={{ flex: 1 }}
                     >
-                        <Check size={16} />
+                        <Check size={14} aria-hidden="true" />
                         Salvar Log
                     </button>
                 </div>

@@ -24,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    // suppressHydrationWarning: necessário porque a classe "dark" é aplicada no servidor mas pode ser sobrescrita por tema do sistema no cliente
-    <html lang="pt-BR" className="dark" suppressHydrationWarning>
+    // suppressHydrationWarning: necessário porque a classe "dark" pode ser adicionada no cliente (ThemeProvider)
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className="font-sans antialiased bg-[var(--color-bg)] text-[var(--color-text-primary)]">
         <ServiceWorkerRegister />
         <InstallBanner />

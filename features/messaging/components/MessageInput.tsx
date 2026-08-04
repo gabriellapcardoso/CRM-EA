@@ -9,7 +9,7 @@ declare global {
     flush(): Int8Array;
   }};
 }
-import { Send, Paperclip, Smile, Clock, FileText, X, Loader2, Image, File as FileIcon, Mic, Square, Reply } from 'lucide-react';
+import { Send, Paperclip, Smile, Clock, FileText, X, Image, File as FileIcon, Mic, Square, Reply } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { type EmojiClickData, Theme } from 'emoji-picker-react';
 
@@ -27,6 +27,8 @@ import {
   useSendTemplateMutation,
 } from '@/lib/query/hooks/useTemplatesQuery';
 import { TemplateSelector, type TemplateData } from './TemplateSelector';
+import { ChannelIndicator } from './ChannelIndicator';
+import { WindowExpiryBadge } from './WindowExpiryBadge';
 import type { ConversationView, MessageContent, MessagingMessage } from '@/lib/messaging/types';
 
 interface MessageInputProps {
@@ -460,13 +462,31 @@ export function MessageInput({ conversation, replyTo, onCancelReply }: MessageIn
     textarea.style.height = newHeight + 'px';
   }, []);
 
+  /**
+   * `.composer__channels` — o handoff mostra os canais disponíveis para responder.
+   * No app real a conversa está presa a um canal só (o do `messaging_channels`
+   * da conversa), então esse canal aparece sempre como `--active` e não há
+   * troca de canal a preservar: essa é a "seleção" real do sistema.
+   */
+  const channelBar = (
+    <div className="composer__channels">
+      <span>responder por</span>
+      <span className="composer__channel composer__channel--active">
+        <ChannelIndicator type={conversation.channelType} size="sm" />
+        {conversation.channelName}
+      </span>
+      <span className="spacer" />
+      <WindowExpiryBadge windowExpiresAt={conversation.windowExpiresAt} variant="inline" />
+    </div>
+  );
+
   // Converting state — shown while webm → mp3 encoding runs
   if (isConverting) {
     return (
-      <div className="border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Loader2 className="w-4 h-4 animate-spin text-primary-500 flex-shrink-0" />
-          <span className="text-sm text-slate-500 dark:text-slate-400">Processando áudio...</span>
+      <div className="composer">
+        <div className="loading-more" style={{ paddingTop: 0 }}>
+          <span className="spinner" aria-hidden="true" />
+          processando áudio…
         </div>
       </div>
     );
@@ -475,36 +495,32 @@ export function MessageInput({ conversation, replyTo, onCancelReply }: MessageIn
   // Recording state — shown instead of the normal input
   if (isRecording) {
     return (
-      <div className="border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900">
-        <div className="flex items-center gap-3 px-4 py-3">
-          {/* Pulsing red dot */}
-          <span className="relative flex h-3 w-3 flex-shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-          </span>
-          <span className="text-sm font-medium text-red-500 tabular-nums w-12">
+      <div className="composer">
+        <div className="composer__row" style={{ alignItems: 'center' }}>
+          <span className="dot dot--pulse dot--danger" aria-hidden="true" />
+          <span className="num" style={{ color: 'var(--danger)', fontWeight: 700 }}>
             {formatDuration(recordingDuration)}
           </span>
-          <span className="flex-1 text-sm text-slate-500 dark:text-slate-400">Gravando áudio...</span>
-          {/* Cancel */}
+          <span className="meta spacer">gravando áudio…</span>
           <button
             type="button"
             onClick={cancelRecording}
-            className="p-2 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
+            className="btn btn--ghost"
             title="Cancelar gravação"
             aria-label="Cancelar gravação"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" aria-hidden="true" />
+            cancelar
           </button>
-          {/* Stop and send */}
           <button
             type="button"
             onClick={stopRecording}
-            className="p-2.5 rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-sm transition-colors"
+            className="btn btn--primary"
             title="Parar e enviar"
             aria-label="Parar e enviar"
           >
-            <Square className="w-4 h-4 fill-current" />
+            <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+            enviar
           </button>
         </div>
       </div>
@@ -514,29 +530,30 @@ export function MessageInput({ conversation, replyTo, onCancelReply }: MessageIn
   // Show template selector when window expired or when manually opened
   if (showTemplates || conversation.isWindowExpired) {
     return (
-      <div className="border-t border-slate-200 dark:border-white/10">
+      <div className="composer">
         {conversation.isWindowExpired && !showTemplates && (
-          <div className="p-4 bg-orange-50 dark:bg-orange-900/20">
-            <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
-              <Clock className="w-5 h-5" />
-              <div>
-                <p className="font-medium">Janela de resposta expirada</p>
-                <p className="text-sm opacity-80">
-                  Use um template aprovado para reabrir a conversa
-                </p>
-              </div>
+          <>
+            <div className="banner banner--hitl">
+              <span className="banner--hitl__mark" aria-hidden="true">
+                <Clock className="w-4 h-4" />
+              </span>
+              <span>
+                <span className="banner__title">janela de resposta expirada</span>
+                <span className="banner__text" style={{ display: 'block' }}>
+                  use um template aprovado para reabrir a conversa
+                </span>
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowTemplates(true)}
-              className="mt-3 px-4 py-2 text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
-            >
-              Enviar template
-            </button>
-          </div>
+            <div className="composer__row">
+              <span className="spacer" />
+              <button type="button" onClick={() => setShowTemplates(true)} className="btn btn--primary">
+                enviar template
+              </button>
+            </div>
+          </>
         )}
         {showTemplates && (
-          <div className="h-[400px] bg-white dark:bg-slate-900">
+          <div style={{ height: 400 }}>
             <TemplateSelector
               templates={templates}
               isLoading={isLoadingTemplates || isSendingTemplate}
@@ -550,19 +567,18 @@ export function MessageInput({ conversation, replyTo, onCancelReply }: MessageIn
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900"
-    >
+    <form onSubmit={handleSubmit} className="composer">
+      {channelBar}
+
       {/* Reply preview bar */}
       {replyTo && (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5">
-          <Reply className="w-4 h-4 text-primary-500 flex-shrink-0" />
+        <div className="banner banner--info">
+          <Reply className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-medium text-primary-500">
+            <p className="label">
               {replyTo.direction === 'outbound' ? 'Você' : (replyTo.senderName ?? 'Contato')}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            <p className="banner__text truncate">
               {replyTo.contentType === 'text'
                 ? (replyTo.content as { text: string }).text
                 : replyTo.contentType === 'audio' ? '🎤 Áudio'
@@ -574,58 +590,45 @@ export function MessageInput({ conversation, replyTo, onCancelReply }: MessageIn
           <button
             type="button"
             onClick={onCancelReply}
-            className="w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex-shrink-0"
+            className="btn btn--quiet"
             aria-label="Cancelar resposta"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
       )}
 
       {/* Media preview */}
       {pendingMedia && (
-        <div className="px-4 pt-3">
-          <div className="flex items-center gap-3 p-2 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10">
-            {pendingMedia.preview ? (
-              <img
-                src={pendingMedia.preview}
-                alt="Preview"
-                className="w-16 h-16 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-lg bg-slate-100 dark:bg-white/10 flex items-center justify-center">
-                {pendingMedia.mediaType === 'document' ? (
-                  <FileIcon className="w-6 h-6 text-slate-400" />
-                ) : pendingMedia.mediaType === 'audio' ? (
-                  <div className="flex flex-col items-center gap-0.5">
-                    <Mic className="w-5 h-5 text-primary-500" />
-                    <span className="text-[9px] font-medium text-primary-500 uppercase">mp3</span>
-                  </div>
-                ) : (
-                  <Image className="w-6 h-6 text-slate-400" />
-                )}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
-                {pendingMedia.file.name}
-              </p>
-              <p className="text-xs text-slate-400">
-                {formatFileSize(pendingMedia.file.size)}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={clearMedia}
-              className="p-1 text-slate-400 hover:text-red-500 rounded"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        <div className="banner banner--info">
+          {pendingMedia.preview ? (
+            <img
+              src={pendingMedia.preview}
+              alt="Preview"
+              className="w-12 h-12 rounded-lg object-cover"
+            />
+          ) : (
+            <span className="actor actor--auto" style={{ width: 36, height: 36 }}>
+              {pendingMedia.mediaType === 'document' ? (
+                <FileIcon className="w-4 h-4" />
+              ) : pendingMedia.mediaType === 'audio' ? (
+                <Mic className="w-4 h-4" />
+              ) : (
+                <Image className="w-4 h-4" />
+              )}
+            </span>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="banner__title truncate">{pendingMedia.file.name}</p>
+            <p className="banner__text">{formatFileSize(pendingMedia.file.size)}</p>
           </div>
+          <button type="button" onClick={clearMedia} className="btn btn--quiet" aria-label="Remover anexo">
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
       )}
 
-      <div className="flex items-end gap-2 p-3">
+      <div className="composer__row">
         <input
           ref={fileInputRef}
           type="file"
@@ -634,87 +637,69 @@ export function MessageInput({ conversation, replyTo, onCancelReply }: MessageIn
           className="hidden"
         />
 
-        {/* Input pill: attach + textarea + emoji + template */}
-        <div className={cn(
-          'flex-1 flex items-end rounded-2xl transition-colors',
-          'bg-slate-100 dark:bg-white/5',
-          'ring-1 ring-transparent focus-within:ring-primary-500/50 focus-within:bg-white dark:focus-within:bg-white/[0.07]'
-        )}>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="btn btn--ghost"
+          title="Anexar arquivo"
+          aria-label="Anexar arquivo"
+        >
+          {isUploading ? (
+            <span className="spinner" aria-hidden="true" />
+          ) : (
+            <Paperclip className="w-4 h-4" aria-hidden="true" />
+          )}
+        </button>
+
+        <label htmlFor="message-input" className="sr-only">
+          {pendingMedia ? 'Adicionar legenda (opcional)' : 'Digite uma mensagem'}
+        </label>
+        <textarea
+          ref={textareaRef}
+          id="message-input"
+          value={text}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          placeholder={pendingMedia ? 'adicionar legenda (opcional)…' : 'escreva ou peça um rascunho ao agente…'}
+          disabled={isDisabled}
+          rows={1}
+          aria-label={pendingMedia ? 'Adicionar legenda (opcional)' : 'Digite uma mensagem'}
+          className="input input--textarea"
+          style={{ height: 'auto', minHeight: 44, maxHeight: 120, resize: 'none' }}
+        />
+
+        <div className="relative flex items-end flex-shrink-0" ref={emojiPickerRef}>
+          {showEmojiPicker && (
+            <div className="absolute bottom-full right-0 mb-2 z-50">
+              <EmojiPicker
+                onEmojiClick={handleEmojiClick}
+                theme={Theme.AUTO}
+                width={320}
+                height={400}
+                searchPlaceholder="Buscar emoji..."
+                lazyLoadEmojis
+              />
+            </div>
+          )}
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="flex-shrink-0 p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-50"
-            title="Anexar arquivo"
-            aria-label="Anexar arquivo"
+            onClick={() => setShowEmojiPicker(prev => !prev)}
+            className={cn('btn btn--ghost', showEmojiPicker && 'chip--ia')}
+            title="Emojis"
+            aria-label="Emojis"
           >
-            {isUploading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Paperclip className="w-5 h-5" />
-            )}
+            <Smile className="w-4 h-4" aria-hidden="true" />
           </button>
-
-          <label htmlFor="message-input" className="sr-only">
-            {pendingMedia ? 'Adicionar legenda (opcional)' : 'Digite uma mensagem'}
-          </label>
-          <textarea
-            ref={textareaRef}
-            id="message-input"
-            value={text}
-            onChange={handleInput}
-            onKeyDown={handleKeyDown}
-            placeholder={pendingMedia ? 'Adicionar legenda (opcional)...' : 'Digite uma mensagem...'}
-            disabled={isDisabled}
-            rows={1}
-            aria-label={pendingMedia ? 'Adicionar legenda (opcional)' : 'Digite uma mensagem'}
-            className={cn(
-              'flex-1 py-2.5 text-sm resize-none bg-transparent',
-              'focus:outline-none',
-              'text-slate-900 dark:text-white placeholder-slate-400',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-              'max-h-[120px]'
-            )}
-            style={{ height: 'auto', minHeight: '40px' }}
-          />
-
-          <div className="relative flex items-end flex-shrink-0 pb-0.5 pr-1" ref={emojiPickerRef}>
-            {showEmojiPicker && (
-              <div className="absolute bottom-full right-0 mb-2 z-50">
-                <EmojiPicker
-                  onEmojiClick={handleEmojiClick}
-                  theme={Theme.AUTO}
-                  width={320}
-                  height={400}
-                  searchPlaceholder="Buscar emoji..."
-                  lazyLoadEmojis
-                />
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(prev => !prev)}
-              className={cn(
-                'p-2 rounded-xl transition-colors',
-                showEmojiPicker
-                  ? 'text-primary-500'
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-              )}
-              title="Emojis"
-              aria-label="Emojis"
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowTemplates(true)}
-              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl transition-colors"
-              title="Enviar template"
-              aria-label="Enviar template"
-            >
-              <FileText className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowTemplates(true)}
+            className="btn btn--ghost"
+            title="Enviar template"
+            aria-label="Enviar template"
+          >
+            <FileText className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
 
         {/* Send or mic button */}
@@ -722,25 +707,21 @@ export function MessageInput({ conversation, replyTo, onCancelReply }: MessageIn
           <button
             type="button"
             onClick={startRecording}
-            className="flex-shrink-0 p-2.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:bg-primary-500 hover:text-white transition-colors"
+            className="btn btn--ghost btn--lg"
             title="Gravar áudio"
             aria-label="Gravar áudio"
           >
-            <Mic className="w-5 h-5" />
+            <Mic className="w-4 h-4" aria-hidden="true" />
           </button>
         ) : (
           <button
             type="submit"
             disabled={(!text.trim() && !pendingMedia) || isDisabled}
             aria-label="Enviar mensagem"
-            className={cn(
-              'flex-shrink-0 p-2.5 rounded-full transition-colors',
-              (text.trim() || pendingMedia) && !isDisabled
-                ? 'bg-primary-500 hover:bg-primary-600 text-white shadow-sm'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-            )}
+            className="btn btn--primary btn--lg"
           >
-            <Send className="w-5 h-5" aria-hidden="true" />
+            <Send className="w-4 h-4" aria-hidden="true" />
+            enviar
           </button>
         )}
       </div>

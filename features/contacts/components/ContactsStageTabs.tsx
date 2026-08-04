@@ -76,53 +76,27 @@ export const ContactsStageTabs: React.FC<ContactsStageTabs> = ({
   const total = counts.LEAD + counts.MQL + counts.PROSPECT + counts.CUSTOMER + (counts.OTHER || 0);
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {/* All */}
+    <div className="chip-row">
       <button
+        type="button"
         onClick={() => onStageChange('ALL')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
-          activeStage === 'ALL'
-            ? 'bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300 border-primary-300 dark:border-primary-500/30'
-            : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10'
-        }`}
+        className={`chip ${activeStage === 'ALL' ? 'chip--active' : ''}`}
       >
-        Todos
-        <span
-          className={`text-xs px-1.5 py-0.5 rounded-full ${
-            activeStage === 'ALL'
-              ? 'bg-primary-200 dark:bg-primary-500/30'
-              : 'bg-slate-100 dark:bg-white/10'
-          }`}
-        >
-          {total}
-        </span>
+        todos · {total}
       </button>
 
-      {/* Stage Tabs */}
       {Object.entries(STAGE_CONFIG).map(([stage, config]) => {
-        const Icon = config.icon;
         const count = counts[stage as keyof StageCounts];
         const isActive = activeStage === stage;
 
         return (
           <button
             key={stage}
+            type="button"
             onClick={() => onStageChange(stage as ContactStage)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
-              isActive
-                ? config.activeColor
-                : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10'
-            }`}
+            className={`chip ${isActive ? 'chip--active' : ''}`}
           >
-            <Icon size={16} />
-            {config.label}
-            <span
-              className={`text-xs px-1.5 py-0.5 rounded-full ${
-                isActive ? 'bg-white/50 dark:bg-white/10' : 'bg-slate-100 dark:bg-white/10'
-              }`}
-            >
-              {count}
-            </span>
+            {config.label.toLowerCase()} · {count}
           </button>
         );
       })}

@@ -137,6 +137,8 @@ export const useContactsController = () => {
     isLoading: contactsLoading,
     isFetching,
     isPlaceholderData,
+    isError: contactsIsError,
+    refetch: refetchContacts,
   } = useContactsPaginated(pagination, serverFilters);
 
   // T019: Extract contacts and totalCount from paginated response
@@ -673,6 +675,8 @@ export const useContactsController = () => {
     setFormData,
     isSubmittingContact,
     isLoading,
+    isError: contactsIsError,
+    refetchContacts,
 
     // T017-T020: Pagination state and handlers
     pagination,

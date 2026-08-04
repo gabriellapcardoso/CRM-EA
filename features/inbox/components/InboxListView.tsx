@@ -54,11 +54,11 @@ const SuggestionRow: React.FC<{
   const getIcon = () => {
     switch (suggestion.type) {
       case 'STALLED':
-        return <AlertTriangle size={16} className="text-orange-500" />;
+        return <AlertTriangle size={15} style={{ color: 'var(--warning)' }} aria-hidden="true" />;
       case 'UPSELL':
-        return <TrendingUp size={16} className="text-green-500" />;
+        return <TrendingUp size={15} style={{ color: 'var(--success)' }} aria-hidden="true" />;
       default:
-        return <AlertTriangle size={16} className="text-slate-500" />;
+        return <AlertTriangle size={15} style={{ color: 'var(--ink-400)' }} aria-hidden="true" />;
     }
   };
 
@@ -79,62 +79,49 @@ const SuggestionRow: React.FC<{
   };
 
   return (
-    <div className="group flex items-center gap-3 py-3 px-4 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg transition-colors">
-      <div className="shrink-0">{getIcon()}</div>
+    <div className="group flex items-center gap-3" style={{ padding: '9px 0' }}>
+      <span className="shrink-0">{getIcon()}</span>
 
       {/* Clickable area for navigation */}
       <button
+        type="button"
         onClick={handleNavigate}
         disabled={!navigationTarget}
-        className="flex-1 min-w-0 text-left hover:text-primary-600 dark:hover:text-primary-400 transition-colors disabled:opacity-60 disabled:hover:text-inherit"
+        className="flex-1 min-w-0 text-left disabled:opacity-60"
       >
-        <p className="text-sm text-slate-700 dark:text-slate-200 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400">
+        <span className="card-conv__preview" style={{ display: 'block' }}>
           {suggestion.description}
-        </p>
+        </span>
       </button>
 
       {value && (
-        <span className="shrink-0 text-sm font-medium text-green-600 dark:text-green-400">
+        <span className="shrink-0 num" style={{ fontSize: 12.5, fontWeight: 700 }}>
           R$ {(value / 1000).toFixed(0)}k
         </span>
       )}
 
       {/* Actions */}
-      <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={onAccept}
-          className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 rounded-md transition-colors"
-          aria-label="Aplicar sugestão"
-          title="Aplicar"
-        >
+      <span className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button type="button" onClick={onAccept} className="btn btn--quiet" aria-label="Aplicar sugestão" title="Aplicar">
           <Check size={14} aria-hidden="true" />
         </button>
-        <button
-          onClick={onSnooze}
-          className="p-1.5 text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-md transition-colors"
-          aria-label="Adiar sugestão"
-          title="Adiar"
-        >
+        <button type="button" onClick={onSnooze} className="btn btn--quiet" aria-label="Adiar sugestão" title="Adiar">
           <Clock size={14} aria-hidden="true" />
         </button>
-        <button
-          onClick={onDismiss}
-          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors"
-          aria-label="Descartar sugestão"
-          title="Descartar"
-        >
+        <button type="button" onClick={onDismiss} className="btn btn--quiet" aria-label="Descartar sugestão" title="Descartar">
           <X size={14} aria-hidden="true" />
         </button>
         <button
+          type="button"
           onClick={handleNavigate}
-          className="p-1.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-md transition-colors"
+          className="btn btn--quiet"
           aria-label={navigationTarget?.label || 'Abrir'}
           title={navigationTarget?.label || 'Abrir'}
           disabled={!navigationTarget}
         >
           <ExternalLink size={14} aria-hidden="true" />
         </button>
-      </div>
+      </span>
     </div>
   );
 };
@@ -178,28 +165,29 @@ const AISuggestionsCard: React.FC<{
   const hasMore = suggestions.length > MAX_SUGGESTIONS;
 
   return (
-    <div className="mb-6 border border-primary-200 dark:border-primary-500/20 rounded-xl overflow-hidden bg-primary-50/50 dark:bg-primary-500/5">
+    <section className="panel">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 p-4 hover:bg-primary-100/50 dark:hover:bg-primary-500/10 transition-colors"
+        className="panel__head w-full"
+        aria-expanded={isOpen}
+        style={{ marginBottom: isOpen ? undefined : 0 }}
       >
-        <div className="p-1.5 rounded-lg bg-primary-100 dark:bg-primary-500/20">
-          <Sparkles size={16} className="text-primary-600 dark:text-primary-400" />
-        </div>
-        <span className="font-semibold text-slate-900 dark:text-white">Sugestões da IA</span>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-primary-200 dark:bg-primary-500/30 text-primary-700 dark:text-primary-300">
-          {suggestions.length}
+        <span className="actor actor--ia" aria-hidden="true">
+          <Sparkles size={13} />
         </span>
-        <div className="flex-1" />
+        <span className="title-sm">sugestões da IA</span>
+        <span className="badge-count">{suggestions.length}</span>
+        <span className="spacer" />
         {isOpen ? (
-          <ChevronDown size={18} className="text-slate-400" />
+          <ChevronDown size={16} aria-hidden="true" />
         ) : (
-          <ChevronRight size={18} className="text-slate-400" />
+          <ChevronRight size={16} aria-hidden="true" />
         )}
       </button>
 
       {isOpen && (
-        <div className="border-t border-primary-200 dark:border-primary-500/20 divide-y divide-primary-100 dark:divide-primary-500/10">
+        <div className="panel__body" style={{ gap: 0 }}>
           {visibleSuggestions.map(suggestion => (
             <SuggestionRow
               key={suggestion.id}
@@ -211,25 +199,19 @@ const AISuggestionsCard: React.FC<{
           ))}
 
           {hasMore && !showAll && (
-            <button
-              onClick={() => setShowAll(true)}
-              className="w-full py-3 px-4 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-100/50 dark:hover:bg-primary-500/10 transition-colors"
-            >
-              Ver todas as {suggestions.length} sugestões
+            <button type="button" onClick={() => setShowAll(true)} className="btn btn--quiet btn--block">
+              ver todas as {suggestions.length} sugestões
             </button>
           )}
 
           {showAll && hasMore && (
-            <button
-              onClick={() => setShowAll(false)}
-              className="w-full py-3 px-4 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
-            >
-              Mostrar menos
+            <button type="button" onClick={() => setShowAll(false)} className="btn btn--quiet btn--block">
+              mostrar menos
             </button>
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
@@ -297,7 +279,7 @@ export const InboxListView: React.FC<InboxListViewProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col" style={{ gap: 'var(--space-4)' }}>
       {/* AI Suggestions (Card único colapsável) */}
       <AISuggestionsCard
         suggestions={aiSuggestions}
@@ -309,9 +291,9 @@ export const InboxListView: React.FC<InboxListViewProps> = ({
       />
 
       {/* Activities */}
-      <div className="space-y-2">
+      <div className="flex flex-col" style={{ gap: 'var(--space-4)' }}>
         <InboxSection
-          title="Atrasados"
+          title="atrasados"
           activities={overdueActivities}
           color="red"
           filterParam="overdue"
@@ -323,7 +305,7 @@ export const InboxListView: React.FC<InboxListViewProps> = ({
 
         {/* Hoje separado: Reuniões vs Tarefas */}
         <InboxSection
-          title="Reuniões Hoje"
+          title="reuniões hoje"
           activities={todayMeetings}
           color="green"
           filterParam="today"
@@ -334,7 +316,7 @@ export const InboxListView: React.FC<InboxListViewProps> = ({
         />
 
         <InboxSection
-          title="Tarefas Hoje"
+          title="tarefas hoje"
           activities={todayTasks}
           color="green"
           filterParam="today"
@@ -345,7 +327,7 @@ export const InboxListView: React.FC<InboxListViewProps> = ({
         />
 
         <InboxSection
-          title="Próximos"
+          title="próximos"
           activities={upcomingActivities}
           color="slate"
           filterParam="upcoming"

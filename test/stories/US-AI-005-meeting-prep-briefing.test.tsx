@@ -455,9 +455,14 @@ describe('Story — US-AI-006: AI Extracted Fields', () => {
     it('applies confidence-based color coding', () => {
       render(<AIExtractedFields data={mockExtractedData} />);
 
-      // High confidence (90%) should have green styling
+      // Redesign 2026-08: a escala de confiança deixou de usar verde/âmbar
+      // (paleta ad-hoc) e passou a usar `.badge-confidence--*` do design system
+      // — executada (>= 0.85), pendente (faixa HITL 0.70–0.85), arquivada (< 0.70).
+      // Confiança alta (90%) deve renderizar o badge "executada".
       const budgetValue = screen.getByText('R$ 50.000');
-      expect(budgetValue.closest('[class*="green"]')).toBeTruthy();
+      const card = budgetValue.closest('.card-deal');
+      expect(card).toBeTruthy();
+      expect(card?.querySelector('.badge-confidence--executada')).toBeTruthy();
     });
 
     it('displays extraction timestamp', () => {

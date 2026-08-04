@@ -67,17 +67,12 @@ export const BusinessUnitSelector = memo(function BusinessUnitSelector({
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         className={cn(
-          'w-full flex items-center justify-between gap-2 px-3 py-2',
-          'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg',
-          'text-sm text-slate-700 dark:text-slate-300',
-          'hover:bg-slate-50 dark:hover:bg-white/10 transition-colors',
-          'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900',
-          disabled && 'opacity-50 cursor-not-allowed',
-          isOpen && 'ring-2 ring-primary-500'
+          'btn btn--ghost btn--block justify-between',
+          disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <Building2 className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
           <span className="truncate">
             {isLoading
               ? 'Carregando...'
@@ -88,23 +83,29 @@ export const BusinessUnitSelector = memo(function BusinessUnitSelector({
                   : placeholder}
           </span>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <span className="flex items-center gap-1 flex-shrink-0">
           {selectedUnitId && !disabled && (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Limpar seleção"
               onClick={handleClear}
-              className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-white/10"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleClear(e as unknown as React.MouseEvent);
+                }
+              }}
+              className="p-0.5 rounded"
             >
-              <X className="w-3.5 h-3.5 text-slate-400" />
-            </button>
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+            </span>
           )}
           <ChevronDown
-            className={cn(
-              'w-4 h-4 text-slate-400 transition-transform',
-              isOpen && 'rotate-180'
-            )}
+            className={cn('w-4 h-4 transition-transform', isOpen && 'rotate-180')}
+            aria-hidden="true"
           />
-        </div>
+        </span>
       </button>
 
       {/* Dropdown */}
@@ -119,11 +120,8 @@ export const BusinessUnitSelector = memo(function BusinessUnitSelector({
           {/* Options */}
           <div
             role="listbox"
-            className={cn(
-              'absolute z-20 w-full mt-1 py-1',
-              'bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg shadow-lg',
-              'max-h-60 overflow-y-auto'
-            )}
+            className="panel absolute z-20 w-full mt-1 max-h-60 overflow-y-auto"
+            style={{ padding: 'var(--space-2)', boxShadow: 'var(--shadow-lg)' }}
           >
             {showAllOption && (
               <button
@@ -131,28 +129,20 @@ export const BusinessUnitSelector = memo(function BusinessUnitSelector({
                 role="option"
                 aria-selected={selectedUnitId === null}
                 onClick={() => handleSelect(null)}
-                className={cn(
-                  'w-full flex items-center justify-between gap-2 px-3 py-2 text-sm',
-                  'hover:bg-slate-50 dark:hover:bg-white/5 transition-colors',
-                  selectedUnitId === null
-                    ? 'text-primary-600 dark:text-primary-400 font-medium'
-                    : 'text-slate-700 dark:text-slate-300'
-                )}
+                className={cn('btn btn--quiet btn--block justify-between', selectedUnitId === null && 'chip--active')}
               >
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  <span>{allLabel}</span>
-                </div>
-                {selectedUnitId === null && (
-                  <Check className="w-4 h-4" />
-                )}
+                <span className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" aria-hidden="true" />
+                  {allLabel}
+                </span>
+                {selectedUnitId === null && <Check className="w-4 h-4" aria-hidden="true" />}
               </button>
             )}
 
             {units.length === 0 && !isLoading && (
-              <div className="px-3 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                Nenhuma unidade encontrada
-              </div>
+              <p className="meta" style={{ textAlign: 'center', padding: 'var(--space-3)' }}>
+                nenhuma unidade encontrada
+              </p>
             )}
 
             {units.map((unit) => (
@@ -162,26 +152,14 @@ export const BusinessUnitSelector = memo(function BusinessUnitSelector({
                 role="option"
                 aria-selected={selectedUnitId === unit.id}
                 onClick={() => handleSelect(unit.id)}
-                className={cn(
-                  'w-full flex items-center justify-between gap-2 px-3 py-2 text-sm',
-                  'hover:bg-slate-50 dark:hover:bg-white/5 transition-colors',
-                  selectedUnitId === unit.id
-                    ? 'text-primary-600 dark:text-primary-400 font-medium'
-                    : 'text-slate-700 dark:text-slate-300'
-                )}
+                className={cn('btn btn--quiet btn--block justify-between', selectedUnitId === unit.id && 'chip--active')}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Building2 className="w-4 h-4 flex-shrink-0" />
+                <span className="flex items-center gap-2 min-w-0">
+                  <Building2 className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                   <span className="truncate">{unit.name}</span>
-                  {unit.key && (
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
-                      ({unit.key})
-                    </span>
-                  )}
-                </div>
-                {selectedUnitId === unit.id && (
-                  <Check className="w-4 h-4 flex-shrink-0" />
-                )}
+                  {unit.key && <span className="meta">({unit.key})</span>}
+                </span>
+                {selectedUnitId === unit.id && <Check className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
               </button>
             ))}
           </div>

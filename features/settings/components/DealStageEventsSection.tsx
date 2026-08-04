@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Send, RefreshCw, AlertTriangle } from 'lucide-react';
-import { SettingsSection } from './SettingsSection';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -82,7 +81,11 @@ export function DealStageEventsSection() {
   const falhados = events.filter((e) => e.status === 'falhou');
 
   return (
-    <SettingsSection title="Ponte Propostas Comerciais (T3)" icon={Send}>
+    <section className="panel">
+      <h2 className="panel__title title-md" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Send className="h-4 w-4" />
+        ponte propostas comerciais (T3)
+      </h2>
       <div className="mt-4 space-y-3">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Quando um deal entra em &quot;Topou receber proposta&quot; no board Negociação, o Gerador de
@@ -168,6 +171,6 @@ export function DealStageEventsSection() {
           </Button>
         )}
       </div>
-    </SettingsSection>
+    </section>
   );
 }

@@ -298,24 +298,30 @@ export const useDashboardMetrics = (period: PeriodFilter = 'this_month', boardId
 
     if (stages.length === 0) {
       // Fallback simples se não tiver stages
+      const open = deals.filter(d => !d.isWon && !d.isLost);
+      const won = deals.filter(d => d.isWon);
+      const lost = deals.filter(d => d.isLost);
       return [
-        { name: 'Em aberto', count: deals.filter(d => !d.isWon && !d.isLost).length, fill: '#3b82f6' },
-        { name: 'Ganho', count: deals.filter(d => d.isWon).length, fill: '#22c55e' },
-        { name: 'Perdido', count: deals.filter(d => d.isLost).length, fill: '#ef4444' },
+        { name: 'Em aberto', count: open.length, value: open.reduce((a, d) => a + d.value, 0), fill: '#3b82f6' },
+        { name: 'Ganho', count: won.length, value: won.reduce((a, d) => a + d.value, 0), fill: '#22c55e' },
+        { name: 'Perdido', count: lost.length, value: lost.reduce((a, d) => a + d.value, 0), fill: '#ef4444' },
       ];
     }
 
     // Usar dados de SNAPSHOT (activeSnapshotDeals)
     // Mostra tudo que está no funil AGORA, independente de quando foi criado.
-    return stages.map(stage => ({
-      name: stage.label,
-      count: activeSnapshotDeals.filter(d => d.status === stage.id).length,
-      fill: COLOR_MAP[stage.color] || '#3b82f6', // Fallback to blue
-    }));
-  }, [activeSnapshotDeals, defaultBoard, boards, boardId]);
+    return stages.map(stage => {
+      const stageDeals = activeSnapshotDeals.filter(d => d.status === stage.id);
+      return {
+        name: stage.label,
+        count: stageDeals.length,
+        value: stageDeals.reduce((a, d) => a + d.value, 0),
+        fill: COLOR_MAP[stage.color] || '#3b82f6', // Fallback to blue
+      };
+    });
+  }, [activeSnapshotDeals, defaultBoard, boards, boardId, deals]);
 
-  // Mock Trend Data
-  // Real Trend Data (Last 6 Months)
+  // Real Trend Data (Last 6 Months) — ganho (wonDeals) x perdido (lostDeals)
   const trendData = React.useMemo(() => {
     /**
      * Performance: avoid O(6*N) by pre-aggregating revenue by month once.
@@ -329,6 +335,15 @@ export const useDashboardMetrics = (period: PeriodFilter = 'this_month', boardId
       revenueByMonthKey.set(key, (revenueByMonthKey.get(key) ?? 0) + deal.value);
     }
 
+    // Mesmo padrão acima, para deals perdidos — usado no gráfico "ganho x perdido" de Relatórios.
+    const lostRevenueByMonthKey = new Map<string, number>();
+    for (const deal of lostDeals) {
+      if (!deal.updatedAt) continue;
+      const dt = new Date(deal.updatedAt);
+      const key = `${dt.getMonth()}-${dt.getFullYear()}`;
+      lostRevenueByMonthKey.set(key, (lostRevenueByMonthKey.get(key) ?? 0) + deal.value);
+    }
+
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date();
       d.setMonth(d.getMonth() - (5 - i));
@@ -336,16 +351,18 @@ export const useDashboardMetrics = (period: PeriodFilter = 'this_month', boardId
     });
 
     return last6Months.map(date => {
-      const monthName = date.toLocaleString('default', { month: 'short' });
+      const monthName = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
       const monthKey = `${date.getMonth()}-${date.getFullYear()}`;
       const monthlyRevenue = revenueByMonthKey.get(monthKey) ?? 0;
+      const monthlyLostRevenue = lostRevenueByMonthKey.get(monthKey) ?? 0;
 
       return {
         month: monthName.charAt(0).toUpperCase() + monthName.slice(1),
-        revenue: monthlyRevenue
+        revenue: monthlyRevenue,
+        lostRevenue: monthlyLostRevenue,
       };
     });
-  }, [wonDeals]);
+  }, [wonDeals, lostDeals]);
 
   // Wallet Health Metrics - Usa TODOS os contatos (não filtrados por período)
   // A saúde da carteira é um snapshot atual, não depende do período selecionado

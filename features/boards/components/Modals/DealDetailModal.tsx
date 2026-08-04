@@ -57,6 +57,7 @@ import { useRouter } from 'next/navigation';
 import { StageProgressBar } from '../StageProgressBar';
 import { ActivityRow } from '@/features/activities/components/ActivityRow';
 import { formatPriorityPtBr } from '@/lib/utils/priority';
+import { formatCurrencyBRL } from '@/features/boards/cardFormat';
 import { BriefingDrawer } from '@/features/deals/components/BriefingDrawer';
 import { AIExtractedFields } from '@/features/deals/components/AIExtractedFields';
 
@@ -423,12 +424,24 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
     <div
       className={
         isMobile
-          ? 'bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 w-full h-[100dvh] flex flex-col overflow-hidden pb-[var(--app-safe-area-bottom,0px)]'
-          : 'bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200'
+          ? 'w-full h-[100dvh] flex flex-col overflow-hidden pb-[var(--app-safe-area-bottom,0px)]'
+          : 'w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200'
       }
+      style={{
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: isMobile ? 0 : 'var(--radius-lg)',
+        boxShadow: isMobile ? 'none' : 'var(--shadow-lg)',
+      }}
     >
           {/* HEADER (Stage Bar + Won/Lost) */}
-          <div className="bg-slate-50 dark:bg-black/20 border-b border-slate-200 dark:border-white/10 p-6 shrink-0">
+          <div
+            className="p-6 shrink-0"
+            style={{
+              background: 'var(--surface-card)',
+              borderBottom: '1px solid var(--border-subtle)',
+            }}
+          >
             <div className="flex justify-between items-start mb-6">
               <div className="flex-1 mr-8">
                 {isEditingTitle ? (
@@ -436,14 +449,14 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                     <input
                       autoFocus
                       type="text"
-                      className="text-2xl font-bold text-slate-900 dark:text-white bg-white dark:bg-black/20 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 w-full outline-none focus:ring-2 focus:ring-primary-500"
+                      className="input title-lg"
                       value={editTitle}
                       onChange={e => setEditTitle(e.target.value)}
                       onBlur={saveTitle}
                       onKeyDown={e => e.key === 'Enter' && saveTitle()}
                     />
-                    <button onClick={saveTitle} className="text-green-500 hover:text-green-400">
-                      <Check size={24} />
+                    <button onClick={saveTitle} className="btn btn--primary" aria-label="Salvar título">
+                      <Check size={18} aria-hidden="true" />
                     </button>
                   </div>
                 ) : (
@@ -453,28 +466,29 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                       setEditTitle(deal.title);
                       setIsEditingTitle(true);
                     }}
-                    className="text-2xl font-bold text-slate-900 dark:text-white font-display leading-tight cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 flex items-center gap-2 group transition-colors"
+                    className="title-lg flex items-center gap-2 group cursor-pointer"
                     title="Clique para editar"
                   >
                     {deal.title}
-                    <Pencil size={16} className="opacity-0 group-hover:opacity-50 text-slate-400" />
+                    <Pencil size={14} className="opacity-0 group-hover:opacity-60" aria-hidden="true" />
                   </h2>
                 )}
 
                 {isEditingValue ? (
                   <div className="flex gap-2 items-center">
-                    <span className="text-lg font-mono font-bold text-slate-500">$</span>
+                    <span className="label">R$</span>
                     <input
                       autoFocus
                       type="number"
-                      className="text-lg font-mono font-bold text-primary-600 dark:text-primary-400 bg-white dark:bg-black/20 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 w-32 outline-none focus:ring-2 focus:ring-primary-500"
+                      className="input num"
+                      style={{ width: 140 }}
                       value={editValue}
                       onChange={e => setEditValue(e.target.value)}
                       onBlur={saveValue}
                       onKeyDown={e => e.key === 'Enter' && saveValue()}
                     />
-                    <button onClick={saveValue} className="text-green-500 hover:text-green-400">
-                      <Check size={20} />
+                    <button onClick={saveValue} className="btn btn--primary" aria-label="Salvar valor">
+                      <Check size={16} aria-hidden="true" />
                     </button>
                   </div>
                 ) : (
@@ -483,10 +497,10 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                       setEditValue(deal.value.toString());
                       setIsEditingValue(true);
                     }}
-                    className="text-lg text-primary-600 dark:text-primary-400 font-mono font-bold cursor-pointer hover:underline decoration-dashed underline-offset-4"
+                    className="cockpit__value num cursor-pointer"
                     title="Clique para editar valor"
                   >
-                    ${deal.value.toLocaleString()}
+                    {formatCurrencyBRL(deal.value)}
                   </p>
                 )}
               </div>
@@ -494,8 +508,10 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                 {/* Se fechado: mostra badge + botão Reabrir */}
                 {(deal.isWon || deal.isLost) ? (
                   <>
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${deal.isWon ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                      {deal.isWon ? '✓ GANHO' : '✗ PERDIDO'}
+                    <span
+                      className={`badge-stage ${deal.isWon ? 'badge-stage--ganho' : 'badge-stage--perdido'}`}
+                    >
+                      {deal.isWon ? 'ganho' : 'perdido'}
                     </span>
                     <button
                       onClick={() => {
@@ -510,9 +526,9 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                           updateDeal(deal.id, { isWon: false, isLost: false, closedAt: undefined });
                         }
                       }}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm flex items-center gap-2 transition-all"
+                      className="btn btn--ghost"
                     >
-                      ↩ Reabrir
+                      ↩ reabrir
                     </button>
                   </>
                 ) : (
@@ -552,9 +568,9 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                         }
                         onClose();
                       }}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold text-sm shadow-sm flex items-center gap-2"
+                      className="btn btn--primary"
                     >
-                      <ThumbsUp size={16} /> GANHO
+                      <ThumbsUp size={14} aria-hidden="true" /> ganho
                     </button>
                     <button
                       onClick={() => {
@@ -574,35 +590,36 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                         setLossReasonOrigin('button');
                         setShowLossReasonModal(true);
                       }}
-                      className="px-4 py-2 bg-transparent border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-bold text-sm shadow-sm flex items-center gap-2"
+                      className="btn btn--ghost"
+                      style={{ color: 'var(--danger)', borderColor: '#f3c2cd' }}
                     >
-                      <ThumbsDown size={16} /> PERDIDO
+                      <ThumbsDown size={14} aria-hidden="true" /> perdido
                     </button>
                   </>
                 )}
                 <button
                   onClick={() => setShowBriefingDrawer(true)}
-                  className="ml-2 px-3 py-1.5 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-500/30 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                  className="chip chip--ia"
                   title="Preparar para a conversa com este lead"
                   aria-label="Preparar conversa com este lead"
                 >
-                  <FileText size={14} aria-hidden="true" />
-                  <span className="hidden sm:inline">Preparar</span>
+                  <FileText size={13} aria-hidden="true" />
+                  <span className="hidden sm:inline">preparar</span>
                 </button>
                 <button
                   onClick={() => setDeleteId(deal.id)}
-                  className="ml-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  className="btn btn--quiet"
                   title="Excluir Negócio"
                   aria-label="Excluir negócio"
                 >
-                  <Trash2 size={24} aria-hidden="true" />
+                  <Trash2 size={18} aria-hidden="true" />
                 </button>
                 <button
                   onClick={onClose}
-                  className="ml-2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                  className="btn btn--quiet"
                   aria-label="Fechar modal"
                 >
-                  <X size={24} aria-hidden="true" />
+                  <X size={18} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -632,9 +649,10 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                 }}
               />
             ) : (
-              <div className="mt-4 rounded-lg border border-slate-200/60 bg-slate-50 px-4 py-3 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                Board não encontrado para este negócio. Algumas ações (mover estágio) podem ficar indisponíveis.
-              </div>
+              <p className="banner banner--info" style={{ marginTop: 'var(--space-4)' }}>
+                Board não encontrado para este negócio. Algumas ações (mover estágio) podem ficar
+                indisponíveis.
+              </p>
             )}
           </div>
 
@@ -643,19 +661,19 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
             <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/5 p-4 sm:p-6 overflow-y-auto bg-white dark:bg-dark-card max-h-[38vh] md:max-h-none">
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-2">
-                    <Building2 size={14} /> Empresa (Conta)
+                  <h3 className="label mb-2 flex items-center gap-2">
+                    <Building2 size={13} aria-hidden="true" /> empresa
                   </h3>
-                  <p className="text-slate-900 dark:text-white font-medium">{deal.companyName}</p>
+                  <p className="contact-head__name">{deal.companyName}</p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-2">
-                    <User size={14} /> Contato Principal
+                  <h3 className="label mb-2 flex items-center gap-2">
+                    <User size={13} aria-hidden="true" /> contato principal
                   </h3>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">
-                      {(deal.contactName || '?').charAt(0)}
-                    </div>
+                    <span className="avatar avatar--md avatar--purple" aria-hidden="true">
+                      {(deal.contactName || '?').charAt(0).toUpperCase()}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-slate-900 dark:text-white font-medium text-sm flex items-center gap-2">
                         {deal.contactName || 'Sem contato'}
@@ -695,42 +713,43 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                           router.push(`/messaging?${params.toString()}`);
                           onClose();
                         }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 hover:bg-green-100 dark:hover:bg-green-500/20 rounded-lg transition-colors"
+                        className="chip"
                         title="Enviar mensagem via WhatsApp"
                       >
-                        <MessageSquare size={14} />
-                        <span className="hidden sm:inline">Mensagem</span>
+                        <span
+                          className="badge-channel badge-channel--whatsapp badge-channel--sm"
+                          aria-hidden="true"
+                        >
+                          W
+                        </span>
+                        <span className="hidden sm:inline">mensagem</span>
                       </button>
                     )}
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase mb-2">Detalhes</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Prioridade</span>
-                      <span className="text-slate-900 dark:text-white">
-                        {formatPriorityPtBr(deal.priority)}
-                      </span>
+                  <h3 className="label mb-2">detalhes</h3>
+                  <dl className="data-list">
+                    <div className="data-list__row">
+                      <dt>prioridade</dt>
+                      <dd>{formatPriorityPtBr(deal.priority)}</dd>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Criado em</span>
-                      <span className="text-slate-900 dark:text-white">
-                        {PT_BR_DATE_FORMATTER.format(new Date(deal.createdAt))}
-                      </span>
+                    <div className="data-list__row">
+                      <dt>criado em</dt>
+                      <dd>{PT_BR_DATE_FORMATTER.format(new Date(deal.createdAt))}</dd>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Probabilidade</span>
-                      <span className="text-slate-900 dark:text-white">{deal.probability}%</span>
+                    <div className="data-list__row">
+                      <dt>probabilidade</dt>
+                      <dd className="num">{deal.probability}%</dd>
                     </div>
-                  </div>
+                  </dl>
                 </div>
 
                 {/* TAGS */}
                 <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
-                    <TagIcon size={14} /> Tags
+                  <h3 className="label mb-3 flex items-center gap-2">
+                    <TagIcon size={13} aria-hidden="true" /> etiquetas
                   </h3>
 
                   <div className="flex flex-wrap gap-2">

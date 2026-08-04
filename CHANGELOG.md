@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Redesign visual completo do CRM a partir do handoff HTML/CSS "Redesign CRM" — 2026-08-04
+
+Reimplementação de toda a UI autenticada a partir de um pacote de handoff
+estático (HTML/CSS sem framework, fornecido pela fundadora) — shell (sidebar/
+topbar), login, convite de organização, dashboard, negociação/boards + cockpit
+de negócio, contatos, atividades, inbox, mensagens, fila de decisões da IA,
+relatórios, configurações (4 abas) e perfil. Todo o conteúdo dinâmico liga a
+dado real (Supabase/TanStack Query) — nenhuma tela ficou com número ou nome
+mockado. Decisões de arquitetura, mapeamento tela→rota e adaptações registradas
+em detalhe em `REDESIGN-CRM.md`.
+
+**Principais decisões:**
+1. CSS do handoff (tokens, `components.css`, `card-deal.css`, `board.css`,
+   `table-list.css`, `inbox.css`, `timeline.css`, `approval.css`,
+   `cockpit.css`, `report.css`, `auth.css`) colado inteiro em `app/globals.css`
+   como camada de componentes — fidelidade pixel-a-pixel com o handoff em vez
+   de tradução pra utilitário Tailwind.
+2. Redesign é **light-only** por decisão deliberada (handoff não tem variante
+   dark, nova topbar não tem toggle de tema): `context/ThemeContext.tsx`
+   default de `crm_dark_mode` mudou pra `false`, `app/layout.tsx` deixou de
+   nascer com `className="dark"`. Mecanismo de dark mode não foi removido, só
+   parou de ser oferecido na UI nova.
+3. Cockpit de negócio tinha 3 implementações vivas (`DealDetailModal`,
+   `DealCockpitClient`/`cockpit-v2`, `DealCockpitFocusClient`/`cockpit`, + 2
+   mocks em `labs/`) — `DealCockpitClient` (`cockpit-v2`) ficou como canônica,
+   `DealDetailModal` ganhou versão condensada do mesmo vocabulário; as outras
+   duas não foram tocadas.
+4. `/settings`, `/settings/ai`, `/settings/integracoes`, `/settings/products`
+   continuam sendo o mesmo componente `SettingsPage.tsx`, agora com navegação
+   por `.tabs` real (cada aba é uma rota, não só estado local).
+5. **Exclusão de escopo deliberada**: `/install/start` e `/install/wizard`
+   (instalador operacional de ~3000 linhas, sem mockup equivalente na
+   complexidade) não foram tocados — risco de quebrar um fluxo crítico de
+   setup superava o ganho visual.
+6. `ia.html` do handoff ("IA · decisões", fila de aprovação por confiança
+   0.70/0.85) mapeia pra `/decisions` (fila de decisões por prioridade), não
+   pra `/ai` (hub de chat/config do agente, sem mockup próprio) — os dois
+   modelos de dado são diferentes (confiança numérica vs. prioridade
+   categórica); adaptações de UI documentadas em `REDESIGN-CRM.md`.
+
+**Verificação**: `tsc --noEmit` (0 erros), `eslint . --max-warnings=0` (0
+problemas), `vitest run` (445 passando, 5 skipped, 0 falhas), `next build`
+(110 rotas geradas sem erro). Smoke test manual (`next dev` + curl) confirmou
+`/login` e `/join` renderizando com o visual novo.
+
+**Pendente**: revisão visual em navegador real ainda não feita pra `/inbox`/
+`/messaging` (risco de scroll duplo/`min-width` em telas estreitas) nem pras
+demais telas — recomendado antes de produção. `FocusContextPanel.tsx`
+(messaging/cockpit, ~1900 linhas) não foi restilizado por ser compartilhado
+entre dois blocos de trabalho em paralelo.
+
 ### Fechamento das violações médias/baixas do audit-report.md (2026-04) — 2026-08-04
 
 Sessão dedicada a fechar os achados da auditoria de segurança de abril/2026

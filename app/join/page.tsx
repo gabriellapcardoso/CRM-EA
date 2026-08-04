@@ -26,11 +26,10 @@ export default async function JoinPage({
 
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-dark-bg">
-        <div className="text-center">
-          <div className="h-8 w-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 dark:text-slate-400">Carregando...</p>
-        </div>
+      <div className="auth">
+        <section className="auth__panel" style={{ flex: 1, width: '100%' }}>
+          <span className="spinner" aria-hidden="true" />
+        </section>
       </div>
     }>
       <JoinClient token={token} />

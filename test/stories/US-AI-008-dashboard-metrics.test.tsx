@@ -210,10 +210,10 @@ describe('US-AI-008: AIMetricsSection', () => {
   it('renderiza 4 cards de metricas', async () => {
     await renderSection();
 
-    expect(screen.getByText('Conversas Hoje')).toBeTruthy();
-    expect(screen.getByText('HITL Pendentes')).toBeTruthy();
-    expect(screen.getByText('Taxa Aprovação HITL')).toBeTruthy();
-    expect(screen.getByText('Auto-Avanços')).toBeTruthy();
+    expect(screen.getByText('conversas hoje')).toBeTruthy();
+    expect(screen.getByText('HITL pendentes')).toBeTruthy();
+    expect(screen.getByText('taxa aprovação HITL')).toBeTruthy();
+    expect(screen.getByText('auto-avanços')).toBeTruthy();
   });
 
   it('mostra zeros quando sem dados', async () => {
@@ -239,7 +239,7 @@ describe('US-AI-008: AIMetricsSection', () => {
 
     // When thisMonth.total === 0, component shows empty state instead
     expect(
-      screen.getByText('Nenhuma conversa AI registrada ainda')
+      screen.getByText(/nenhuma conversa de IA registrada ainda/)
     ).toBeTruthy();
   });
 
@@ -272,7 +272,7 @@ describe('US-AI-008: AIMetricsSection', () => {
     expect(screen.getByText(/Handoff \(5\)/)).toBeTruthy();
 
     // Total text
-    expect(screen.getByText(/Total: 42 interações/)).toBeTruthy();
+    expect(screen.getByText(/total: 42 interações/)).toBeTruthy();
   });
 
   it('nao renderiza sem orgId', async () => {

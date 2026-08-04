@@ -1,5 +1,4 @@
 import React from 'react';
-import { Search, Filter } from 'lucide-react';
 import { Activity } from '@/types';
 
 interface ActivitiesFiltersProps {
@@ -8,6 +7,15 @@ interface ActivitiesFiltersProps {
   filterType: Activity['type'] | 'ALL';
   setFilterType: (type: Activity['type'] | 'ALL') => void;
 }
+
+const TYPE_CHIPS: Array<{ value: Activity['type'] | 'ALL'; label: string }> = [
+  { value: 'ALL', label: 'tudo' },
+  { value: 'STATUS_CHANGE', label: '⚡ automação' },
+  { value: 'CALL', label: 'ligações' },
+  { value: 'MEETING', label: 'reuniões' },
+  { value: 'EMAIL', label: 'e-mails' },
+  { value: 'TASK', label: 'tarefas' },
+];
 
 /**
  * Componente React `ActivitiesFilters`.
@@ -32,31 +40,31 @@ export const ActivitiesFilters: React.FC<ActivitiesFiltersProps> = ({
   setFilterType,
 }) => {
   return (
-    <div className="flex gap-4 mb-6">
-      <div className="flex-1 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+    <div className="panel__head">
+      <div className="chip-row">
+        {TYPE_CHIPS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setFilterType(value)}
+            className={`chip ${filterType === value ? 'chip--active' : ''}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <span className="spacer" />
+      <form className="search" role="search" onSubmit={e => e.preventDefault()}>
+        <label className="sr-only" htmlFor="activities-search">buscar</label>
         <input
-          type="text"
-          placeholder="Buscar atividades..."
-          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
+          id="activities-search"
+          className="search__input"
+          type="search"
+          placeholder="buscar atividades..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
-      </div>
-      <div className="flex items-center gap-2">
-        <Filter size={20} className="text-slate-400" />
-        <select
-          className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
-          value={filterType}
-          onChange={e => setFilterType(e.target.value as Activity['type'] | 'ALL')}
-        >
-          <option value="ALL">Todos os tipos</option>
-          <option value="CALL">Ligações</option>
-          <option value="MEETING">Reuniões</option>
-          <option value="EMAIL">Emails</option>
-          <option value="TASK">Tarefas</option>
-        </select>
-      </div>
+      </form>
     </div>
   );
 };

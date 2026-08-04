@@ -139,26 +139,26 @@ export function ScheduleModal({
             />
 
             {/* Modal */}
-            <div className="relative bg-slate-900 border border-slate-700 rounded-xl w-full max-w-xl mx-4 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="panel relative w-full max-w-xl mx-4 max-h-[90vh] flex flex-col overflow-hidden" style={{ boxShadow: "var(--shadow-lg)" }}>
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
-                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Calendar size={20} className="text-primary-400" />
+                <div className="panel__head shrink-0">
+                    <h2 className="title-md flex items-center gap-2">
+                        <Calendar size={16} aria-hidden="true" />
                         Agendar Atividade
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
+                        className="btn btn--quiet"
                     >
-                        <X size={20} className="text-slate-400" />
+                        <X size={16} aria-hidden="true" />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-4 space-y-4 overflow-y-auto">
+                <div className="panel__body overflow-y-auto">
                     {/* Type selector */}
                     <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-2">Tipo</label>
+                        <label className="field__label">Tipo</label>
                         <div className="grid grid-cols-3 gap-2">
                             {(Object.keys(typeConfig) as ScheduleType[]).map((t) => {
                                 const cfg = typeConfig[t];
@@ -167,19 +167,14 @@ export function ScheduleModal({
                                 return (
                                     <button
                                         key={t}
+                                        type="button"
                                         onClick={() => setType(t)}
-                                        className={`p-3 rounded-lg border flex flex-col items-center gap-1 transition-all ${isSelected
-                                                ? `border-${cfg.color}-500 bg-${cfg.color}-500/10 text-${cfg.color}-400`
-                                                : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
-                                            }`}
-                                        style={isSelected ? {
-                                            borderColor: cfg.color === 'blue' ? '#3b82f6' : cfg.color === 'purple' ? '#a855f7' : '#f97316',
-                                            backgroundColor: cfg.color === 'blue' ? 'rgba(59,130,246,0.1)' : cfg.color === 'purple' ? 'rgba(168,85,247,0.1)' : 'rgba(249,115,22,0.1)',
-                                            color: cfg.color === 'blue' ? '#60a5fa' : cfg.color === 'purple' ? '#c084fc' : '#fb923c',
-                                        } : {}}
+                                        aria-pressed={isSelected}
+                                        className={`chip${isSelected ? ' chip--active' : ''}`}
+                                        style={{ flexDirection: 'column', padding: '10px 8px' }}
                                     >
-                                        <Icon size={18} />
-                                        <span className="text-xs font-medium">{cfg.label}</span>
+                                        <Icon size={16} aria-hidden="true" />
+                                        {cfg.label}
                                     </button>
                                 );
                             })}
@@ -188,7 +183,7 @@ export function ScheduleModal({
 
                     {/* Title */}
                     <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-2">Título</label>
+                        <label className="field__label">Título</label>
                         <input
                             type="text"
                             value={title}
@@ -196,7 +191,7 @@ export function ScheduleModal({
                                 setTitleTouched(true);
                                 setTitle(e.target.value);
                             }}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500"
+                            className="input"
                             placeholder="Ex: Ligar para João"
                         />
                     </div>
@@ -204,22 +199,22 @@ export function ScheduleModal({
                     {/* Date and Time */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-2">Data</label>
+                            <label className="field__label">Data</label>
                             <input
                                 type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
                                 min={new Date().toISOString().split('T')[0]}
-                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500"
+                                className="input"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-2">Horário</label>
+                            <label className="field__label">Horário</label>
                             <input
                                 type="time"
                                 value={time}
                                 onChange={(e) => setTime(e.target.value)}
-                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500"
+                                className="input"
                             />
                         </div>
                     </div>
@@ -234,11 +229,10 @@ export function ScheduleModal({
                             return (
                                 <button
                                     key={label}
+                                    type="button"
                                     onClick={() => setDate(dateStr)}
-                                    className={`px-3 py-1 text-xs rounded-full transition-colors ${date === dateStr
-                                            ? 'bg-primary-500 text-white'
-                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                        }`}
+                                    aria-pressed={date === dateStr}
+                                    className={`chip${date === dateStr ? ' chip--active' : ''}`}
                                 >
                                     {label}
                                 </button>
@@ -248,29 +242,29 @@ export function ScheduleModal({
 
                     {/* Description */}
                     <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-2">Descrição (opcional)</label>
+                        <label className="field__label">Descrição (opcional)</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={4}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 resize-y min-h-[120px] max-h-[40vh]"
+                            className="input input--textarea" style={{ resize: "vertical", minHeight: 120, maxHeight: "40vh" }}
                             placeholder="Notas adicionais..."
                         />
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-4 border-t border-slate-800 shrink-0">
+                <div className="flex gap-3 shrink-0" style={{ paddingTop: "var(--space-3)", borderTop: "1px solid var(--border-subtle)" }}>
                     <button
                         onClick={onClose}
-                        className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+                        className="btn btn--ghost" style={{ flex: 1 }}
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={!title.trim() || !date || isSaving}
-                        className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                        className="btn btn--primary" style={{ flex: 1 }}
                     >
                         {isSaving ? (
                             <span className="animate-spin">⏳</span>

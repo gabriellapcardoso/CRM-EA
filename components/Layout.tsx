@@ -1,53 +1,19 @@
 /**
  * @fileoverview Layout Principal da Aplicação
  *
- * Componente de layout que fornece estrutura base para todas as páginas,
- * incluindo sidebar de navegação, header e área de conteúdo.
+ * Shell (sidebar + topbar) redesenhado em 2026-08 a partir do handoff
+ * "Redesign CRM" — ver REDESIGN-CRM.md. Vocabulário visual vem de
+ * `.sidebar`/`.nav`/`.topbar`/`.pill-hitl` etc. (app/globals.css).
  *
  * @module components/Layout
- *
- * Recursos de Acessibilidade:
- * - Skip link para navegação por teclado
- * - Navegação com aria-current para página ativa
- * - Ícones decorativos com aria-hidden
- * - Suporte a prefetch em hover/focus
- *
- * @example
- * ```tsx
- * function App() {
- *   return (
- *     <Layout>
- *       <PageContent />
- *     </Layout>
-```
- * }
- * ```
  */
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  LayoutDashboard,
-  KanbanSquare,
-  Users,
-  Settings,
-  Sun,
-  Moon,
-  BarChart3,
-  Inbox,
-  MessageSquare,
-  Sparkles,
-  LogOut,
-  User,
-  Bug,
-  CheckSquare,
-  PanelLeftClose,
-  PanelLeftOpen
-} from 'lucide-react';
+import { Sparkles, LogOut, User, Bug } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { useUIStore } from '@/lib/stores';
 import { prefetchRoute, RouteName } from '@/lib/prefetch';
 import { isDebugMode, enableDebugMode, disableDebugMode } from '@/lib/debug';
@@ -55,122 +21,58 @@ import { SkipLink } from '@/lib/a11y';
 import { useResponsiveMode } from '@/hooks/useResponsiveMode';
 import { BottomNav, MoreMenuSheet, NavigationRail } from '@/components/navigation';
 import { useUnreadCount } from '@/lib/query/hooks/useConversationsQuery';
-
-// Lazy load AI Assistant (deprecated - using UIChat now)
-// const AIAssistant = lazy(() => import('./AIAssistant'));
+import decisionQueueService from '@/features/decisions/services/decisionQueueService';
 import { UIChat } from './ai/UIChat';
-
 import { NotificationPopover } from './notifications/NotificationPopover';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
-/**
- * Props do componente Layout
- * @interface LayoutProps
- * @property {React.ReactNode} children - Conteúdo da página
- */
-const PAGE_TITLES: Record<string, string> = {
-  '/inbox': 'Inbox',
-  '/messaging': 'Mensagens',
-  '/dashboard': 'Visão Geral',
-  '/boards': 'Boards',
-  '/pipeline': 'Boards',
-  '/contacts': 'Contatos',
-  '/activities': 'Atividades',
-  '/decisions': 'Decisões',
-  '/reports': 'Relatórios',
-  '/settings': 'Configurações',
-  '/profile': 'Perfil',
-  '/ai': 'Assistente IA',
+const PAGE_TITLES: Record<string, { heading: string; sub: string }> = {
+  '/dashboard': { heading: 'Dashboard', sub: 'visão geral do pós-venda' },
+  '/boards': { heading: 'Negociação', sub: 'kanban das oportunidades abertas' },
+  '/pipeline': { heading: 'Negociação', sub: 'kanban das oportunidades abertas' },
+  '/inbox': { heading: 'Inbox', sub: 'o que precisa da sua atenção agora' },
+  '/messaging': { heading: 'Mensagens', sub: 'conversas por WhatsApp, e-mail e Instagram' },
+  '/contacts': { heading: 'Contatos', sub: 'pessoas e empresas do seu funil' },
+  '/activities': { heading: 'Atividades', sub: 'tarefas, ligações e follow-ups' },
+  '/decisions': { heading: 'IA · decisões', sub: 'o que o agente fez e o que espera você' },
+  '/ai': { heading: 'Assistente IA', sub: 'converse com o agente' },
+  '/reports': { heading: 'Relatórios', sub: 'funil, ganhos e desempenho do agente' },
+  '/settings': { heading: 'Configurações', sub: 'organização, IA, integrações e produtos' },
+  '/profile': { heading: 'Perfil', sub: 'sua conta e preferências' },
 };
 
-const getPageTitle = (pathname: string): string => {
-  // Exact match first
+const getPageMeta = (pathname: string) => {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
-  // Prefix match (e.g., /settings/ai → Configurações)
-  const prefix = Object.keys(PAGE_TITLES).find(key => pathname.startsWith(key + '/'));
-  return prefix ? PAGE_TITLES[prefix] : '';
+  const prefix = Object.keys(PAGE_TITLES).find((key) => pathname.startsWith(key + '/'));
+  return prefix ? PAGE_TITLES[prefix] : { heading: '', sub: '' };
 };
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-/**
- * Item de navegação da sidebar
- *
- * @param props - Props do item de navegação
- * @param props.to - Rota de destino
- * @param props.icon - Componente de ícone Lucide
- * @param props.label - Label exibido
- * @param props.prefetch - Nome da rota para prefetch
- * @param props.clickedPath - Path que foi clicado (para manter highlight durante transição)
- * @param props.onItemClick - Callback quando o item é clicado
- * @param props.badge - Badge count to display
- */
-const NavItem = ({
-  to,
-  icon: Icon,
-  label,
-  prefetch,
-  clickedPath,
-  onItemClick,
-  badge,
-}: {
+interface NavLinkProps {
   to: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
   prefetch?: RouteName;
-  clickedPath?: string;
-  onItemClick?: (path: string) => void;
   badge?: number;
-}) => {
-  const pathname = usePathname();
-  const isActive = pathname === to || (to === '/boards' && pathname === '/pipeline');
-  const wasJustClicked = clickedPath === to;
+  isActive: boolean;
+}
 
-  // If user clicked on a DIFFERENT item, immediately deactivate this one
-  // This prevents the delay showing both items as active
-  const anotherItemWasClicked = clickedPath && clickedPath !== to;
-  const isActuallyActive = anotherItemWasClicked ? false : (isActive || wasJustClicked);
+const NavLink = ({ to, label, prefetch, badge, isActive }: NavLinkProps) => (
+  <Link
+    href={to}
+    onMouseEnter={prefetch ? () => prefetchRoute(prefetch) : undefined}
+    onFocus={prefetch ? () => prefetchRoute(prefetch) : undefined}
+    className={`nav__item${isActive ? ' nav__item--active' : ''}`}
+    aria-current={isActive ? 'page' : undefined}
+  >
+    {label}
+    {(badge ?? 0) > 0 && <span className="badge-count">{badge! > 99 ? '99+' : badge}</span>}
+  </Link>
+);
 
-  return (
-    <Link
-      href={to}
-      onMouseEnter={prefetch ? () => prefetchRoute(prefetch) : undefined}
-      onFocus={prefetch ? () => prefetchRoute(prefetch) : undefined}
-      onClick={() => onItemClick?.(to)}
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium focus-visible-ring
-    ${isActuallyActive
-          ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-900/50'
-          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-        }`}
-    >
-      <div className="relative">
-        <Icon size={20} className={isActuallyActive ? 'text-primary-500' : ''} aria-hidden="true" />
-        {(badge ?? 0) > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center px-1 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm">
-            {badge! > 99 ? '99+' : badge}
-          </span>
-        )}
-      </div>
-      <span className="font-display tracking-wide">{label}</span>
-    </Link>
-  );
-};
-
-
-/**
- * Layout principal da aplicação
- *
- * Fornece estrutura com sidebar fixa, header responsivo e área de conteúdo.
- * Inclui navegação, controles de tema e acesso ao assistente de IA.
- *
- * @param {LayoutProps} props - Props do componente
- * @returns {JSX.Element} Estrutura de layout completa
- */
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { darkMode, toggleDarkMode } = useTheme();
-  const { aiAssistantOpen, setAIAssistantOpen, sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+  const { aiAssistantOpen, setAIAssistantOpen } = useUIStore();
   const { user, loading, profile, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -180,71 +82,43 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isDesktop = mode === 'desktop';
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  // Hydration safety: `isDebugMode()` reads localStorage. On SSR it is always false.
-  // Initialize deterministically and sync on mount to avoid hydration mismatch warnings.
   const [debugEnabled, setDebugEnabled] = useState(false);
+  const [pendingDecisions, setPendingDecisions] = useState(0);
 
-  // Messaging unread count for notification badge
   const { data: unreadMessagesCount = 0 } = useUnreadCount();
 
   useEffect(() => {
     setDebugEnabled(isDebugMode());
   }, []);
 
-  // If the user signed out (or session expired), leave protected shell ASAP.
-  // This prevents rendering fallbacks like "Usuário" while unauthenticated.
+  // Contagem de decisões pendentes (localStorage) — lida após montar pra evitar mismatch de hidratação.
+  useEffect(() => {
+    const refresh = () => setPendingDecisions(decisionQueueService.getPendingDecisions().length);
+    refresh();
+    const interval = setInterval(refresh, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (loading) return;
     if (!user) router.replace('/login');
   }, [loading, user, router]);
 
-  // Expose sidebar width as a global CSS var so modals/overlays can "shrink" on desktop
-  // instead of covering the navigation sidebar (works even for portals).
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const width =
-      isDesktop ? (sidebarCollapsed ? '5rem' : '16rem')
-        : isTablet ? '5rem'
-          : '0px';
+    const width = isDesktop ? '236px' : isTablet ? '5rem' : '0px';
     document.documentElement.style.setProperty('--app-sidebar-width', width);
-  }, [isDesktop, isTablet, sidebarCollapsed]);
+    return () => document.documentElement.style.setProperty('--app-sidebar-width', '0px');
+  }, [isDesktop, isTablet]);
 
-  // Cleanup on unmount (e.g. leaving the app shell).
-  useEffect(() => {
-    return () => {
-      if (typeof document === 'undefined') return;
-      document.documentElement.style.setProperty('--app-sidebar-width', '0px');
-    };
-  }, []);
-
-  // Expose bottom nav height so the content can pad itself and avoid being covered.
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.style.setProperty('--app-bottom-nav-height', isMobile ? '56px' : '0px');
   }, [isMobile]);
 
-  // Close "More" menu when route changes.
   useEffect(() => {
     setIsMoreOpen(false);
   }, [pathname]);
-
-  // Track the last clicked menu item to maintain highlight during Suspense transitions
-  const [clickedPath, setClickedPath] = useState<string | undefined>(undefined);
-
-  // Clear clickedPath only when the clicked route actually becomes active
-  React.useEffect(() => {
-    if (clickedPath) {
-      // Check if the clicked path is now the active route (or its alias)
-      const isNowActive = pathname === clickedPath ||
-        (clickedPath === '/boards' && pathname === '/pipeline') ||
-        (clickedPath === '/pipeline' && pathname === '/boards');
-
-      if (isNowActive) {
-        // Route is now active, safe to clear the "clicked" state
-        setClickedPath(undefined);
-      }
-    }
-  }, [pathname, clickedPath]);
 
   const toggleDebugMode = () => {
     if (debugEnabled) {
@@ -256,290 +130,170 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   };
 
-  // Gera iniciais do email
-  const userInitials = profile?.email?.substring(0, 2).toUpperCase() || 'U';
+  const userInitials =
+    profile?.first_name && profile?.last_name
+      ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
+      : profile?.nickname?.substring(0, 2).toUpperCase() || profile?.email?.substring(0, 2).toUpperCase() || 'U';
+  const userName = profile?.nickname || profile?.first_name || profile?.email?.split('@')[0] || 'Usuário';
+  const userRole = profile?.role === 'admin' ? 'administradora' : profile?.role === 'vendedor' ? 'vendedora' : '';
 
   if (!loading && !user) return null;
 
+  const { heading, sub } = getPageMeta(pathname);
+  const isBoardsActive = pathname === '/boards' || pathname === '/pipeline';
+
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-bg bg-dots">
-      {/* Skip Link for keyboard users */}
+    <div className="app">
       <SkipLink targetId="main-content" />
 
-      {/* Tablet rail (shows full icon set; no "More" sheet needed) */}
       {isTablet ? <NavigationRail /> : null}
 
-      {/* Sidebar - Collapsible */}
-      {isDesktop ? (
-      <aside
-        className={`hidden md:flex flex-col z-20 glass border-r border-[var(--color-border-subtle)] transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'w-20 items-center' : 'w-64'
-          }`}
-        aria-label="Menu principal"
-      >
-        <div className={`h-16 flex items-center border-b border-[var(--color-border-subtle)] transition-all duration-300 px-5 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between'}`}>
-          <div className={`flex items-center transition-all duration-300 ${sidebarCollapsed ? 'gap-0 justify-center' : 'gap-3'}`}>
-            <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary-500/20 shrink-0" aria-hidden="true">
-              N
+      {isDesktop && (
+        <aside className="sidebar" aria-label="Menu principal">
+          <div className="sidebar__brand">
+            <Image className="logo" src="/brand/logo-aaagencia-white.png" alt="aaagência" width={100} height={26} unoptimized />
+          </div>
+          <nav className="nav" aria-label="Navegação do sistema">
+            <div className="nav__group">
+              <p className="nav__label">trabalho</p>
+              <NavLink to="/dashboard" label="Dashboard" prefetch="dashboard" isActive={pathname === '/dashboard'} />
+              <NavLink to="/boards" label="Negociação" prefetch="boards" isActive={isBoardsActive} />
+              <NavLink to="/inbox" label="Inbox" prefetch="inbox" isActive={pathname === '/inbox'} />
+              <NavLink to="/messaging" label="Mensagens" badge={unreadMessagesCount} isActive={pathname.startsWith('/messaging')} />
+              <NavLink to="/contacts" label="Contatos" prefetch="contacts" isActive={pathname === '/contacts'} />
+              <NavLink to="/activities" label="Atividades" prefetch="activities" isActive={pathname === '/activities'} />
             </div>
-            <span className={`text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-              NossoCRM
-            </span>
-          </div>
+            <div className="nav__group">
+              <p className="nav__label">inteligência</p>
+              <NavLink to="/decisions" label="IA · aprovações" badge={pendingDecisions} isActive={pathname === '/decisions'} />
+              <NavLink to="/reports" label="Relatórios" prefetch="reports" isActive={pathname === '/reports'} />
+            </div>
+            <div className="nav__group">
+              <p className="nav__label">sistema</p>
+              <NavLink to="/settings" label="Configurações" prefetch="settings" isActive={pathname.startsWith('/settings')} />
+              <NavLink to="/profile" label="Perfil" isActive={pathname === '/profile'} />
+            </div>
+          </nav>
 
-          {/* Header Toggle Button - Only visible when expanded */}
-          {!sidebarCollapsed && (
+          <div className="sidebar__user" style={{ position: 'relative' }}>
             <button
-              onClick={() => setSidebarCollapsed(true)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/5"
-              title="Recolher Menu"
-            >
-              <PanelLeftClose size={20} />
-            </button>
-          )}
-        </div>
-
-        <nav className={`flex-1 p-4 space-y-2 flex flex-col ${sidebarCollapsed ? 'items-center px-2' : ''}`} aria-label="Navegação do sistema">
-          {[
-            { to: '/inbox', icon: Inbox, label: 'Inbox', prefetch: 'inbox' as const, badge: undefined },
-            { to: '/messaging', icon: MessageSquare, label: 'Mensagens', prefetch: undefined, badge: unreadMessagesCount },
-            { to: '/dashboard', icon: LayoutDashboard, label: 'Visão Geral', prefetch: 'dashboard' as const, badge: undefined },
-            { to: '/boards', icon: KanbanSquare, label: 'Boards', prefetch: 'boards' as const, badge: undefined },
-            { to: '/contacts', icon: Users, label: 'Contatos', prefetch: 'contacts' as const, badge: undefined },
-            { to: '/activities', icon: CheckSquare, label: 'Atividades', prefetch: 'activities' as const, badge: undefined },
-            { to: '/reports', icon: BarChart3, label: 'Relatórios', prefetch: 'reports' as const, badge: undefined },
-            { to: '/settings', icon: Settings, label: 'Configurações', prefetch: 'settings' as const, badge: undefined },
-          ].map((item) => {
-            if (sidebarCollapsed) {
-              return (
-                <TooltipProvider key={item.to} delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={item.to}
-                        onMouseEnter={() => item.prefetch && prefetchRoute(item.prefetch)}
-                        onClick={() => setClickedPath(item.to)}
-                        className={(() => {
-                          const isActive = pathname === item.to || (item.to === '/boards' && pathname === '/pipeline');
-                          const wasJustClicked = clickedPath === item.to;
-                          // If user clicked on a DIFFERENT item, immediately deactivate this one
-                          const anotherItemWasClicked = clickedPath && clickedPath !== item.to;
-                          const isActuallyActive = anotherItemWasClicked ? false : (isActive || wasJustClicked);
-                          return `relative w-10 h-10 rounded-lg flex items-center justify-center ${isActuallyActive
-                            ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-900/50'
-                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                            }`;
-                        })()}
-                      >
-                        <item.icon size={20} />
-                        {(item.badge ?? 0) > 0 && (
-                          <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center px-0.5 text-[9px] font-bold text-white bg-red-500 rounded-full shadow-sm">
-                            {item.badge! > 99 ? '99+' : item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              );
-            }
-
-            return (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                icon={item.icon}
-                label={item.label}
-                prefetch={item.prefetch}
-                clickedPath={clickedPath}
-                onItemClick={setClickedPath}
-                badge={item.badge}
-              />
-            );
-          })}
-        </nav>
-
-        {/* Sidebar Toggle Button (Footer) - Only visible when collapsed */}
-        {sidebarCollapsed && (
-          <div className="px-4 pb-2 flex justify-center">
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="flex items-center justify-center w-10 h-10 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
-              title="Expandir Menu"
-            >
-              <PanelLeftOpen size={20} />
-            </button>
-          </div>
-        )}
-
-        <div className={`p-4 border-t border-[var(--color-border-subtle)] ${sidebarCollapsed ? 'flex justify-center' : ''}`}>
-          <div className="relative">
-            {/* User Card - Clickable */}
-            <button
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className={`flex items-center gap-3 rounded-xl bg-slate-50/50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group focus-visible-ring ${sidebarCollapsed ? 'p-0 w-10 h-10 justify-center' : 'w-full p-3'
-                }`}
+              type="button"
+              onClick={() => setIsUserMenuOpen((v) => !v)}
+              className="sidebar__user"
+              style={{ padding: 0, border: 0, background: 'none', width: '100%', textAlign: 'left' }}
+              aria-haspopup="menu"
+              aria-expanded={isUserMenuOpen}
             >
               {profile?.avatar_url ? (
-                <Image
-                  src={profile.avatar_url}
-                  alt=""
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 shadow-lg"
-                  unoptimized
-                />
+                <Image src={profile.avatar_url} alt="" width={32} height={32} className="avatar avatar--md" style={{ objectFit: 'cover' }} unoptimized />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-sm ring-2 ring-white dark:ring-slate-800 shadow-lg shrink-0" aria-hidden="true">
-                  {profile?.first_name && profile?.last_name
-                    ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
-                    : profile?.nickname?.substring(0, 2).toUpperCase() || userInitials}
-                </div>
+                <span className="avatar avatar--pink avatar--md">{userInitials}</span>
               )}
-
-              {!sidebarCollapsed && (
-                <>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                      {profile?.nickname || profile?.first_name || profile?.email?.split('@')[0] || 'Usuário'}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      {profile?.email || ''}
-                    </p>
-                  </div>
-                  <svg
-                    className={`w-4 h-4 text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                </>
-              )}
+              <span className="sidebar__user-text">
+                <span className="sidebar__user-name">{userName}</span>
+                <span className="sidebar__user-role">{userRole}</span>
+              </span>
             </button>
 
-            {/* Dropdown Menu */}
             {isUserMenuOpen && (
               <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} aria-hidden="true" />
                 <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  aria-hidden="true"
-                />
-                <div
-                  className={`absolute bottom-full mb-2 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-150 ${sidebarCollapsed ? 'left-0 w-48' : 'left-0 right-0'}`}
+                  role="menu"
+                  className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-white rounded-xl shadow-xl border border-[var(--border-subtle)] overflow-hidden"
                 >
                   <div className="p-1">
                     <Link
                       href="/profile"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors focus-visible-ring"
+                      className="flex items-center gap-3 px-3 py-2.5 text-sm text-[var(--ink-700)] hover:bg-[var(--surface-subtle)] rounded-lg transition-colors"
                     >
-                      <User className="w-4 h-4 text-slate-400" />
-                      Editar Perfil
+                      <User className="w-4 h-4" />
+                      editar perfil
                     </Link>
                     <button
+                      type="button"
                       onClick={() => {
                         setIsUserMenuOpen(false);
                         signOut();
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors focus-visible-ring"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-[var(--danger)] hover:bg-[var(--danger-soft)] rounded-lg transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
-                      Sair da conta
+                      sair da conta
                     </button>
                   </div>
                 </div>
               </>
             )}
           </div>
-        </div>
-      </aside>
-      ) : null}
-
-      {/* Main Content Wrapper */}
-      <div className="flex-1 flex min-w-0 overflow-hidden relative">
-        {/* Middle Content (Header + Page) */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          {/* Ambient background glow */}
-          <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none" aria-hidden="true">
-            <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[100px]"></div>
-            <div className="absolute top-[40%] right-[0%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[100px]"></div>
-          </div>
-
-          {/* Header */}
-          <header className="h-16 glass border-b border-[var(--color-border-subtle)] flex items-center justify-between px-6 z-40 shrink-0" role="banner">
-            <h1 className="text-lg font-semibold font-display text-slate-900 dark:text-white">
-              {getPageTitle(pathname)}
-            </h1>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setAIAssistantOpen(!aiAssistantOpen)}
-                className={`p-2 rounded-full transition-all active:scale-95 focus-visible-ring ${aiAssistantOpen
-                  ? 'text-lime-700 bg-lime-100 dark:text-lime-500 dark:bg-lime-700/20'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
-                  }`}
-              >
-                <Sparkles size={20} aria-hidden="true" />
-              </button>
-
-              {process.env.NODE_ENV === 'development' && (
-                <button
-                  type="button"
-                  onClick={toggleDebugMode}
-                  className={`p-2 rounded-full transition-all active:scale-95 focus-visible-ring ${debugEnabled
-                    ? 'text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-900/30 ring-2 ring-purple-400/50'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
-                    }`}
-                >
-                  <Bug size={20} aria-hidden="true" />
-                </button>
-              )}
-
-              <NotificationPopover />
-              <button
-                type="button"
-                onClick={toggleDarkMode}
-                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all active:scale-95 focus-visible-ring"
-              >
-                {darkMode ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
-              </button>
-            </div>
-          </header>
-
-          <main
-            id="main-content"
-            className={`flex-1 overflow-auto relative scroll-smooth ${
-              pathname === '/messaging' || pathname.startsWith('/messaging/')
-                ? 'p-0'
-                : 'p-6 pb-[calc(1.5rem+var(--app-bottom-nav-height,0px)+var(--app-safe-area-bottom,0px))]'
-            }`}
-            tabIndex={-1}
-          >
-            {children}
-          </main>
-        </div>
-
-        {/* Right Sidebar (AI Assistant) */}
-        <aside
-          aria-label="Assistente de IA"
-          aria-hidden={!aiAssistantOpen}
-          className={`border-l border-[var(--color-border)] bg-surface transition-all duration-300 ease-in-out overflow-hidden flex flex-col ${aiAssistantOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}`}
-        >
-          <div className="w-96 h-full">
-            {aiAssistantOpen && (
-              <UIChat />
-            )}
-          </div>
         </aside>
+      )}
+
+      <div className="main">
+        <header className="topbar">
+          <div className="topbar__title">
+            <h1 className="topbar__heading">{heading}</h1>
+            {sub && <p className="topbar__sub">{sub}</p>}
+          </div>
+          <span className="spacer" />
+
+          <button
+            type="button"
+            onClick={() => setAIAssistantOpen(!aiAssistantOpen)}
+            className="btn btn--ghost"
+            aria-pressed={aiAssistantOpen}
+            title="Assistente IA"
+          >
+            <Sparkles size={16} aria-hidden="true" />
+          </button>
+
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              type="button"
+              onClick={toggleDebugMode}
+              className="btn btn--ghost"
+              aria-pressed={debugEnabled}
+              title="Modo debug"
+            >
+              <Bug size={16} aria-hidden="true" />
+            </button>
+          )}
+
+          <NotificationPopover />
+
+          {pendingDecisions > 0 && (
+            <Link className="pill-hitl" href="/decisions">
+              <span className="dot dot--pulse" />
+              {pendingDecisions} decis{pendingDecisions === 1 ? 'ão' : 'ões'} aguardando você
+            </Link>
+          )}
+          <p className="status status--on">
+            <span className="dot" />
+            agente ativo
+          </p>
+        </header>
+
+        {/*
+          Cada página decide seu próprio wrapper de conteúdo — algumas usam
+          `.screen__inner(--wide|--narrow)` com padding (dashboard, contatos,
+          atividades, relatórios, decisões, configurações, perfil), outras são
+          full-bleed dentro de `.screen` (inbox, negociação/boards, mensagens,
+          cockpit de deal). Ver REDESIGN-CRM.md.
+        */}
+        <main id="main-content" className="screen" tabIndex={-1}>
+          {children}
+        </main>
       </div>
 
-      {/* Mobile app shell */}
+      <aside
+        aria-label="Assistente de IA"
+        aria-hidden={!aiAssistantOpen}
+        className={`border-l border-[var(--border-subtle)] bg-white transition-all duration-300 ease-in-out overflow-hidden flex flex-col ${aiAssistantOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}`}
+      >
+        <div className="w-96 h-full">{aiAssistantOpen && <UIChat />}</div>
+      </aside>
+
       <BottomNav onOpenMore={() => setIsMoreOpen(true)} />
       <MoreMenuSheet isOpen={isMoreOpen} onClose={() => setIsMoreOpen(false)} />
     </div>

@@ -117,15 +117,15 @@ export function ScriptEditorModal({
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-2xl mx-4 bg-slate-900 rounded-xl border border-white/10 shadow-2xl overflow-hidden">
+            <div className="panel relative w-full max-w-2xl mx-4 overflow-hidden" style={{ boxShadow: "var(--shadow-lg)" }}>
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                    <h2 className="text-lg font-semibold text-white">
+                <div className="panel__head">
+                    <h2 className="title-md">
                         {initialData?.id ? 'Editar Script' : 'Novo Script'}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        className="btn btn--quiet"
                     >
                         <X size={20} />
                     </button>
@@ -135,7 +135,7 @@ export function ScriptEditorModal({
                 <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
                     {/* Title */}
                     <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-2">
+                        <label className="field__label">
                             Título do Script
                         </label>
                         <input
@@ -143,7 +143,7 @@ export function ScriptEditorModal({
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             placeholder="Ex: Follow-up de Proposta"
-                            className="w-full px-4 py-2.5 bg-slate-800/50 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-transparent"
+                            className="input"
                         />
                     </div>
 
@@ -151,13 +151,13 @@ export function ScriptEditorModal({
                     <div className="grid grid-cols-2 gap-4">
                         {/* Category */}
                         <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-2">
+                            <label className="field__label">
                                 Categoria
                             </label>
                             <select
                                 value={formData.category}
                                 onChange={(e) => setFormData({ ...formData, category: e.target.value as ScriptCategory })}
-                                className="w-full px-4 py-2.5 bg-slate-800/50 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-transparent appearance-none cursor-pointer"
+                                className="input"
                             >
                                 {CATEGORIES.map((cat) => (
                                     <option key={cat.value} value={cat.value}>
@@ -169,7 +169,7 @@ export function ScriptEditorModal({
 
                         {/* Icon */}
                         <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-2">
+                            <label className="field__label">
                                 Ícone
                             </label>
                             <div className="flex gap-2">
@@ -179,10 +179,7 @@ export function ScriptEditorModal({
                                         <button
                                             key={iconOption.value}
                                             onClick={() => setFormData({ ...formData, icon: iconOption.value })}
-                                            className={`p-2.5 rounded-lg border transition-all ${formData.icon === iconOption.value
-                                                    ? 'bg-primary-500/20 border-primary-500/50 text-primary-400'
-                                                    : 'bg-slate-800/50 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
-                                                }`}
+                                            className={`chip${formData.icon === iconOption.value ? " chip--active" : ""}`}
                                             title={iconOption.label}
                                         >
                                             <IconComponent size={18} />
@@ -196,15 +193,12 @@ export function ScriptEditorModal({
                     {/* Template */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <label className="text-xs font-medium text-slate-400">
+                            <label className="field__label">
                                 Mensagem Template
                             </label>
                             <button
                                 onClick={() => setShowPreview(!showPreview)}
-                                className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors ${showPreview
-                                        ? 'bg-primary-500/20 text-primary-400'
-                                        : 'text-slate-500 hover:text-slate-300'
-                                    }`}
+                                className={`chip${showPreview ? " chip--active" : ""}`}
                             >
                                 <Eye size={12} />
                                 Preview
@@ -217,10 +211,10 @@ export function ScriptEditorModal({
                                 onChange={(e) => setFormData({ ...formData, template: e.target.value })}
                                 placeholder="Olá {nome}! 👋&#10;&#10;Escreva sua mensagem aqui...&#10;&#10;Use {nome} e {empresa} como variáveis."
                                 rows={8}
-                                className="w-full px-4 py-3 bg-slate-800/50 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-transparent resize-none font-mono text-sm"
+                                className="input input--textarea" style={{ resize: "none", fontFamily: "var(--font-mono)", minHeight: 200 }}
                             />
                         ) : (
-                            <div className="w-full px-4 py-3 bg-slate-800/50 border border-white/10 rounded-lg min-h-[200px] whitespace-pre-wrap text-sm text-white">
+                            <div className="input input--textarea" style={{ minHeight: 200, whiteSpace: "pre-wrap" }}>
                                 {applyVariables(formData.template) ||
                                     <span className="text-slate-500 italic">Nenhum texto para preview...</span>
                                 }
@@ -234,17 +228,17 @@ export function ScriptEditorModal({
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10 bg-slate-950/50">
+                <div className="flex items-center justify-end gap-3" style={{ paddingTop: "var(--space-3)", borderTop: "1px solid var(--border-subtle)" }}>
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+                        className="btn btn--quiet"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={!formData.title.trim() || !formData.template.trim() || isSaving}
-                        className="flex items-center gap-2 px-5 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn btn--primary"
                     >
                         <Save size={16} />
                         {isSaving ? 'Salvando...' : 'Salvar Script'}

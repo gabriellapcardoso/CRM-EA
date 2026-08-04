@@ -82,10 +82,50 @@ vi.mock('./components/ChannelsSection', () => ({
   ),
 }))
 
+vi.mock('./components/WhatsAppSafetySection', () => ({
+  WhatsAppSafetySection: () => (
+    <div>
+      <h3>Segurança WhatsApp</h3>
+    </div>
+  ),
+}))
+
 vi.mock('./components/BusinessUnitsSection', () => ({
   BusinessUnitsSection: () => (
     <div>
       <h3>Unidades de Negócio</h3>
+    </div>
+  ),
+}))
+
+vi.mock('./components/DataStorageSettings', () => ({
+  DataStorageSettings: () => (
+    <div>
+      <h3>Dados</h3>
+    </div>
+  ),
+}))
+
+vi.mock('./components/ProductsCatalogManager', () => ({
+  ProductsCatalogManager: () => (
+    <div>
+      <h3>Produtos</h3>
+    </div>
+  ),
+}))
+
+vi.mock('./UsersPage', () => ({
+  UsersPage: () => (
+    <div>
+      <h3>Sua Equipe</h3>
+    </div>
+  ),
+}))
+
+vi.mock('./AICenterSettings', () => ({
+  AICenterSettings: () => (
+    <div>
+      <h3>Central de I.A</h3>
     </div>
   ),
 }))
@@ -128,13 +168,17 @@ describe('SettingsPage RBAC', () => {
 
     // Preferências pessoais seguem visíveis
     expect(screen.getByRole('heading', { name: /página inicial/i })).toBeInTheDocument()
-    // Tabs pessoais seguem visíveis
-    expect(screen.getByRole('button', { name: /central de i\.a/i })).toBeInTheDocument()
+    // Tab pessoal "configuração de IA" segue visível — agora é navegação real (link), não SPA.
+    expect(screen.getByRole('link', { name: /configuração de ia/i })).toBeInTheDocument()
+    // Abas restritas a admin não aparecem pro vendedor
+    expect(screen.queryByRole('link', { name: /^integrações$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /produtos & catálogo/i })).not.toBeInTheDocument()
   })
 
   it('admin vê seções de configuração do sistema', async () => {
     useAuthMock.mockReturnValue({
       profile: { role: 'admin' },
+      organizationId: 'org-1',
     } as any)
 
     render(<SettingsPage />)
@@ -145,12 +189,19 @@ describe('SettingsPage RBAC', () => {
     expect(
       screen.getByRole('heading', { name: /^Campos Personalizados$/i })
     ).toBeInTheDocument()
-    // Admin também vê as abas extras
-    const integrationsTab = screen.getByRole('button', { name: /integrações/i })
+    // Admin também vê o link da aba Integrações (navegação real por rota)
+    const integrationsTab = screen.getByRole('link', { name: /^integrações$/i })
     expect(integrationsTab).toBeInTheDocument()
-    fireEvent.click(integrationsTab)
+  })
 
-    // Sub-tabs dentro de Integrações
+  it('admin — aba Integrações tem sub-tabs Canais/Webhooks/API/MCP', async () => {
+    useAuthMock.mockReturnValue({
+      profile: { role: 'admin' },
+      organizationId: 'org-1',
+    } as any)
+
+    render(<SettingsPage tab="integrations" />)
+
     const channelsSubTab = await screen.findByRole('button', { name: /Canais/i })
     const webhooksSubTab = await screen.findByRole('button', { name: /^Webhooks$/i })
     const apiSubTab = await screen.findByRole('button', { name: /^API$/i })
@@ -160,7 +211,7 @@ describe('SettingsPage RBAC', () => {
     expect(apiSubTab).toBeInTheDocument()
     expect(mcpSubTab).toBeInTheDocument()
 
-    // Default é Canais (Messaging)
+    // Default é Canais
     expect(await screen.findByRole('heading', { name: /^Canais de Comunicação$/i })).toBeInTheDocument()
 
     fireEvent.click(webhooksSubTab)

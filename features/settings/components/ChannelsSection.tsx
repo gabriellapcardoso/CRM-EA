@@ -80,13 +80,24 @@ const STATUS_ICONS: Record<ChannelStatus, React.FC<{ className?: string }>> = {
   waiting_qr: QrCode,
 };
 
-const STATUS_COLORS: Record<ChannelStatus, string> = {
-  pending: 'text-slate-500 bg-slate-100 dark:bg-slate-500/10',
-  connecting: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-500/10',
-  connected: 'text-green-600 bg-green-100 dark:bg-green-500/10',
-  disconnected: 'text-slate-400 bg-slate-100 dark:bg-slate-500/10',
-  error: 'text-red-600 bg-red-100 dark:bg-red-500/10',
-  waiting_qr: 'text-blue-600 bg-blue-100 dark:bg-blue-500/10',
+/** Classe `.status-chip` do design system (redesign 2026-08), por status real do canal. */
+const STATUS_CHIP_CLASS: Record<ChannelStatus, string> = {
+  pending: 'status-chip--muted',
+  connecting: 'status-chip--warn',
+  connected: 'status-chip--on',
+  disconnected: 'status-chip--off',
+  error: 'status-chip--off',
+  waiting_qr: 'status-chip--warn',
+};
+
+/** Cor do `.dot` de status, por status real do canal. */
+const STATUS_DOT_CLASS: Record<ChannelStatus, string> = {
+  pending: 'dot--muted',
+  connecting: 'dot--warning',
+  connected: 'dot--success',
+  disconnected: 'dot--muted',
+  error: 'dot--danger',
+  waiting_qr: 'dot--warning',
 };
 
 // =============================================================================
@@ -400,12 +411,13 @@ function ChannelCard({
   const hasRouting = routingRule && routingRule.boardId;
 
   return (
-    <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
+    <div className="panel setting-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--space-3)' }}>
       {/* Main card content */}
-      <div className="p-4">
+      <div>
         <div className="flex items-start justify-between gap-4">
           {/* Icon & Info */}
           <div className="flex items-start gap-3">
+            <span className={`dot ${STATUS_DOT_CLASS[channel.status]}`} style={{ marginTop: 6 }} />
             <div
               className={cn(
                 'w-10 h-10 rounded-lg flex items-center justify-center',
@@ -416,13 +428,16 @@ function ChannelCard({
               <Icon className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+              <h4 className="setting-row__title">
                 {channel.name}
+                <span className={`status-chip ${STATUS_CHIP_CLASS[channel.status]}`}>
+                  {CHANNEL_STATUS_LABELS[channel.status]}
+                </span>
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="setting-row__desc">
                 {typeInfo?.label} · {channel.provider}
               </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">
+              <p className="meta">
                 {channel.settings?.displayPhone || channel.externalIdentifier}
               </p>
               {channel.businessUnitName && (
@@ -436,21 +451,10 @@ function ChannelCard({
             </div>
           </div>
 
-          {/* Status Badge */}
-          <div
-            className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-              STATUS_COLORS[channel.status]
-            )}
-          >
-            <StatusIcon
-              className={cn(
-                'w-3.5 h-3.5',
-                isConnecting && 'animate-spin'
-              )}
-            />
-            <span>{CHANNEL_STATUS_LABELS[channel.status]}</span>
-          </div>
+          {/* Status icon (loading state) */}
+          {isConnecting && (
+            <StatusIcon className="w-3.5 h-3.5 animate-spin text-slate-400" />
+          )}
         </div>
 
         {/* Status Message */}

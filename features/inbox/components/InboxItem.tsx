@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Activity } from '@/types';
-import { CheckCircle2, Clock, Calendar, Phone, Mail, FileText, Building2, MoreHorizontal, X, SkipForward } from 'lucide-react';
+import { CheckCircle2, Clock, MoreHorizontal, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface InboxItemProps {
   activity: Activity;
@@ -9,6 +10,14 @@ interface InboxItemProps {
   onDiscard?: (id: string) => void;
   onSelect?: (id: string) => void;
 }
+
+/** Sigla do tipo de atividade, exibida no `.badge-channel` do card. */
+const TYPE_BADGE: Record<string, { letter: string; color: string; label: string }> = {
+  CALL: { letter: 'L', color: 'var(--purple-500)', label: 'Ligação' },
+  MEETING: { letter: 'R', color: 'var(--purple-700)', label: 'Reunião' },
+  EMAIL: { letter: 'E', color: 'var(--channel-email)', label: 'E-mail' },
+  TASK: { letter: 'T', color: 'var(--ink-500)', label: 'Tarefa' },
+};
 
 /**
  * Performance: Inbox pode ter muitas linhas; `React.memo` evita re-render em massa
@@ -25,124 +34,118 @@ const InboxItemComponent: React.FC<InboxItemProps> = ({
   const isMeeting = activity.type === 'MEETING' || activity.type === 'CALL';
   const date = new Date(activity.date);
   const timeString = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-  const getIconColor = () => {
-    switch (activity.type) {
-      case 'CALL': return 'text-blue-500';
-      case 'MEETING': return 'text-purple-500';
-      case 'EMAIL': return 'text-amber-500';
-      default: return 'text-slate-400';
-    }
-  };
+  const badge = TYPE_BADGE[activity.type] ?? TYPE_BADGE.TASK;
 
   return (
-    <div className="group flex items-start gap-4 p-4 bg-white dark:bg-dark-card border border-slate-100 dark:border-white/5 rounded-xl hover:shadow-md hover:border-slate-200 dark:hover:border-white/10 transition-all duration-200">
-      {/* Left: Time or Checkbox */}
-      <div className="shrink-0 pt-0.5">
-        {isMeeting ? (
-          <div className={`flex flex-col items-center justify-center w-12 h-10 rounded-lg ${getIconColor()} bg-current/10`}>
-            <span className="text-xs font-bold text-current">{timeString}</span>
-          </div>
-        ) : (
-          <button
-            onClick={() => onToggleComplete(activity.id)}
-            aria-label={activity.completed ? 'Marcar como pendente' : 'Marcar como concluído'}
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${activity.completed
-              ? 'bg-green-500 border-green-500 text-white'
-              : 'border-slate-300 dark:border-slate-600 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-500/10 text-transparent hover:text-green-500'
-              }`}
-          >
-            <CheckCircle2 size={12} aria-hidden="true" />
-          </button>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
+    <div className={cn('card-conv group', activity.completed && 'opacity-60')}>
+      {/* Avatar: tipo da atividade + botão de concluir */}
+      <span className="card-conv__avatar">
         <button
-          onClick={() => onSelect?.(activity.id)}
-          className="text-left group/title"
+          type="button"
+          onClick={() => onToggleComplete(activity.id)}
+          aria-label={activity.completed ? 'Marcar como pendente' : 'Marcar como concluído'}
+          className="avatar avatar--md"
+          style={{
+            background: activity.completed ? 'var(--success)' : 'var(--ink-100)',
+            color: activity.completed ? '#fff' : 'var(--ink-600)',
+          }}
         >
-          <h3 className={`font-medium text-slate-900 dark:text-white group-hover/title:text-primary-500 transition-colors ${activity.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}`}>
-            {activity.title}
-          </h3>
+          <CheckCircle2 size={14} aria-hidden="true" />
         </button>
+        <span className="badge-channel badge-channel--sm" style={{ background: badge.color }} title={badge.label}>
+          {badge.letter}
+        </span>
+      </span>
+
+      {/* Corpo */}
+      <span className="card-conv__body">
+        <span className="card-conv__top">
+          <button
+            type="button"
+            onClick={() => onSelect?.(activity.id)}
+            className="card-conv__name text-left"
+            style={activity.completed ? { textDecoration: 'line-through' } : undefined}
+          >
+            {activity.title}
+          </button>
+          {isMeeting && <span className="card-conv__time num">{timeString}</span>}
+        </span>
+
+        {activity.dealTitle && <span className="card-conv__org">{activity.dealTitle}</span>}
 
         {activity.description && (
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-            {activity.description}
-          </p>
+          <span className="card-conv__preview">{activity.description}</span>
         )}
 
-        {/* Context */}
-        {activity.dealTitle && (
-          <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-500 dark:text-slate-400">
-            <Building2 size={12} />
-            <span className="truncate">{activity.dealTitle}</span>
-          </div>
-        )}
-
-        {/* Helper text if no deal but onSelect exists (e.g. Contact task) */}
         {!activity.dealTitle && onSelect && (
           <button
+            type="button"
             onClick={() => onSelect(activity.id)}
-            className="flex items-center gap-1 mt-2 text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
+            className="btn btn--quiet"
+            style={{ padding: 0, marginTop: 4, justifyContent: 'flex-start' }}
           >
-            Ver detalhes
+            ver detalhes
           </button>
         )}
-      </div>
+      </span>
 
-      {/* Actions Menu */}
-      <div className="relative shrink-0">
+      {/* Menu de ações */}
+      <span className="relative flex-shrink-0">
         <button
+          type="button"
           onClick={() => setShowMenu(!showMenu)}
           aria-label="Menu de opções"
           aria-expanded={showMenu}
           aria-haspopup="true"
-          className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          className="btn btn--quiet opacity-0 group-hover:opacity-100"
         >
-          <MoreHorizontal size={18} aria-hidden="true" />
+          <MoreHorizontal size={16} aria-hidden="true" />
         </button>
 
         {showMenu && (
           <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setShowMenu(false)}
-            />
-            <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-lg shadow-lg py-1 min-w-[140px]">
+            <span className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+            <span
+              className="panel absolute right-0 top-full mt-1 z-20"
+              style={{ padding: 'var(--space-2)', minWidth: 160, boxShadow: 'var(--shadow-lg)' }}
+            >
               {isMeeting && (
                 <button
+                  type="button"
                   onClick={() => { onToggleComplete(activity.id); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
+                  className="btn btn--quiet btn--block"
+                  style={{ justifyContent: 'flex-start' }}
                 >
-                  <CheckCircle2 size={14} className="text-green-500" />
-                  Concluir
+                  <CheckCircle2 size={14} aria-hidden="true" />
+                  concluir
                 </button>
               )}
               {onSnooze && (
                 <button
+                  type="button"
                   onClick={() => { onSnooze(activity.id); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
+                  className="btn btn--quiet btn--block"
+                  style={{ justifyContent: 'flex-start' }}
                 >
-                  <Clock size={14} className="text-orange-500" />
-                  Adiar 1 dia
+                  <Clock size={14} aria-hidden="true" />
+                  adiar 1 dia
                 </button>
               )}
               {onDiscard && (
                 <button
+                  type="button"
                   onClick={() => { onDiscard(activity.id); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                  className="btn btn--quiet btn--block"
+                  style={{ justifyContent: 'flex-start', color: 'var(--danger)' }}
                 >
-                  <X size={14} />
-                  Remover
+                  <X size={14} aria-hidden="true" />
+                  remover
                 </button>
               )}
-            </div>
+            </span>
           </>
         )}
-      </div>
+      </span>
     </div>
   );
 };

@@ -2,33 +2,67 @@
 
 /**
  * Decision Queue Page
- * Central de Decisões - Página principal
+ * Central de Decisões — visual `.card-approval`/`.auto-log` (handoff ia.html)
  */
 
 import React, { useMemo } from 'react';
-import {
-  Sparkles,
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  TrendingUp,
-  Trash2,
-  Loader2,
-  Inbox,
-  Zap,
-} from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { DecisionCard } from './components/DecisionCard';
 import { useDecisionQueue } from './hooks/useDecisionQueue';
-import { PRIORITY_LABELS, CATEGORY_LABELS } from './types';
+import decisionQueueService from './services/decisionQueueService';
+import { Decision, DecisionStatus } from './types';
 
-// Performance: reuse formatter instance.
+// Performance: reuse formatter instances.
 const PT_BR_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   day: 'numeric',
   month: 'short',
   hour: '2-digit',
   minute: '2-digit',
 });
+const PT_BR_HOUR_FORMATTER = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+function relativeLabel(iso?: string): string {
+  if (!iso) return 'nunca analisado';
+  const ts = Date.parse(iso);
+  const diffMinutes = Math.floor((Date.now() - ts) / (1000 * 60));
+  if (diffMinutes < 1) return 'agora mesmo';
+  if (diffMinutes < 60) return `há ${diffMinutes} min`;
+  if (diffMinutes < 1440) return `há ${Math.floor(diffMinutes / 60)} h`;
+  return PT_BR_DATE_TIME_FORMATTER.format(new Date(ts));
+}
+
+/** "09:41" pra hoje, "ontem 16:40" pra ontem, senão data curta — só com timestamp real. */
+function historyTimeLabel(iso?: string): string {
+  if (!iso) return '';
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return '';
+  const date = new Date(ts);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) return PT_BR_HOUR_FORMATTER.format(date);
+  if (isYesterday) return `ontem ${PT_BR_HOUR_FORMATTER.format(date)}`;
+  return PT_BR_DATE_TIME_FORMATTER.format(date);
+}
+
+const HISTORY_STATUS_LABEL: Partial<Record<DecisionStatus, string>> = {
+  approved: 'aprovada',
+  rejected: 'recusada',
+};
+
+const HISTORY_BADGE_CLASS: Partial<Record<DecisionStatus, string>> = {
+  approved: 'badge-confidence--executada',
+  rejected: 'badge-confidence--arquivada',
+};
+
+function isSameMonth(iso: string | undefined, ref: Date): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
+}
 
 /**
  * Componente React `DecisionQueuePage`.
@@ -45,258 +79,167 @@ export const DecisionQueuePage: React.FC = () => {
     approveDecision,
     rejectDecision,
     snoozeDecision,
-    approveAll,
-    clearAll,
   } = useDecisionQueue();
 
-  const lastAnalyzedLabel = useMemo(() => {
-    if (!lastAnalyzedAt) return 'Nunca analisado';
+  const lastAnalyzedLabel = useMemo(() => relativeLabel(lastAnalyzedAt), [lastAnalyzedAt]);
 
-    const dateTs = Date.parse(lastAnalyzedAt);
-    const diffMinutes = Math.floor((Date.now() - dateTs) / (1000 * 60));
+  // Baixo risco = medium + low priority — só esse subconjunto entra no "aprovar em lote".
+  const lowRiskIds = useMemo(
+    () => decisions.filter((d) => d.priority === 'medium' || d.priority === 'low').map((d) => d.id),
+    [decisions]
+  );
 
-    if (diffMinutes < 1) return 'Agora mesmo';
-    if (diffMinutes < 60) return `Há ${diffMinutes} minutos`;
-    if (diffMinutes < 1440) return `Há ${Math.floor(diffMinutes / 60)} horas`;
-    return PT_BR_DATE_TIME_FORMATTER.format(new Date(dateTs));
-  }, [lastAnalyzedAt]);
+  const handleApproveLowRisk = () => {
+    for (const id of lowRiskIds) approveDecision(id);
+  };
 
-  // Performance: group by priority in a single pass (instead of 4x filter per render).
-  const grouped = useMemo(() => {
-    const critical: typeof decisions = [];
-    const high: typeof decisions = [];
-    const medium: typeof decisions = [];
-    const low: typeof decisions = [];
+  // Histórico real (decidido de fato) — não é "executado automaticamente" nesta feature:
+  // todo item passa por aprovação humana. A seção reflete decisões já aprovadas/recusadas.
+  const history = useMemo<Decision[]>(() => {
+    return decisionQueueService
+      .getQueue()
+      .filter((d) => d.status === 'approved' || d.status === 'rejected')
+      .sort((a, b) => Date.parse(b.decidedAt ?? b.createdAt) - Date.parse(a.decidedAt ?? a.createdAt))
+      .slice(0, 8);
+    // Recalcula sempre que a fila pendente muda (aprovar/recusar altera o estado global do serviço).
+  }, [decisions]);
 
-    for (const d of decisions) {
-      if (d.priority === 'critical') critical.push(d);
-      else if (d.priority === 'high') high.push(d);
-      else if (d.priority === 'medium') medium.push(d);
-      else low.push(d);
-    }
-
-    return { critical, high, medium, low };
+  const approvedThisMonth = useMemo(() => {
+    const now = new Date();
+    return decisionQueueService
+      .getQueue()
+      .filter((d) => d.status === 'approved' && isSameMonth(d.decidedAt, now)).length;
   }, [decisions]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="screen__inner screen__inner--wide">
+      <div className="panel__head">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Zap className="text-primary-500" size={28} />
-            Central de Decisões
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Decisões proativas para você tomar ação rapidamente
+          <h2 className="title-xl">decisões da IA</h2>
+          <p className="muted">
+            o agente analisa deals parados e atividades atrasadas e te chama quando a decisão exige
+            julgamento humano — é o que aparece abaixo. Nada é executado sem sua aprovação.
           </p>
         </div>
+        <span className="spacer" />
+        <button className="btn btn--ghost" type="button" onClick={runAnalyzers} disabled={isAnalyzing}>
+          {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          analisar agora
+        </button>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={runAnalyzers}
-            disabled={isAnalyzing}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-          >
-            {isAnalyzing ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <RefreshCw size={16} />
-            )}
-            Analisar Agora
-          </button>
+      <section className="panel ai-summary" aria-label="Como o agente decide">
+        <div className="ai-summary__bands">
+          <h3 className="label">como o agente decide</h3>
+          <div className="confidence-bands">
+            <span className="confidence-bands__band--low" style={{ width: '50%' }} />
+            <span className="confidence-bands__band--hitl" style={{ width: '30%' }} />
+            <span className="confidence-bands__band--auto" style={{ width: '20%' }} />
+          </div>
+          <p className="confidence-legend">
+            <span className="confidence-legend__item">
+              <span className="confidence-legend__swatch stage-swatch--frio" />baixo risco: pode ir em lote
+            </span>
+            <span className="confidence-legend__item confidence-legend__item--hitl">
+              <span className="confidence-legend__swatch confidence-legend__swatch--hitl" />prioridade média/alta: você decide
+            </span>
+            <span className="confidence-legend__item">
+              <span className="confidence-legend__swatch confidence-legend__swatch--auto" />crítico: pede atenção hoje
+            </span>
+          </p>
+        </div>
+        <div className="ai-summary__stat">
+          <p className="ai-summary__value num">{stats.total}</p>
+          <p className="ai-summary__label">na sua fila</p>
+        </div>
+        <div className="ai-summary__stat">
+          <p className="ai-summary__value num">{approvedThisMonth}</p>
+          <p className="ai-summary__label">aprovadas este mês</p>
+        </div>
+        <div className="ai-summary__stat">
+          <p className="ai-summary__value">{lastAnalyzedLabel}</p>
+          <p className="ai-summary__label">última análise</p>
+        </div>
+      </section>
 
-          {decisions.length > 0 && (
-            <button
-              onClick={clearAll}
-              className="p-2 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-              title="Limpar tudo"
-            >
-              <Trash2 size={18} />
-            </button>
+      <section id="fila-aguardando">
+        <div className="section-head">
+          <span className="section-head__swatch section-head__swatch--hitl" aria-hidden="true" />
+          <h2 className="section-head__title">aguardando você</h2>
+          <span className="badge-count">{stats.total}</span>
+          <span className="spacer" />
+          {lowRiskIds.length > 0 && (
+            <p className="chip-row">
+              <button className="btn btn--primary" type="button" onClick={handleApproveLowRisk}>
+                aprovar as {lowRiskIds.length} de baixo risco
+              </button>
+              <a className="btn btn--ghost" href="#fila-aguardando">
+                revisar uma a uma
+              </a>
+            </p>
           )}
         </div>
-      </div>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
-            <Inbox size={16} />
-            <span className="text-xs font-medium">Total</span>
+        {decisions.length === 0 ? (
+          <div className="state-empty state-empty--boxed">
+            <h3 className="state-empty__title">
+              nada esperando você<span className="dot-accent">.</span>
+            </h3>
+            <p className="state-empty__text">
+              o agente está rodando e vai te chamar só quando a decisão exigir seu julgamento. o
+              histórico de decisões já tomadas está no painel abaixo.
+            </p>
+            <div className="state-empty__actions">
+              <button className="btn btn--primary" type="button" onClick={runAnalyzers} disabled={isAnalyzing}>
+                {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                analisar meu CRM agora
+              </button>
+            </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">
-            {stats.total}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-red-500 mb-1">
-            <AlertTriangle size={16} />
-            <span className="text-xs font-medium">Crítico</span>
-          </div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {stats.critical}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-orange-500 mb-1">
-            <TrendingUp size={16} />
-            <span className="text-xs font-medium">Importante</span>
-          </div>
-          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-            {stats.high}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-yellow-500 mb-1">
-            <Clock size={16} />
-            <span className="text-xs font-medium">Moderado</span>
-          </div>
-          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-            {stats.medium}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-slate-400 mb-1">
-            <CheckCircle2 size={16} />
-            <span className="text-xs font-medium">Baixo</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-600 dark:text-slate-400">
-            {stats.low}
-          </div>
-        </div>
-      </div>
-
-      {/* Last analyzed info */}
-      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-        <span>Última análise: {lastAnalyzedLabel}</span>
-        {decisions.length > 0 && (
-          <button
-            onClick={approveAll}
-            className="flex items-center gap-1 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
-          >
-            <CheckCircle2 size={14} />
-            Aprovar todas as sugeridas
-          </button>
+        ) : (
+          <ul className="approval-list">
+            {decisions.map((decision) => (
+              <DecisionCard
+                key={decision.id}
+                decision={decision}
+                onApprove={approveDecision}
+                onReject={rejectDecision}
+                onSnooze={snoozeDecision}
+                isExecuting={executingIds.has(decision.id)}
+              />
+            ))}
+          </ul>
         )}
-      </div>
+      </section>
 
-      {/* Empty State */}
-      {decisions.length === 0 && (
-        <div className="text-center py-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-50 dark:bg-primary-500/10 text-primary-500 mb-4">
-            <Sparkles size={32} />
-          </div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            Nenhuma decisão pendente
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
-            Clique em "Analisar Agora" para que a IA analise seu CRM e sugira ações
-            baseadas em deals parados, atividades atrasadas e oportunidades.
-          </p>
-          <button
-            onClick={runAnalyzers}
-            disabled={isAnalyzing}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
-            {isAnalyzing ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Sparkles size={18} />
-            )}
-            Analisar Meu CRM
-          </button>
+      <section>
+        <div className="section-head">
+          <span className="section-head__swatch section-head__swatch--auto" aria-hidden="true" />
+          <h2 className="section-head__title">decidido recentemente</h2>
+          <p className="meta">histórico real do que você já aprovou ou recusou — não precisa de nova ação</p>
         </div>
-      )}
-
-      {/* Decision Groups */}
-      {grouped.critical.length > 0 && (
-        <section>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400 mb-3">
-            <AlertTriangle size={16} />
-            {PRIORITY_LABELS.critical.toUpperCase()} ({grouped.critical.length})
-          </h2>
-          <div className="space-y-3">
-            {grouped.critical.map(decision => (
-              <DecisionCard
-                key={decision.id}
-                decision={decision}
-                onApprove={approveDecision}
-                onReject={rejectDecision}
-                onSnooze={snoozeDecision}
-                isExecuting={executingIds.has(decision.id)}
-              />
-            ))}
+        {history.length === 0 ? (
+          <div className="state-empty state-empty--boxed">
+            <p className="state-empty__text">ainda sem histórico de decisões aprovadas ou recusadas.</p>
           </div>
-        </section>
-      )}
-
-      {grouped.high.length > 0 && (
-        <section>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-orange-600 dark:text-orange-400 mb-3">
-            <TrendingUp size={16} />
-            {PRIORITY_LABELS.high.toUpperCase()} ({grouped.high.length})
-          </h2>
-          <div className="space-y-3">
-            {grouped.high.map(decision => (
-              <DecisionCard
-                key={decision.id}
-                decision={decision}
-                onApprove={approveDecision}
-                onReject={rejectDecision}
-                onSnooze={snoozeDecision}
-                isExecuting={executingIds.has(decision.id)}
-              />
+        ) : (
+          <ul className="auto-log panel panel--flush">
+            {history.map((decision) => (
+              <li className="auto-log__item" key={decision.id}>
+                <span className={`badge-confidence ${HISTORY_BADGE_CLASS[decision.status] ?? 'badge-confidence--arquivada'}`}>
+                  {HISTORY_STATUS_LABEL[decision.status] ?? decision.status}
+                </span>
+                <div className="auto-log__body">
+                  <p className="auto-log__what">{decision.title}</p>
+                  <p className="auto-log__note">{decision.description}</p>
+                </div>
+                <span className="meta nowrap">{historyTimeLabel(decision.decidedAt)}</span>
+                {decision.dealId && <a href={`/deals/${decision.dealId}/cockpit-v2`}>ver</a>}
+              </li>
             ))}
-          </div>
-        </section>
-      )}
-
-      {grouped.medium.length > 0 && (
-        <section>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-yellow-600 dark:text-yellow-400 mb-3">
-            <Clock size={16} />
-            {PRIORITY_LABELS.medium.toUpperCase()} ({grouped.medium.length})
-          </h2>
-          <div className="space-y-3">
-            {grouped.medium.map(decision => (
-              <DecisionCard
-                key={decision.id}
-                decision={decision}
-                onApprove={approveDecision}
-                onReject={rejectDecision}
-                onSnooze={snoozeDecision}
-                isExecuting={executingIds.has(decision.id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {grouped.low.length > 0 && (
-        <section>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3">
-            <CheckCircle2 size={16} />
-            {PRIORITY_LABELS.low.toUpperCase()} ({grouped.low.length})
-          </h2>
-          <div className="space-y-3">
-            {grouped.low.map(decision => (
-              <DecisionCard
-                key={decision.id}
-                decision={decision}
-                onApprove={approveDecision}
-                onReject={rejectDecision}
-                onSnooze={snoozeDecision}
-                isExecuting={executingIds.has(decision.id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+          </ul>
+        )}
+      </section>
     </div>
   );
 };

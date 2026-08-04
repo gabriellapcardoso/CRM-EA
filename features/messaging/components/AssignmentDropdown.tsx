@@ -45,14 +45,12 @@ export function AssignmentDropdown({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors flex items-center gap-1.5"
+          className="btn btn--ghost"
           title={assignedMember ? `Atribuído a ${assignedMember.name}` : 'Atribuir conversa'}
         >
-          <UserCircle className="w-5 h-5" />
+          <UserCircle className="w-4 h-4" aria-hidden="true" />
           {assignedMember && (
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 max-w-[80px] truncate hidden sm:inline">
-              {assignedMember.name}
-            </span>
+            <span className="max-w-[80px] truncate hidden sm:inline">{assignedMember.name}</span>
           )}
         </button>
       </DropdownMenuTrigger>

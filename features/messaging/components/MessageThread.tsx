@@ -3,17 +3,18 @@
 import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, MessageSquare } from 'lucide-react';
 import { PresenceIndicator } from './PresenceIndicator';
 import { MessageBubble } from './MessageBubble';
 import { useMessagesInfinite } from '@/lib/query/hooks/useMessagesQuery';
-import type { MessagingMessage } from '@/lib/messaging/types';
+import type { ChannelType, MessagingMessage } from '@/lib/messaging/types';
 
 interface MessageThreadProps {
   conversationId: string;
   /** Contact presence status from useContactPresence */
   presenceStatus?: 'online' | 'typing' | 'recording' | 'offline';
   onReply?: (message: MessagingMessage) => void;
+  /** Canal da conversa — repassado ao `.message__meta` de cada bolha. */
+  channelType?: ChannelType;
 }
 
 function DateDivider({ date }: { date: Date }) {
@@ -23,23 +24,17 @@ function DateDivider({ date }: { date: Date }) {
 
   let label: string;
   if (isSameDay(date, today)) {
-    label = 'Hoje';
+    label = 'hoje';
   } else if (isSameDay(date, yesterday)) {
-    label = 'Ontem';
+    label = 'ontem';
   } else {
     label = format(date, "d 'de' MMMM", { locale: ptBR });
   }
 
-  return (
-    <div className="flex items-center justify-center my-4">
-      <span className="px-3 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full">
-        {label}
-      </span>
-    </div>
-  );
+  return <li className="thread__daymark">{label}</li>;
 }
 
-export function MessageThread({ conversationId, presenceStatus, onReply }: MessageThreadProps) {
+export function MessageThread({ conversationId, presenceStatus, onReply, channelType }: MessageThreadProps) {
   const {
     data,
     isLoading,
@@ -49,8 +44,8 @@ export function MessageThread({ conversationId, presenceStatus, onReply }: Messa
     isFetchingNextPage,
   } = useMessagesInfinite(conversationId);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLUListElement>(null);
+  const sentinelRef = useRef<HTMLLIElement>(null);
   const prevMessagesLengthRef = useRef(0);
   const isLoadingOlderRef = useRef(false);
 
@@ -132,49 +127,61 @@ export function MessageThread({ conversationId, presenceStatus, onReply }: Messa
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-pulse text-slate-400">Carregando mensagens...</div>
+      <div className="thread__body">
+        <div className="skeleton-stack">
+          <span className="skeleton skeleton--card" style={{ display: 'block', width: '55%' }} />
+          <span className="skeleton skeleton--card" style={{ display: 'block', width: '45%', alignSelf: 'flex-end' }} />
+          <span className="skeleton skeleton--card" style={{ display: 'block', width: '60%' }} />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-red-500">Erro ao carregar mensagens</div>
+      <div className="thread__body">
+        <div className="banner banner--error">
+          <span className="dot" />
+          <span className="banner__text">Erro ao carregar mensagens</span>
+        </div>
       </div>
     );
   }
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
-        <MessageSquare className="w-12 h-12 mb-3 opacity-50" />
-        <p>Nenhuma mensagem ainda</p>
-        <p className="text-sm">Envie uma mensagem para iniciar a conversa</p>
+      <div className="thread__body">
+        <div className="state-empty">
+          <h3 className="state-empty__title">
+            conversa nova<span className="dot-accent">.</span>
+          </h3>
+          <p className="state-empty__text">
+            nenhuma mensagem ainda — escreva abaixo para iniciar a conversa.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
+    <ul
       ref={scrollRef}
       role="log"
       aria-live="polite"
       aria-label="Mensagens da conversa"
-      className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50 dark:bg-slate-900/50"
+      className="thread__body"
     >
       {/* Sentinel for loading older messages */}
-      <div ref={sentinelRef} className="h-1" />
+      <li ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
 
       {isFetchingNextPage && (
-        <div className="flex items-center justify-center py-3">
-          <Loader2 className="w-4 h-4 animate-spin text-slate-400 mr-2" />
-          <span className="text-xs text-slate-400">Carregando mensagens anteriores...</span>
-        </div>
+        <li className="loading-more">
+          <span className="spinner" aria-hidden="true" />
+          carregando mensagens anteriores…
+        </li>
       )}
 
-      {messagesWithDates.map((item, index) => {
+      {messagesWithDates.map((item) => {
         if (item.type === 'date') {
           return <DateDivider key={`date-${format(item.date, 'yyyy-MM-dd')}`} date={item.date} />;
         }
@@ -185,16 +192,22 @@ export function MessageThread({ conversationId, presenceStatus, onReply }: Messa
             conversationId={conversationId}
             allMessages={messages}
             onReply={onReply}
+            channelType={channelType}
           />
         );
       })}
 
       {/* Typing / recording indicator */}
       {presenceStatus && presenceStatus !== 'offline' && presenceStatus !== 'online' && (
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <PresenceIndicator status={presenceStatus} showLabel size="md" />
-        </div>
+        <li className="message">
+          <span className="typing" aria-label={presenceStatus === 'recording' ? 'gravando áudio' : 'digitando'}>
+            <span /><span /><span />
+          </span>
+          <span className="message__time">
+            <PresenceIndicator status={presenceStatus} showLabel size="md" />
+          </span>
+        </li>
       )}
-    </div>
+    </ul>
   );
 }

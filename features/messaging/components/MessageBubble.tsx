@@ -6,7 +6,9 @@ import { Check, CheckCheck, Clock, AlertCircle, FileText, MapPin, Play, Pause, I
 import { cn } from '@/lib/utils';
 import { sanitizeUrl } from '@/lib/utils/sanitize';
 import { useSendMessage, useSendDraft } from '@/lib/query/hooks/useMessagingMessagesQuery';
+import { ChannelIndicator } from './ChannelIndicator';
 import type {
+  ChannelType,
   MessagingMessage,
   MessageStatus,
   TextContent,
@@ -174,6 +176,8 @@ interface MessageBubbleProps {
   conversationId: string;
   allMessages?: MessagingMessage[];
   onReply?: (message: MessagingMessage) => void;
+  /** Canal da conversa — exibido no `.message__meta` do redesign. */
+  channelType?: ChannelType;
 }
 
 // ---------------------------------------------------------------------------
@@ -429,9 +433,12 @@ export const MessageBubble = memo(function MessageBubble({
   conversationId,
   allMessages,
   onReply,
+  channelType,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === 'outbound';
   const isDraft = message.status === 'draft';
+  /** `.message--ai`: enviada por nós, mas escrita/disparada pelo agente IA. */
+  const isFromAI = isOutbound && message.metadata?.sent_by_ai === true;
   const time = format(new Date(message.createdAt), 'HH:mm');
   const { mutate: sendMessage } = useSendMessage();
   const { mutate: sendDraft, isPending: isSendingDraft } = useSendDraft();
@@ -459,126 +466,116 @@ export const MessageBubble = memo(function MessageBubble({
     [message.externalId, conversationId, sendMessage],
   );
 
+  const authorLabel = isFromAI
+    ? 'agente IA'
+    : isOutbound
+      ? 'Você'
+      : (message.senderName ?? 'Contato');
+
   return (
-    <div
-      className={cn(
-        'flex items-end gap-1 group',
-        isOutbound ? 'justify-end' : 'justify-start',
-      )}
-    >
-      {/* Bubble + reaction pills */}
-      <div className="relative max-w-[70%]">
-        <div
-          className={cn(
-            'rounded-2xl px-4 py-2 shadow-sm',
-            isDraft
-              ? 'bg-amber-50 dark:bg-amber-500/10 text-slate-900 dark:text-white rounded-br-md border-2 border-dashed border-amber-400 dark:border-amber-500/60'
-              : isOutbound
-                ? 'bg-primary-500 text-white rounded-br-md'
-                : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md border border-slate-200 dark:border-slate-700',
-          )}
-        >
-          {/* Draft label */}
-          {isDraft && (
-            <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1">
-              <PenLine className="w-3 h-3" />
-              Rascunho — não enviado
-            </p>
-          )}
+    <li className={cn('message group', isDraft ? 'message--ai' : isFromAI ? 'message--ai' : isOutbound ? 'message--out' : undefined)}>
+      {/* Meta: canal · autor · marcador de IA/rascunho */}
+      <p className="message__meta">
+        {channelType && <ChannelIndicator type={channelType} size="sm" />}
+        <span>· {authorLabel}</span>
+        {isFromAI && <span className="status-chip status-chip--ia">✦ enviado pela IA</span>}
+        {isDraft && (
+          <span className="tag-pending">
+            <PenLine className="w-3 h-3" aria-hidden="true" />
+            rascunho — não enviado
+          </span>
+        )}
+      </p>
 
-          {/* Reply quote */}
-          {repliedToMessage && (
-            <div
-              className={cn(
-                'flex gap-2 mb-2 pl-2 py-1 rounded-lg border-l-2 text-xs',
-                isOutbound
-                  ? 'border-white/60 bg-white/10 text-white/80'
-                  : 'border-primary-400 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300',
-              )}
-            >
-              <div className="min-w-0">
-                <p className={cn('font-medium truncate text-[10px] mb-0.5', isOutbound ? 'text-white/60' : 'text-primary-500')}>
-                  {repliedToMessage.direction === 'outbound' ? 'Você' : (repliedToMessage.senderName ?? 'Contato')}
-                </p>
-                <p className="truncate">{replyPreviewText(repliedToMessage)}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Sender name (inbound only) */}
-          {!isOutbound && message.senderName && (
-            <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">
-              {message.senderName}
-            </p>
-          )}
-
-          {/* Content */}
-          <div className="text-sm">
-            <MessageContent message={message} />
-          </div>
-
-          {isDraft ? (
-            <div className="flex items-center justify-between gap-2 mt-2">
-              <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80">{time}</span>
+      <div className="flex items-end gap-1" style={{ maxWidth: '100%' }}>
+        {/* Ações (hover) à esquerda quando a bolha é nossa */}
+        {isOutbound && (
+          <div className="flex items-center gap-0.5 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-row-reverse">
+            {onReply && (
               <button
                 type="button"
-                onClick={() => sendDraft(message.id)}
-                disabled={isSendingDraft}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                  'bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed',
-                )}
+                onClick={() => onReply(message)}
+                aria-label="Responder"
+                className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600"
               >
-                <Send className="w-3 h-3" />
-                {isSendingDraft ? 'Enviando…' : 'Enviar rascunho'}
+                <Reply className="w-4 h-4" />
               </button>
-            </div>
-          ) : (
-            <>
-              {/* Timestamp + delivery status */}
-              <div
-                className={cn(
-                  'flex items-center justify-end gap-1 mt-1',
-                  isOutbound ? 'text-white/70' : 'text-slate-400',
-                )}
-              >
-                <span className="text-[10px]">{time}</span>
-                {isOutbound && <StatusIcon status={message.status} />}
-              </div>
+            )}
+          </div>
+        )}
 
-              {/* Error detail */}
-              {message.status === 'failed' && message.errorMessage && (
-                <p className="text-xs text-red-300 mt-1">{message.errorMessage}</p>
-              )}
-            </>
-          )}
+        <div className="relative">
+          <div className="message__bubble">
+            {/* Citação da mensagem respondida */}
+            {repliedToMessage && (
+              <span
+                className="block mb-2 pl-2 py-1 text-xs"
+                style={{
+                  borderLeft: '2px solid var(--purple-300)',
+                  background: 'var(--surface-subtle)',
+                  borderRadius: 7,
+                  color: 'var(--ink-600)',
+                }}
+              >
+                <span className="block font-medium truncate text-[10px] mb-0.5" style={{ color: 'var(--purple-700)' }}>
+                  {repliedToMessage.direction === 'outbound' ? 'Você' : (repliedToMessage.senderName ?? 'Contato')}
+                </span>
+                <span className="block truncate">{replyPreviewText(repliedToMessage)}</span>
+              </span>
+            )}
+
+            <MessageContent message={message} />
+
+            {isDraft && (
+              <span className="flex items-center justify-end mt-2">
+                <button
+                  type="button"
+                  onClick={() => sendDraft(message.id)}
+                  disabled={isSendingDraft}
+                  className="btn btn--on-lime"
+                >
+                  <Send className="w-3 h-3" aria-hidden="true" />
+                  {isSendingDraft ? 'enviando…' : 'enviar rascunho'}
+                </button>
+              </span>
+            )}
+
+            {message.status === 'failed' && message.errorMessage && (
+              <span className="block mt-1 text-xs" style={{ color: 'var(--danger)' }}>
+                {message.errorMessage}
+              </span>
+            )}
+          </div>
+
+          <ReactionPills reactions={reactions} onReact={handleReact} />
         </div>
 
-        <ReactionPills reactions={reactions} onReact={handleReact} />
+        {/* Ações (hover) à direita quando a bolha é do contato */}
+        {!isOutbound && (
+          <div className="flex items-center gap-0.5 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {onReply && (
+              <button
+                type="button"
+                onClick={() => onReply(message)}
+                aria-label="Responder"
+                className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600"
+              >
+                <Reply className="w-4 h-4" />
+              </button>
+            )}
+            {canReact && <EmojiPickerButton onReact={handleReact} />}
+          </div>
+        )}
       </div>
 
-      {/* Action buttons — appear on hover, between bubble and edge */}
-      <div
-        className={cn(
-          'flex items-center gap-0.5 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150',
-          isOutbound ? 'order-first flex-row-reverse' : '',
+      <p className="message__time">
+        {time}
+        {isOutbound && !isDraft && (
+          <span className="inline-flex items-center align-middle ml-1">
+            <StatusIcon status={message.status} />
+          </span>
         )}
-      >
-        {/* Reply button */}
-        {onReply && (
-          <button
-            type="button"
-            onClick={() => onReply(message)}
-            aria-label="Responder"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-          >
-            <Reply className="w-4 h-4" />
-          </button>
-        )}
-
-        {/* Emoji picker — only for inbound */}
-        {canReact && <EmojiPickerButton onReact={handleReact} />}
-      </div>
-    </div>
+      </p>
+    </li>
   );
 });
