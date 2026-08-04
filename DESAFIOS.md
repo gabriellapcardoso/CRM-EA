@@ -102,11 +102,25 @@ real):
    `a`/`button`/`input` interno (0,0,1), igual ao original sem escopo, e o
    escopo continua funcionando estruturalmente sem competir com nada.
 
+3. Container flex sem `flex-wrap: wrap` que assume um número fixo de filhos
+   (o mock estático só mostrava 2-3 botões numa fileira) — quando a tela real
+   tem mais conteúdo do que o mock previu (ex: mais tipos de ação disponíveis
+   num card), os itens que não cabem na largura ficam **cortados pela borda
+   do container e escondidos**, sem scroll nem indicação visual de que existe
+   mais conteúdo (achado em `.card-hitl__actions`, cockpit de negócio, 6
+   botões reais vs. 2-3 no mock). **Como checar rápido**: qualquer `display:
+   flex` sem `flex-wrap` que renderiza uma lista de tamanho variável (botões
+   de ação, tags, chips) — se o dado real pode ter mais itens que o mock
+   estático mostrava, ou falta `flex-wrap: wrap` ou o container precisa de
+   `overflow-x: auto` deliberado.
+
 **Lição geral**: `tsc`/`eslint`/`vitest`/`build` verificam tipo, padrão de
 código, comportamento e que o bundle compila — nenhum deles renderiza CSS.
 Qualquer redesign/porting de CSS de handoff estático precisa de pelo menos uma
 passada de olho em browser real antes de considerar "pronto", mesmo com os 4
-comandos 100% verdes.
+comandos 100% verdes — e quanto mais perto do dado real de produção (não só
+o primeiro estado vazio/mock), mais chance de achar containers que o mock
+estático nunca testou com volume de conteúdo variável.
 
 ## Múltiplos agentes em paralelo na mesma árvore de trabalho: `git stash`/checkout de um pode reverter o progresso de outro (2026-08-04)
 

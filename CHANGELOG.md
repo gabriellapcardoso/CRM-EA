@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ui): 5ª rodada de QA — cockpit de negócio completo testado com deal real, 1 bug achado e corrigido — 2026-08-04
+
+`/deals/[id]/cockpit-v2` (página cheia, 3 colunas) nunca tinha sido aberta com
+dado real em nenhuma rodada anterior — não havia caminho de navegação exposto
+na UI até uma decisão "decidida recentemente" (que o banco de teste não
+tinha). Aberta direto por URL com um ID de deal real extraído do DOM do modal
+condensado. Achado: **`.card-hitl__actions`** (fileira de botões do card
+"próxima ação" — executar agora/gerar WhatsApp/gerar e-mail/template WA/
+template e-mail/agendar) não tinha `flex-wrap` — com o número real de ações
+que essa tela oferece (mais do que o mock previa), os últimos botões ficavam
+cortados pela borda do card, escondidos, sem scroll nem indicação de que
+havia mais conteúdo. Corrigido com `flex-wrap: wrap` — os botões extras
+quebram pra 2ª linha em vez de desaparecer (pequeno efeito colateral
+cosmético de alinhamento, aceitável frente a esconder botões de verdade).
+
+Resto da tela (contato principal, dados do deal, risco do deal, próximos
+passos, painel de IA) renderizou correto, sem outro bug. Achado fora de
+escopo (não corrigido, pré-existente): `console.error` "API key não
+configurada para Google Gemini" — a análise automática de IA que dispara ao
+abrir o cockpit não trata esse erro de forma silenciosa quando a chave da
+organização não está configurada (`lib/ai/tasksClient.ts`); comportamento de
+produto/tratamento de erro, não redesign.
+
+Reverificado: `tsc`/`eslint`/`vitest`/`next build` continuam verdes.
+
 ### QA final do redesign (3ª e 4ª rodadas) — admin real, mensagens com dado real, zero bug novo — 2026-08-04
 
 Depois dos 2 fixes de CSS acima (commits `dd8e3eb`/`a7516b1`), mais 2 rodadas

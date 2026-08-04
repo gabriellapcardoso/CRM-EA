@@ -203,17 +203,22 @@ recarregando a mesma tela sem nenhum filtro.)
 redesign (arquivo não tocado por nenhum dos 6 blocos) e não trava nada
 (fallback já trata), mas é ruído de console real. Detalhe em `DESAFIOS.md`.
 
-**O que continua sem cobertura real**: só `/deals/[id]/cockpit-v2` completo
-(a página cheia de 3 colunas) — só o modal condensado (`DealDetailModal`) foi
-visto de fato. Não achei uma decisão "decidida recentemente" nem uma
-conversa com deal vinculado no banco de teste pra chegar lá pelo link `ver`
-real da UI; construir a URL à mão com um ID de deal também não foi tentado.
-Vocabulário visual (`.cockpit`/`.card-deal`/`.stepper`) já foi confirmado em
-outros contextos (modal, kanban), então o risco residual é baixo, mas o
-layout de 3 colunas em si (min-width 1180px) nunca foi visto renderizado.
+**5ª rodada** (mesmo dia): `/deals/[id]/cockpit-v2` finalmente aberto com um
+deal real — não há caminho de navegação exposto na UI até essa rota (só
+`ver` numa decisão "decidida recentemente", que o banco de teste não tinha);
+o ID do deal foi extraído direto do DOM do modal condensado (2 UUIDs visíveis
+no HTML renderizado) e a URL montada à mão. **1 bug real achado e corrigido**
+(commit `ffbdb14`): `.card-hitl__actions` (fileira de botões do card "próxima
+ação") sem `flex-wrap` — com o número real de ações da tela (6, mais do que
+o mock previa), os últimos botões ficavam cortados pela borda do card,
+escondidos e inacessíveis. Corrigido com `flex-wrap: wrap`. Resto da tela
+(contato principal, dados do deal, risco do deal, próximos passos, painel de
+IA) sem outro problema. Achado fora de escopo, não corrigido: `console.error`
+"API key não configurada para Google Gemini" (análise automática de IA sem
+tratamento silencioso de erro quando a chave da org não está configurada —
+`lib/ai/tasksClient.ts`, comportamento de produto pré-existente).
 
 **Pendências que ainda exigem revisão visual humana**:
-- `/deals/[id]/cockpit-v2` (página cheia, 3 colunas — ver detalhe acima).
 - `/ai`, `/profile` (nunca abertas em nenhuma rodada).
 - `features/messaging/components/FocusContextPanel.tsx` (~1900 linhas,
   compartilhado com o cockpit) **não foi restilizado** — ainda no visual
