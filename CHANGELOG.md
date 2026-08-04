@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ui): 2 bugs de CSS reais achados por QA em browser real no redesign — 2026-08-04
+
+`/qa` contra o dev server real (Chrome da fundadora via CDP, não o Chromium
+headless isolado) achou 2 classes de bug que `tsc`/`eslint`/`vitest`/`build`
+não pegam por não renderizarem CSS de verdade:
+
+1. **Texto colado sem quebra de linha** em `.card-conv__body` (inbox/mensagens)
+   e `.feed__body` (painel "risco"/"oportunidades" do inbox, visão geral):
+   essas classes só tinham `flex: 1; min-width: 0` — sem `display: flex;
+   flex-direction: column`, os `<span>` filhos (`.card-conv__org`/`__preview`,
+   `.feed__text`/`__meta`) ficavam lado a lado na mesma linha em vez de
+   empilhados, e a truncagem com ellipsis não funcionava (span inline não tem
+   largura definida). Resultado visual real: "Propostateste ww — Proposta -
+   R\$ 1.100 · 10% prob" (dois campos colados sem espaço) e botões "aplicar"/
+   "abrir" sobrepondo texto que devia truncar. Corrigido adicionando
+   `display: flex; flex-direction: column` nas 4 classes do mesmo padrão
+   (`.card-conv__body`, `.feed__body`, `.timeline__body`, `.auto-log__body` —
+   as duas últimas não tinham bug confirmado, mas o mesmo risco estrutural,
+   corrigidas preventivamente).
+2. **Guerra de especificidade CSS revertendo cor/fonte de componentes**: a
+   integração do CSS do handoff (ver entrada acima) escopou as regras globais
+   de link/botão/input do `base.css` como `.app a`/`.app button`/`.app input,
+   .app textarea` pra não vazar pro resto do app — mas isso elevou a
+   especificidade de (0,0,1) pra (0,1,1), **maior** que `.nav__item`/
+   `.pill-hitl`/`.btn`/`.tab`/`.chip` (0,1,0), invertendo a cascata: o texto da
+   sidebar aparecia rosa/roxo em vez de branco (cor de link vencendo a cor do
+   nav item), e `.app button { font: inherit }` tinha o mesmo risco de resetar
+   `font-weight`/`font-size` de qualquer botão estilizado. Corrigido trocando
+   pra `:where(.app) a`/`:where(.app) button`/`:where(.app) input,
+   :where(.app) textarea` — `:where()` tem especificidade zero, então o
+   escopo por `.app` continua funcionando mas sem competir com nenhuma classe
+   de componente (restaura o comportamento de cascata do handoff original,
+   que usava `a`/`button`/`input` sem classe nenhuma).
+
+Achados batendo o handoff no Chrome real (CDP), não no Chromium headless
+isolado — ambos os bugs são de CSS puro, invisíveis pra `tsc`/`eslint`/
+`vitest`/`next build`. Reverificado depois do fix: `tsc --noEmit` (0 erros),
+`eslint --max-warnings=0` (0 problemas), `vitest run` (445/450, 5 skipped),
+`next build` (110 rotas ok).
+
 ### Redesign visual completo do CRM a partir do handoff HTML/CSS "Redesign CRM" — 2026-08-04
 
 Reimplementação de toda a UI autenticada a partir de um pacote de handoff

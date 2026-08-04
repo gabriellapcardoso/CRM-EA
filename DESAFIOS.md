@@ -1,5 +1,43 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## `tsc`/`eslint`/`vitest`/`next build` verdes não pegam bug de CSS puro — só QA em browser real acha (2026-08-04)
+
+No redesign do CRM (ver `CHANGELOG.md`/`REDESIGN-CRM.md`), toda a bateria
+automática passou limpa (0 erros/warnings/falhas) mas 2 bugs visuais reais só
+apareceram ao abrir o app de verdade no Chrome (via `/qa` + claude-in-chrome
+CDP, não o Chromium headless isolado do gstack browse — embora headless
+também pegaria, já que é CSS puro renderizado, não algo específico do browser
+real):
+
+1. Classe com `flex: 1; min-width: 0` mas **sem** `display: flex;
+   flex-direction: column` — se os filhos são `<span>` (inline) em vez de
+   `<div>`/`<p>` (block), eles renderizam lado a lado na mesma linha em vez de
+   empilhados, e texto de dois campos diferentes aparece colado sem espaço
+   (`"Propostateste ww — ..."`). **Como checar rápido**: ao portar um trecho
+   do handoff que usa `<span>` pra várias linhas de texto dentro de um mesmo
+   container, sempre perguntar "esse container empilha os filhos visualmente,
+   ou só confia no navegador quebrar linha por falta de espaço?" — se a
+   resposta for a 2ª, falta `display:flex;flex-direction:column` explícito no
+   container (não basta ele ser item de um flex pai, isso só blockifica ELE,
+   não afeta como OS FILHOS DELE se organizam).
+2. Escopar uma regra CSS genérica (`a`, `button`, `input`) com uma classe
+   ancestral (`.minha-classe a { color: ... }`) pra não vazar pro app inteiro
+   **aumenta a especificidade** de (0,0,1) pra (0,1,1) — maior que qualquer
+   classe de componente de 1 nível (`.nav-item`, `.btn`, `.tab`, especificidade
+   0,1,0), o que **inverte a cascata**: a regra "genérica" escopada passa a
+   vencer a regra "específica" do componente, silenciosamente trocando cor/
+   fonte de qualquer link/botão/input dentro do escopo. **Fix**: usar
+   `:where(.minha-classe) a { ... }` — `:where()` sempre conta como
+   especificidade zero, então o seletor todo fica com a especificidade só do
+   `a`/`button`/`input` interno (0,0,1), igual ao original sem escopo, e o
+   escopo continua funcionando estruturalmente sem competir com nada.
+
+**Lição geral**: `tsc`/`eslint`/`vitest`/`build` verificam tipo, padrão de
+código, comportamento e que o bundle compila — nenhum deles renderiza CSS.
+Qualquer redesign/porting de CSS de handoff estático precisa de pelo menos uma
+passada de olho em browser real antes de considerar "pronto", mesmo com os 4
+comandos 100% verdes.
+
 ## Múltiplos agentes em paralelo na mesma árvore de trabalho: `git stash`/checkout de um pode reverter o progresso de outro (2026-08-04)
 
 Redesign completo da UI (ver `CHANGELOG.md` e `REDESIGN-CRM.md`) rodou com 6
