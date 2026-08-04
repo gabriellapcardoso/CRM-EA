@@ -245,6 +245,11 @@ export const useMoveDeal = () => {
       
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: queryKeys.deals.lists() });
+      // Also cancel the detail(id) fetch — we write to it optimistically below,
+      // and .lists() doesn't cover it, so a stale in-flight detail response
+      // could overwrite this optimistic update after it lands (most common
+      // path in the app: Kanban drag-and-drop).
+      await queryClient.cancelQueries({ queryKey: queryKeys.deals.detail(dealId) });
 
       // Snapshot previous state - usa DEALS_VIEW_KEY (única fonte de verdade)
       const previousDeals = queryClient.getQueryData<DealView[]>(DEALS_VIEW_KEY);

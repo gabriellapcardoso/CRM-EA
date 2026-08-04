@@ -299,6 +299,12 @@ export function useUpdateConversation() {
       await queryClient.cancelQueries({
         predicate: entityCachesExceptDetail('messagingConversations'),
       });
+      // Also cancel the detail(id) fetch — we write to it optimistically below,
+      // and the predicate above excludes detail caches on purpose, so a stale
+      // in-flight detail response could overwrite this optimistic update.
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.messagingConversations.detail(conversationId),
+      });
 
       // Snapshot previous value
       const previousConversations = queryClient.getQueriesData({
