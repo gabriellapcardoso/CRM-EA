@@ -1,5 +1,51 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Plugin oficial do Supabase para Claude Code usa OAuth hospedado que estava fora do ar ("Unrecognized client_id") — solução: token de acesso pessoal via `.mcp.json` (2026-08-04)
+
+O plugin `supabase` instalado (`~/.claude/plugins/cache/claude-plugins-official/
+supabase/`) registra o MCP server sempre como `https://mcp.supabase.com/mcp`
+(OAuth hospedado, `.claude-plugin/plugin.json` → `agents/claude/.mcp.json`) —
+não tem opção de token embutida. Nesta sessão esse endpoint respondia
+`{"message":"Unrecognized client_id"}` pra qualquer tentativa de
+`mcp__plugin_supabase_supabase__authenticate`, de forma consistente — bug
+externo (do lado da Supabase/registro do app OAuth), não algo configurável
+daqui.
+
+**Solução que funcionou**: ignorar o plugin OAuth e apontar um MCP server
+próprio, self-hosted, direto no `.mcp.json` do projeto (já no `.gitignore`,
+linha 45), usando o pacote oficial `@supabase/mcp-server-supabase` com
+Personal Access Token via `SUPABASE_ACCESS_TOKEN`:
+```json
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--project-ref=zuuqcwxletrfmpcqagxc"],
+      "env": { "SUPABASE_ACCESS_TOKEN": "sbp_..." }
+    }
+  }
+}
+```
+Token gerado em https://supabase.com/dashboard/account/tokens. **Só carrega
+numa sessão nova** — servidores adicionados ao `.mcp.json` de um projeto não
+são hot-reloaded no meio de uma sessão já aberta.
+
+## `AuthContext.tsx` loga erro de console em toda carga de página — provavelmente RPC `is_instance_initialized` não aplicada no Supabase remoto (achado 2026-08-04, não corrigido — pré-existente, fora do escopo do redesign)
+
+QA em browser real (Chrome, conta admin) do redesign achou um `console.error`
+real em toda tela: `Error checking initialization: {}`, origem
+`context/AuthContext.tsx:136`, dentro de `checkInitialization` (chama
+`sb.rpc('is_instance_initialized')`, cai no `catch` com um objeto de erro
+vazio). A função existe em `supabase/migrations/20251201000000_schema_init.sql`
+e `20260221200002_fix_function_search_path.sql`, então é candidata forte ao
+padrão já documentado acima ("Migrations locais podem não estar aplicadas no
+Supabase remoto") — mas não foi investigado a fundo, só confirmado que **não
+é do redesign** (arquivo não tocado por nenhum dos 6 blocos) e **não trava
+nada** (o `catch` já faz `setIsInitialized(true)`, então o app segue
+funcionando normal, só com ruído no console). Comparar
+`mcp__plugin_supabase_supabase__list_migrations` (agora disponível via token,
+ver acima) contra `ls supabase/migrations/` antes de investigar mais a fundo.
+
 ## Trocar o *default* de uma preferência persistida em localStorage não afeta usuários que já têm o valor antigo salvo (2026-08-04)
 
 Ao tornar o redesign do CRM light-only, mudei `usePersistedState('crm_dark_mode',

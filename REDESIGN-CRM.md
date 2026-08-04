@@ -182,29 +182,39 @@ de parada): o toggle "IA ativa na organização" em `/settings/ai` usa verde
 em vez do roxo do `.toggle--on` do design system — parece um componente
 `Switch` legado ainda não migrado, não uma classe do redesign com bug.
 
-**O que continua sem cobertura real** (precisa de dado/acesso que esta sessão
-não tinha): `/messaging` com uma conversa de verdade (banco de teste sem
-nenhuma), `/deals/[id]/cockpit-v2` completo (só o modal condensado foi visto —
-não há decisão "decidida recentemente" no banco de teste com link `ver` pra
-essa rota, e construir a URL à mão não foi tentado), e as abas
-Canais/Webhooks/API/MCP/Segurança WhatsApp/Produtos de `/settings` como
-usuário admin de fato (o teste confirmou o gate funciona, mas não o conteúdo
-por trás dele). Pra cobrir isso, precisa de: (a) uma conversa real de teste
-em `messaging_conversations`, (b) um usuário com `role='admin'`, e/ou (c) um
-deal ID conhecido pra montar a URL do cockpit direto.
+**4ª rodada** (mesmo dia — a conta de teste virou admin de verdade,
+`role='admin'` setado pela fundadora direto no Supabase, e o MCP oficial do
+Supabase passou a funcionar via token pessoal em vez do OAuth quebrado, ver
+`DESAFIOS.md`): cobriu as 5 sub-abas de `/settings/integracoes` (Canais,
+Webhooks, API, MCP, Segurança WhatsApp — todas reais, com dado de verdade:
+canal WhatsApp real "desconectado", webhook real de entrada de leads da
+Prospecção ativo, chave de API n8n) e `/settings/products`, todas como admin
+de fato. **Zero bug novo.** `/messaging` reaberto com conta admin mostrou
+conversas reais (WhatsApp, "Vitório Junior" com 212 mensagens, "Janela
+expirada", bolhas de saída/entrada) — thread, composer e painel de contexto
+renderizam corretamente com dado real, sem overlap, sem erro de console.
+(A percepção de "lista vazia" na 3ª rodada foi falso alarme — timing de
+carregamento logo após reiniciar o dev server, não um bug real; confirmado
+recarregando a mesma tela sem nenhum filtro.)
 
-**Pendências que ainda exigem revisão visual humana** (não abertas em
-nenhuma das 2 passadas de QA):
-- `/messaging` com conversa real de verdade (o banco de teste não tinha
-  nenhuma conversa — thread/bolhas/composer nunca renderizaram com dado real).
-- `/deals/[id]/cockpit-v2` (página cheia, 3 colunas) — só o modal condensado
-  (`DealDetailModal`) foi visto; o banco de teste não tinha nenhuma decisão
-  "decidida recentemente" com link `ver` pra chegar lá sem construir a URL à
-  mão. Risco de scroll duplo/`min-width` (1180px) em telas estreitas.
-- `/settings` abas "configuração de IA"/"integrações"/"produtos" — só "geral"
-  foi vista, e só como usuário não-admin (essas 2 últimas abas só aparecem
-  pra admin).
-- `/ai`, `/profile`.
+**Achado fora do escopo do redesign, não corrigido**: `console.error`
+("Error checking initialization: {}") em toda carga de página, origem
+`context/AuthContext.tsx:136` (RPC `is_instance_initialized`) — não é do
+redesign (arquivo não tocado por nenhum dos 6 blocos) e não trava nada
+(fallback já trata), mas é ruído de console real. Detalhe em `DESAFIOS.md`.
+
+**O que continua sem cobertura real**: só `/deals/[id]/cockpit-v2` completo
+(a página cheia de 3 colunas) — só o modal condensado (`DealDetailModal`) foi
+visto de fato. Não achei uma decisão "decidida recentemente" nem uma
+conversa com deal vinculado no banco de teste pra chegar lá pelo link `ver`
+real da UI; construir a URL à mão com um ID de deal também não foi tentado.
+Vocabulário visual (`.cockpit`/`.card-deal`/`.stepper`) já foi confirmado em
+outros contextos (modal, kanban), então o risco residual é baixo, mas o
+layout de 3 colunas em si (min-width 1180px) nunca foi visto renderizado.
+
+**Pendências que ainda exigem revisão visual humana**:
+- `/deals/[id]/cockpit-v2` (página cheia, 3 colunas — ver detalhe acima).
+- `/ai`, `/profile` (nunca abertas em nenhuma rodada).
 - `features/messaging/components/FocusContextPanel.tsx` (~1900 linhas,
   compartilhado com o cockpit) **não foi restilizado** — ainda no visual
   antigo, mas funcional (renderiza dentro do `.thread__body` novo).
