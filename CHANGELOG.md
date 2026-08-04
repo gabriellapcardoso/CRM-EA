@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ui): modo escuro persistido travava usuárias existentes num visual quebrado, sem forma de desligar — 2026-08-04
+
+Segunda rodada de `/qa` em browser real (Chrome via CDP), cobrindo negociação/
+cockpit, decisões e relatórios. Achado mais sério da sessão: `context/
+ThemeContext.tsx` mudou o *default* de `crm_dark_mode` pra `false` (ver
+entrada "Redesign visual completo" abaixo), mas continuava **lendo** o valor
+já salvo no localStorage de sessões anteriores ao redesign — qualquer usuária
+que já tinha escolhido "escuro" antes (era o default antigo, `true`) ficava
+com `<html class="dark">` de novo, ativando as classes `dark:` de componentes
+ainda não migrados (ex: corpo do modal de detalhe do negócio,
+`DealDetailModal.tsx`, que ficava com fundo azul-marinho e texto de dado
+("Sem empresa", "Média", "10%") quase invisível por cima do fundo escuro).
+Como o toggle de tema foi removido da topbar no mesmo redesign, essas
+usuárias **não tinham mais nenhuma forma de voltar pro claro** — pior que
+antes do redesign, não igual.
+
+Confirmado ao vivo: o Chrome real usado pro QA tinha `crm_dark_mode: true` no
+localStorage (sessão de uso normal, antes desta feature). `ThemeProvider`
+reescrito pra forçar `light` sempre e limpar a chave antiga do localStorage no
+mount, em vez de honrar o valor salvo — `toggleDarkMode` virou no-op
+documentado (nada no código chama, confirmado por grep). Reverificado:
+`tsc`/`eslint`/`vitest`/`next build` continuam verdes.
+
 ### fix(ui): 2 bugs de CSS reais achados por QA em browser real no redesign — 2026-08-04
 
 `/qa` contra o dev server real (Chrome da fundadora via CDP, não o Chromium

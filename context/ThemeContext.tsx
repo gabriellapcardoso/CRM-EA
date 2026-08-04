@@ -27,7 +27,6 @@
  */
 
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { usePersistedState } from '../hooks/usePersistedState';
 
 /**
  * Tipo do contexto de tema
@@ -46,28 +45,33 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 /**
  * Provider de tema da aplicação
  * 
- * Gerencia preferência de tema e aplica classe 'dark' ao documento.
- * O tema é persistido em localStorage com a chave 'crm_dark_mode'.
- * O padrão é modo claro (false) — redesign 2026-08 adota um sistema
- * de design light-only (ver REDESIGN-CRM.md); o toggle foi removido
- * da topbar, mas o mecanismo continua disponível para widgets legados
- * que ainda não migraram.
+ * O redesign 2026-08 adota um sistema de design light-only (ver
+ * REDESIGN-CRM.md) e removeu o toggle da topbar — nenhum lugar da UI
+ * expõe mais `toggleDarkMode`. Manter a leitura da preferência antiga
+ * (`crm_dark_mode`) do localStorage travava usuários que já tinham
+ * escolhido "escuro" antes do redesign num modo escuro sem escape (o
+ * `dark:` de componentes ainda não migrados voltava a ativar, sem
+ * nenhum botão pra desligar de novo). Por isso o provider agora força
+ * `light` sempre e limpa a chave antiga, em vez de honrar o valor salvo.
  *
  * @param {Object} props - Props do componente
  * @param {ReactNode} props.children - Componentes filhos
  */
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [darkMode, setDarkMode] = usePersistedState<boolean>('crm_dark_mode', false);
+  const darkMode = false;
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    document.documentElement.classList.remove('dark');
+    try {
+      window.localStorage.removeItem('crm_dark_mode');
+    } catch {
+      // localStorage indisponível (SSR/modo privado) — sem efeito prático
     }
-  }, [darkMode]);
+  }, []);
 
-  const toggleDarkMode = () => setDarkMode(!darkMode);
+  const toggleDarkMode = () => {
+    // No-op: dark mode não é mais uma opção de UI (ver comentário acima).
+  };
 
   return (
     <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>

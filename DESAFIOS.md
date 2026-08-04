@@ -1,5 +1,29 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Trocar o *default* de uma preferência persistida em localStorage não afeta usuários que já têm o valor antigo salvo (2026-08-04)
+
+Ao tornar o redesign do CRM light-only, mudei `usePersistedState('crm_dark_mode',
+true)` pra `usePersistedState(..., false)` em `context/ThemeContext.tsx` — óbvio
+demais, parecia resolvido. Só que `usePersistedState` só usa o default quando a
+chave **não existe ainda** no `localStorage`. Qualquer usuária que já tinha
+usado o app antes (quando `true` era o default) já tinha a chave salva com
+`true` — trocar o default no código não muda o que já está gravado no
+navegador dela. Como o redesign também removeu o botão de toggle da topbar
+(não fazia sentido manter, já que o handoff não previa tema escuro), essas
+usuárias ficaram **presas** no escuro, sem nenhum controle de UI pra sair —
+pior do que antes de qualquer mudança.
+
+**Como isso não repete**: trocar o *default* de uma preferência persistida
+(`localStorage`/cookie/flag no banco) não é o mesmo que migrar usuários
+existentes pra esse novo default — só afeta quem nunca tinha a chave salva.
+Se a intenção é "todo mundo usa o novo comportamento a partir de agora", tem
+que **ativamente limpar/sobrescrever** o valor antigo (ex: `localStorage.
+removeItem()` no mount, ou uma migration/versionamento da chave), não só
+mudar o argumento default da função que lê. Vale sobretudo quando, junto com
+a mudança de default, algum controle de UI que permitia reverter a preferência
+também foi removido — nesse caso, sem a limpeza ativa, não existe mais
+NENHUM caminho pra sair do estado antigo.
+
 ## `tsc`/`eslint`/`vitest`/`next build` verdes não pegam bug de CSS puro — só QA em browser real acha (2026-08-04)
 
 No redesign do CRM (ver `CHANGELOG.md`/`REDESIGN-CRM.md`), toda a bateria
