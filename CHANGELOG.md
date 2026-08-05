@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### T2b — orçamento sugerido da prospecção vira o valor do negócio novo — 2026-08-05
+
+Fase B do plano "Orçamento sugerido" (o outro lado é
+`prospeccao-aaagencia`, que calcula e persiste o valor). Antes, todo
+negócio criado pela ingestão T2 nascia com `value = 0` fixo —
+financeiramente opaco, sem nenhuma referência de preço no board.
+
+`ingest_lead_prospeccao` (RPC, migration `20260805190000_t2b_
+orcamento_sugerido_deal_value.sql`, `CREATE OR REPLACE FUNCTION` sobre a
+função do T2 — não editada a migration original já aplicada em
+produção) passa a ler `lead.orcamento_sugerido` do payload e usar
+`COALESCE(orcamento_sugerido, 0)` como `value` — **só no `INSERT`** (deal
+novo). O branch de `UPDATE` (deal já aberto reaproveitado, reentrada de
+reaquecimento) continua sem tocar em `value`, de propósito: pode ter
+sido editado manualmente por alguém no CRM, e um reenvio da prospecção
+não deve sobrescrever esse ajuste humano.
+
+`supabase/functions/ingest-prospeccao/contract.ts` (`validarPayload
+Prospeccao`) passa a exigir o campo como obrigatório (`number | null`,
+nunca ausente) — rejeita string/NaN/campo ausente com 422 antes de
+chegar na RPC, porque alimenta um valor monetário direto.
+
+**Verificado em produção, sem sujar dado real**: migration aplicada
+(`supabase db push`) e Edge Function redeployada; RPC chamada dentro de
+uma transação com `rollback` no final, com um payload de teste
+(`orcamento_sugerido: 4321`) — confirmou `deal.value = 4321`, sem gravar
+nenhuma linha. 3 casos novos no teste pgTAP da RPC (`supabase/tests/
+t2_ingest.test.sql`: value do payload, fallback `0` quando nulo, não
+sobrescrita em reentrada) e 3 no teste de contrato (`test/
+prospeccaoContract.test.ts`). Fixture compartilhada (`test/fixtures/
+t2-payload.json`) e a cópia irmã em `prospeccao-aaagencia` atualizadas
+juntas. Detalhe completo (incluindo as 6 decisões de negócio e os 9
+achados da revisão cruzada com o Codex) em `gerador de propostas
+comerciai/HANDOFF.md`, seção do contrato T2, e no `CHANGELOG.md`/
+`README.md` de `prospeccao-aaagencia`.
+
 ### Redesign em produção — deploy verificado em crm.aaagencia.com.br — 2026-08-04
 
 10 commits (`d924a86`..`201f5d5`) enviados pra `main` e implantados via
