@@ -95,4 +95,19 @@ describe('contrato Prospecção → CRM (T2)', () => {
       validarPayloadProspeccao({ ...fixture, demo: { link: 'https://x.supabase.co/storage/v1/object/public/demos/a/demo.pdf', tipo: 'pdf' } }).ok,
     ).toBe(true)
   })
+
+  it('aceita lead.orcamento_sugerido number válido', () => {
+    expect(validarPayloadProspeccao({ ...fixture, lead: { ...fixture.lead, orcamento_sugerido: 5000 } }).ok).toBe(true)
+  })
+
+  it('aceita lead.orcamento_sugerido null', () => {
+    expect(validarPayloadProspeccao({ ...fixture, lead: { ...fixture.lead, orcamento_sugerido: null } }).ok).toBe(true)
+  })
+
+  it('rejeita lead.orcamento_sugerido com tipo inválido (string, NaN, ausente)', () => {
+    expect(validarPayloadProspeccao({ ...fixture, lead: { ...fixture.lead, orcamento_sugerido: '5000' } }).ok).toBe(false)
+    expect(validarPayloadProspeccao({ ...fixture, lead: { ...fixture.lead, orcamento_sugerido: NaN } }).ok).toBe(false)
+    const { orcamento_sugerido: _omit, ...leadResto } = fixture.lead
+    expect(validarPayloadProspeccao({ ...fixture, lead: leadResto }).ok).toBe(false)
+  })
 })

@@ -10,7 +10,8 @@
     "instagram": "@sorrisobh",
     "motor": "pagina",
     "nota": 4.8,
-    "motivo": "Sem site próprio, só Instagram"
+    "motivo": "Sem site próprio, só Instagram",
+    "orcamento_sugerido": 5000
   },
   "demo": {
     "link": "https://sorriso-bh-demo.vercel.app",

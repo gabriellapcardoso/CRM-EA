@@ -8,7 +8,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(11);
+SELECT plan(14);
 
 -- ----------------------------------------------------------------------------
 -- Fixtures
@@ -30,7 +30,7 @@ INSERT INTO integration_inbound_sources (id, organization_id, name, entry_board_
 
 -- payload de fixture (mesmo formato de prospeccao-aaagencia/lib/fixtures/t2-payload.json)
 -- telefone propositalmente "sujo" pra testar t2_normalize_phone_br
-\set payload '''{"external_event_id":"lead:aaaaaaaa-0000-0000-0000-000000000001:demo:0","correlation_id":"aaaaaaaa-0000-0000-0000-000000000001","ciclo":0,"origem":"prospeccao-aaagencia","lead":{"nome":"Lead Teste","telefone":"(31) 98888-7777","email":null,"instagram":null,"motor":"pagina","nota":4.8,"motivo":"sem site"},"demo":{"link":"https://exemplo.com/","tipo":"link"},"mensagem_whatsapp":"Oi! Vi seu negócio e montei uma demo.","mensagem_email":"Assunto: teste","enviado_em":"2026-07-23T12:00:00.000Z"}''::jsonb'
+\set payload '''{"external_event_id":"lead:aaaaaaaa-0000-0000-0000-000000000001:demo:0","correlation_id":"aaaaaaaa-0000-0000-0000-000000000001","ciclo":0,"origem":"prospeccao-aaagencia","lead":{"nome":"Lead Teste","telefone":"(31) 98888-7777","email":null,"instagram":null,"motor":"pagina","nota":4.8,"motivo":"sem site","orcamento_sugerido":5000},"demo":{"link":"https://exemplo.com/","tipo":"link"},"mensagem_whatsapp":"Oi! Vi seu negócio e montei uma demo.","mensagem_email":"Assunto: teste","enviado_em":"2026-07-23T12:00:00.000Z"}''::jsonb'
 
 -- ----------------------------------------------------------------------------
 -- 1) Fonte inativa: RAISE T2_INVALID_SOURCE
@@ -75,6 +75,17 @@ SELECT is(
     WHERE c.prospect_correlation_id = 'aaaaaaaa-0000-0000-0000-000000000001'),
   'Oi! Vi seu negócio e montei uma demo.',
   'sem canal WhatsApp ativo, rascunho fica em custom_fields.prospeccao.draft_whatsapp_message'
+);
+
+-- ----------------------------------------------------------------------------
+-- 2b) T2b: negócio novo -> value = orcamento_sugerido do payload
+-- ----------------------------------------------------------------------------
+SELECT is(
+  (SELECT d.value::int FROM deals d
+     JOIN contacts c ON c.id = d.contact_id
+    WHERE c.prospect_correlation_id = 'aaaaaaaa-0000-0000-0000-000000000001'),
+  5000,
+  'negócio novo grava value = orcamento_sugerido do payload'
 );
 
 -- ----------------------------------------------------------------------------
@@ -133,6 +144,38 @@ SELECT throws_ok(
   ),
   'T2_INVALID_PHONE',
   'telefone não normalizável rejeita com T2_INVALID_PHONE'
+);
+
+-- ----------------------------------------------------------------------------
+-- 6) T2b: orcamento_sugerido null -> value = 0 (fallback)
+-- ----------------------------------------------------------------------------
+SELECT ingest_lead_prospeccao(
+  '00000000-0000-0000-0000-000000000004'::uuid,
+  '{"external_event_id":"lead:dddddddd-0000-0000-0000-000000000004:demo:0","correlation_id":"dddddddd-0000-0000-0000-000000000004","ciclo":0,"origem":"prospeccao-aaagencia","lead":{"nome":"Lead Sem Orcamento","telefone":"+5531988887779","orcamento_sugerido":null},"demo":{},"mensagem_whatsapp":"oi"}'::jsonb
+);
+
+SELECT is(
+  (SELECT d.value::int FROM deals d
+     JOIN contacts c ON c.id = d.contact_id
+    WHERE c.prospect_correlation_id = 'dddddddd-0000-0000-0000-000000000004'),
+  0,
+  'orcamento_sugerido null no payload -> value = 0 (fallback)'
+);
+
+-- ----------------------------------------------------------------------------
+-- 7) T2b: negócio já aberto reaproveitado (reentrada) -> value NÃO é sobrescrito
+-- ----------------------------------------------------------------------------
+SELECT ingest_lead_prospeccao(
+  '00000000-0000-0000-0000-000000000004'::uuid,
+  '{"external_event_id":"lead:aaaaaaaa-0000-0000-0000-000000000001:demo:1","correlation_id":"aaaaaaaa-0000-0000-0000-000000000001","ciclo":1,"origem":"prospeccao-aaagencia","lead":{"nome":"Lead Teste","telefone":"+5531988887777","orcamento_sugerido":9999},"demo":{},"mensagem_whatsapp":"reentrada"}'::jsonb
+);
+
+SELECT is(
+  (SELECT d.value::int FROM deals d
+     JOIN contacts c ON c.id = d.contact_id
+    WHERE c.prospect_correlation_id = 'aaaaaaaa-0000-0000-0000-000000000001'),
+  5000,
+  'deal já aberto reaproveitado (reentrada) não tem value sobrescrito por novo orcamento_sugerido'
 );
 
 SELECT * FROM finish();

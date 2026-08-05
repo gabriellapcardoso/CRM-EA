@@ -22,6 +22,7 @@ export interface PayloadProspeccao {
     motor: string;
     nota: number | null;
     motivo: string | null;
+    orcamento_sugerido: number | null;
   };
   demo: { link: string | null; tipo: "link" | "pdf" };
   mensagem_whatsapp: string;
@@ -80,6 +81,18 @@ export function validarPayloadProspeccao(bruto: unknown): ResultadoValidacao {
   if (!textoOuNulo(lead.instagram ?? null)) return { ok: false, erro: "lead.instagram deve ser string ou null" };
   if (lead.nota !== null && lead.nota !== undefined && typeof lead.nota !== "number") {
     return { ok: false, erro: "lead.nota deve ser number ou null" };
+  }
+  // Achado do Codex: campo obrigatório (number | null, nunca ausente) porque
+  // alimenta deals.value — sem esta checagem, um valor ausente ou malformado
+  // (string, NaN) seria ignorado pelo validador e viraria 0 silenciosamente.
+  if (!("orcamento_sugerido" in lead)) {
+    return { ok: false, erro: "lead.orcamento_sugerido obrigatório (number ou null)" };
+  }
+  if (
+    lead.orcamento_sugerido !== null &&
+    (typeof lead.orcamento_sugerido !== "number" || !Number.isFinite(lead.orcamento_sugerido))
+  ) {
+    return { ok: false, erro: "lead.orcamento_sugerido deve ser number finito ou null" };
   }
 
   const demo = p.demo as Record<string, unknown> | undefined;
