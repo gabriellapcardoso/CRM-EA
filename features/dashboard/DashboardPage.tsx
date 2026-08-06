@@ -120,7 +120,7 @@ const DashboardPage: React.FC = () => {
   const pipelineChangeInfo = formatChange(changes.pipeline);
   const winRateChangeInfo = formatChange(changes.winRate);
 
-  const firstName = profile?.first_name?.toLowerCase() || '';
+  const firstName = profile?.first_name || '';
   const oldestPendingMinutes = pendingDecisions.length > 0
     ? Math.max(0, Math.round((Date.now() - new Date(pendingDecisions[pendingDecisions.length - 1].createdAt).getTime()) / 60000))
     : 0;
