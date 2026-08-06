@@ -571,6 +571,48 @@ export const contactsService = {
       return { error: e as Error };
     }
   },
+
+  /**
+   * Converte um contato em deal via RPC transacional: cria o deal, copia os
+   * interesses de produto pendentes (contact_product_interests) como
+   * deal_items com snapshot de nome/preço, soma o valor no deal e marca os
+   * interesses como convertidos — tudo numa transação atômica no banco.
+   *
+   * @param contactId - ID do contato a converter.
+   * @param boardId - Board de destino do deal.
+   */
+  async convertToDeal(
+    contactId: string,
+    boardId: string
+  ): Promise<{
+    data: { dealId: string; boardId: string; stageId: string; itemsCount: number; value: number } | null;
+    error: Error | null;
+  }> {
+    try {
+      if (!supabase) {
+        return { data: null, error: new Error('Supabase não configurado') };
+      }
+      const { data, error } = await supabase.rpc('convert_contact_to_deal', {
+        p_contact_id: contactId,
+        p_board_id: boardId,
+      });
+
+      if (error) return { data: null, error };
+
+      return {
+        data: {
+          dealId: data.dealId,
+          boardId: data.boardId,
+          stageId: data.stageId,
+          itemsCount: data.itemsCount,
+          value: data.value,
+        },
+        error: null,
+      };
+    } catch (e) {
+      return { data: null, error: e as Error };
+    }
+  },
 };
 
 /**

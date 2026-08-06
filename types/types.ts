@@ -195,6 +195,22 @@ export interface DealItem {
   name: string; // Snapshot of name
   quantity: number;
   price: number; // Snapshot of price
+  notes?: string;
+}
+
+/** Interesse de um contato num produto do catálogo, registrado antes dele virar deal. */
+export interface ContactProductInterest {
+  id: string;
+  contactId: string;
+  productId: string;
+  /** Nome do produto no momento — join, não snapshot (interesse ainda não é venda). */
+  productName: string;
+  productPrice: number;
+  observacao?: string;
+  /** Preenchido quando o interesse foi puxado pra um deal via conversão. */
+  convertedAt?: string;
+  convertedDealId?: string;
+  createdAt: string;
 }
 
 // CUSTOM FIELDS DEFINITION

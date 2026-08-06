@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/context/ToastContext';
 import { Contact, Company, ContactStage, PaginationState, ContactsServerFilters, DEFAULT_PAGE_SIZE, ContactSortableColumn } from '@/types';
 import {
@@ -17,7 +18,8 @@ import {
   useDeleteCompany,
   useContactHasDeals,
 } from '@/lib/query/hooks/useContactsQuery';
-import { useCreateDeal } from '@/lib/query/hooks/useDealsQuery';
+import { DEALS_VIEW_KEY, queryKeys } from '@/lib/query';
+import { contactsService } from '@/lib/supabase';
 import { useBoards } from '@/lib/query/hooks/useBoardsQuery';
 import { useRealtimeSync } from '@/lib/realtime/useRealtimeSync';
 import { normalizePhoneE164 } from '@/lib/phone';
@@ -46,7 +48,8 @@ export const useContactsController = () => {
   const updateCompanyMutation = useUpdateCompany();
   const deleteCompanyMutation = useDeleteCompany();
   const bulkDeleteCompaniesMutation = useBulkDeleteCompanies();
-  const createDealMutation = useCreateDeal();
+  const queryClient = useQueryClient();
+  const [convertingContactId, setConvertingContactId] = useState<string | null>(null);
 
   // Enable realtime sync
   useRealtimeSync('contacts');
@@ -521,8 +524,12 @@ export const useContactsController = () => {
     setCreateDealContactId(contactId);
   };
 
-  // Create deal directly (used when only 1 board or from modal)
-  const createDealDirectly = (contactId: string, board: typeof boards[0]) => {
+  // Create deal directly (used when only 1 board or from modal). Chama a RPC
+  // convert_contact_to_deal: cria o deal e já puxa os interesses de produto
+  // pendentes do contato como deal_items (snapshot), numa transação atômica
+  // no banco — evita duplo-clique/duas abas criando 2 deals para o mesmo
+  // contato (guardado por FOR UPDATE + FOR UPDATE SKIP LOCKED na RPC).
+  const createDealDirectly = async (contactId: string, board: typeof boards[0]) => {
     const contact = contacts.find(c => c.id === contactId);
 
     if (!contact) {
@@ -536,36 +543,29 @@ export const useContactsController = () => {
       return;
     }
 
-    const firstStage = board.stages[0];
+    if (convertingContactId) {
+      return;
+    }
 
+    setConvertingContactId(contactId);
+    try {
+      const { data, error } = await contactsService.convertToDeal(contactId, board.id);
 
-
-    createDealMutation.mutate(
-      {
-        title: `Deal - ${contact.name}`,
-        contactId: contact.id,
-        companyId: contact.companyId || undefined,
-        boardId: board.id,
-        status: firstStage.id, // status = stageId (UUID do stage)
-        value: 0,
-        probability: 0,
-        priority: 'medium',
-        tags: [],
-        items: [],
-        customFields: {},
-        owner: { name: 'Eu', avatar: '' },
-        isWon: false,
-        isLost: false,
-      },
-      {
-        onSuccess: () => {
-          addToast(`Deal criado no board "${board.name}"`, 'success');
-        },
-        onError: (error: Error) => {
-          addToast(`Erro ao criar deal: ${error.message}`, 'error');
-        },
+      if (error || !data) {
+        addToast(`Erro ao criar deal: ${error?.message || 'erro desconhecido'}`, 'error');
+        return;
       }
-    );
+
+      // RPC roda direto no banco (não passa pela mutation client-side), então
+      // o cache de deals precisa ser invalidado pra puxar o deal novo.
+      queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
+      queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
+
+      const itemsSuffix = data.itemsCount > 0 ? ` com ${data.itemsCount} item(ns) de interesse` : '';
+      addToast(`Deal criado no board "${board.name}"${itemsSuffix}`, 'success');
+    } finally {
+      setConvertingContactId(null);
+    }
   };
 
   // Called from modal after board selection
@@ -725,6 +725,7 @@ export const useContactsController = () => {
     updateContact,
     convertContactToDeal,
     createDealForContact,
+    convertingContactId,
     confirmBulkDelete,
     addToast: addToast || showToast,
   };
