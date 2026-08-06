@@ -46,6 +46,7 @@ export const ContactProductInterests: React.FC<ContactProductInterestsProps> = (
         onSuccess: () => {
           setSelectedProductId('');
           setObservacao('');
+          addToast('Interesse registrado', 'success');
         },
         onError: (error: Error) => {
           addToast(`Erro ao registrar interesse: ${error.message}`, 'error');
@@ -58,6 +59,9 @@ export const ContactProductInterests: React.FC<ContactProductInterestsProps> = (
     deleteMutation.mutate(
       { id, contactId },
       {
+        onSuccess: () => {
+          addToast('Interesse removido', 'success');
+        },
         onError: (error: Error) => {
           addToast(`Erro ao remover interesse: ${error.message}`, 'error');
         },

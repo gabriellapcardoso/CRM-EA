@@ -29,8 +29,17 @@ export const useCreateContactProductInterest = () => {
       if (error) throw error;
       return data!;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contactProductInterests.byContact(variables.contactId) });
+    // setQueryData em vez de invalidateQueries: o refetch mount-triggered
+    // (refetchOnMount: true) pode ainda estar em voo quando o usuário cria um
+    // interesse rápido — invalidateQueries reaproveitaria essa fetch já em
+    // andamento (dedupe do TanStack Query) e sobrescreveria o cache com dados
+    // de ANTES da criação. Atualizar direto a partir da resposta da própria
+    // mutation elimina essa corrida por completo.
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData<ContactProductInterest[]>(
+        queryKeys.contactProductInterests.byContact(variables.contactId),
+        (old = []) => [data, ...old]
+      );
     },
   });
 };
@@ -44,8 +53,13 @@ export const useDeleteContactProductInterest = () => {
       if (error) throw error;
       return id;
     },
-    onSuccess: (_id, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contactProductInterests.byContact(variables.contactId) });
+    // Mesmo motivo do create: atualiza o cache direto, sem re-fetch sujeito
+    // a corrida com o fetch de mount ainda em andamento.
+    onSuccess: (id, variables) => {
+      queryClient.setQueryData<ContactProductInterest[]>(
+        queryKeys.contactProductInterests.byContact(variables.contactId),
+        (old = []) => old.filter(i => i.id !== id)
+      );
     },
   });
 };
