@@ -83,7 +83,8 @@ const ActivityRowComponent: React.FC<ActivityRowProps> = ({
     // Não há campo real de "gerado por IA" no schema — STATUS_CHANGE é o único
     // tipo de atividade gerado automaticamente (webhook/trigger), o resto é humano.
     const isAutomated = activity.type === 'STATUS_CHANGE';
-    const actorInitials = (activity.user?.name || 'Eu')
+    const actorName = activity.user?.name || 'Usuário';
+    const actorInitials = actorName
         .split(' ')
         .map(p => p.charAt(0))
         .slice(0, 2)
@@ -103,7 +104,10 @@ const ActivityRowComponent: React.FC<ActivityRowProps> = ({
                 />
             )}
             <span className="timeline__time num">{formatTime(activity.date)}</span>
-            <span className={`actor ${isAutomated ? 'actor--auto' : 'actor--humano'}`} aria-hidden="true">
+            <span
+                className={`actor ${isAutomated ? 'actor--auto' : 'actor--humano'}`}
+                title={isAutomated ? 'Automático' : actorName}
+            >
                 {isAutomated ? '⚡' : actorInitials}
             </span>
             <div className="timeline__body">

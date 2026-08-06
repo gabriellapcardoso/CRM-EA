@@ -33,6 +33,34 @@ async function getCurrentOrganizationId(): Promise<string | null> {
   return (profile as any)?.organization_id ?? null;
 }
 
+async function getCurrentUserId(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+interface OwnerProfile {
+  first_name?: string | null;
+  last_name?: string | null;
+  nickname?: string | null;
+  name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  avatar?: string | null;
+}
+
+/** Resolve o nome de exibição de um perfil seguindo a mesma prioridade usada no resto do app. */
+function resolveOwnerName(owner: OwnerProfile | null | undefined): string {
+  if (!owner) return 'Usuário';
+  return (
+    owner.nickname ||
+    [owner.first_name, owner.last_name].filter(Boolean).join(' ') ||
+    owner.name ||
+    owner.email ||
+    'Usuário'
+  );
+}
+
 
 // ============================================
 // ACTIVITIES SERVICE
@@ -75,11 +103,12 @@ export interface DbActivity {
 // Interface auxiliar para o retorno do Supabase com o join
 interface DbActivityWithDeal extends DbActivity {
   deals?: { title: string } | null;
+  owner?: OwnerProfile | null;
 }
 
 /**
  * Transforma atividade do formato DB para o formato da aplicação.
- * 
+ *
  * @param db - Atividade no formato do banco.
  * @returns Atividade no formato da aplicação.
  */
@@ -96,7 +125,7 @@ const transformActivity = (db: DbActivityWithDeal): Activity => ({
   clientCompanyId: (db as any).client_company_id || undefined,
   participantContactIds: (db as any).participant_contact_ids || [],
   dealTitle: db.deals?.title || '',
-  user: { name: 'Você', avatar: '' }, // Will be enriched later
+  user: { name: resolveOwnerName(db.owner), avatar: db.owner?.avatar_url || db.owner?.avatar || '' },
 });
 
 /**
@@ -136,7 +165,8 @@ export const activitiesService = {
         .from('activities')
         .select(`
           *,
-          deals:deal_id (title)
+          deals:deal_id (title),
+          owner:owner_id (first_name, last_name, nickname, name, email, avatar_url, avatar)
         `)
         .order('date', { ascending: false })
         .limit(1000); // Safety limit for non-paginated access
@@ -162,7 +192,10 @@ export const activitiesService = {
       const sb = supabase;
       if (!sb) return { data: null, error: new Error('Supabase não configurado') };
 
-      const organizationId = await getCurrentOrganizationId();
+      const [organizationId, ownerId] = await Promise.all([
+        getCurrentOrganizationId(),
+        getCurrentUserId(),
+      ]);
       const insertData: any = {
         title: activity.title,
         description: activity.description || null,
@@ -174,9 +207,14 @@ export const activitiesService = {
         client_company_id: sanitizeUUID(activity.clientCompanyId),
         participant_contact_ids: activity.participantContactIds || [],
         ...(organizationId ? { organization_id: organizationId } : {}),
+        ...(ownerId ? { owner_id: ownerId } : {}),
       };
 
-      const { data, error } = await sb.from('activities').insert(insertData).select().single();
+      const { data, error } = await sb
+        .from('activities')
+        .insert(insertData)
+        .select('*, deals:deal_id (title), owner:owner_id (first_name, last_name, nickname, name, email, avatar_url, avatar)')
+        .single();
 
       if (error) {
         // Se a migration ainda não foi aplicada, faz retry sem os novos campos.
@@ -184,19 +222,27 @@ export const activitiesService = {
         const code = (error as any)?.code || '';
         if (code === '42703' && msg.includes('client_company_id')) {
           delete insertData.client_company_id;
-          const retry = await sb.from('activities').insert(insertData).select().single();
+          const retry = await sb
+            .from('activities')
+            .insert(insertData)
+            .select('*, deals:deal_id (title), owner:owner_id (first_name, last_name, nickname, name, email, avatar_url, avatar)')
+            .single();
           if (retry.error) return { data: null, error: retry.error as any };
-          return { data: transformActivity(retry.data as DbActivity), error: null };
+          return { data: transformActivity(retry.data as DbActivityWithDeal), error: null };
         }
         if (code === '42703' && msg.includes('participant_contact_ids')) {
           delete insertData.participant_contact_ids;
-          const retry = await sb.from('activities').insert(insertData).select().single();
+          const retry = await sb
+            .from('activities')
+            .insert(insertData)
+            .select('*, deals:deal_id (title), owner:owner_id (first_name, last_name, nickname, name, email, avatar_url, avatar)')
+            .single();
           if (retry.error) return { data: null, error: retry.error as any };
-          return { data: transformActivity(retry.data as DbActivity), error: null };
+          return { data: transformActivity(retry.data as DbActivityWithDeal), error: null };
         }
         return { data: null, error };
       }
-      return { data: transformActivity(data as DbActivity), error: null };
+      return { data: transformActivity(data as DbActivityWithDeal), error: null };
     } catch (e) {
       return { data: null, error: e as Error };
     }

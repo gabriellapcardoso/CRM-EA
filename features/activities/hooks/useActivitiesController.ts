@@ -213,7 +213,14 @@ export const useActivitiesController = () => {
             participantContactIds,
             dealTitle: selectedDeal?.title || '',
             completed: false,
-            user: { name: 'Eu', avatar: '' },
+            user: {
+              name:
+                profile?.nickname ||
+                [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
+                profile?.email ||
+                'Usuário',
+              avatar: profile?.avatar_url || '',
+            },
           },
         },
         {
