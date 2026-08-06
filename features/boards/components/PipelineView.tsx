@@ -1,5 +1,5 @@
-import React from 'react';
-import { DealDetailModal } from './Modals/DealDetailModal';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { CreateDealModal } from './Modals/CreateDealModal';
 import { CreateBoardModal } from './Modals/CreateBoardModal';
 import { BoardCreationWizard } from './BoardCreationWizard';
@@ -250,6 +250,17 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
   // HITL: contagem real de sugestões da IA aguardando aprovação humana.
   const { data: pendingCount = 0 } = usePendingAdvanceCountQuery();
 
+  // Clicar num card de deal navega pro cockpit full-page (já redesenhado,
+  // ocupa a largura toda e tem botão "voltar") em vez de abrir o modal
+  // condensado antigo (achado do QA: título/estágios/botões sobrepostos).
+  const router = useRouter();
+  useEffect(() => {
+    if (selectedDealId) {
+      router.push(`/deals/${selectedDealId}/cockpit-v2`);
+      setSelectedDealId(null);
+    }
+  }, [selectedDealId, router, setSelectedDealId]);
+
   const handleUpdateStage = (updatedStage: BoardStage) => {
     if (!activeBoard) return;
     const newStages = activeBoard.stages.map(s => (s.id === updatedStage.id ? updatedStage : s));
@@ -377,12 +388,6 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
         onClose={() => setIsCreateModalOpen(false)}
         activeBoard={activeBoard}
         activeBoardId={activeBoardId ?? undefined}
-      />
-
-      <DealDetailModal
-        dealId={selectedDealId}
-        isOpen={!!selectedDealId}
-        onClose={() => setSelectedDealId(null)}
       />
 
       <CreateBoardModal

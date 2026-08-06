@@ -63,6 +63,36 @@ function parseRota(req: Request): { sourceId: string | null; reconcile: boolean 
   return { sourceId: parts[idx + 1] ?? null, reconcile: parts[idx + 2] === "reconcile" };
 }
 
+/**
+ * Registra um envio rejeitado por formato incompatível (achado do QA: hoje
+ * um 422/400 não deixa rastro nenhum, então nem um operador atento consegue
+ * ver que a prospecção tentou mandar algo errado). Best-effort — falha de
+ * auditoria não pode impedir a resposta de erro original ao chamador.
+ */
+async function registrarRejeicao(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    organizationId: string;
+    sourceId: string;
+    httpStatus: number;
+    reason: string;
+    externalEventId?: string | null;
+  },
+) {
+  try {
+    await supabase.from("webhook_ingest_rejections").insert({
+      organization_id: params.organizationId,
+      source_id: params.sourceId,
+      provider: "prospeccao",
+      http_status: params.httpStatus,
+      reason: params.reason,
+      external_event_id: params.externalEventId ?? null,
+    });
+  } catch (e) {
+    console.error("ingest-prospeccao: falha ao registrar rejeição", String(e));
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "Método não permitido" });
@@ -84,7 +114,7 @@ Deno.serve(async (req) => {
 
   const { data: source, error: sourceErr } = await supabase
     .from("integration_inbound_sources")
-    .select("id, secret, active")
+    .select("id, organization_id, secret, active")
     .eq("id", sourceId)
     .maybeSingle();
 
@@ -109,6 +139,12 @@ Deno.serve(async (req) => {
   try {
     corpo = JSON.parse(corpoBruto);
   } catch {
+    await registrarRejeicao(supabase, {
+      organizationId: source.organization_id,
+      sourceId,
+      httpStatus: 400,
+      reason: "JSON inválido",
+    });
     return json(400, { error: "JSON inválido" });
   }
 
@@ -126,7 +162,19 @@ Deno.serve(async (req) => {
   }
 
   const validacao = validarPayloadProspeccao(corpo);
-  if (!validacao.ok) return json(422, { error: validacao.erro });
+  if (!validacao.ok) {
+    await registrarRejeicao(supabase, {
+      organizationId: source.organization_id,
+      sourceId,
+      httpStatus: 422,
+      reason: validacao.erro,
+      externalEventId:
+        typeof (corpo as { external_event_id?: unknown })?.external_event_id === "string"
+          ? (corpo as { external_event_id: string }).external_event_id
+          : null,
+    });
+    return json(422, { error: validacao.erro });
+  }
 
   const { data, error } = await supabase.rpc("ingest_lead_prospeccao", {
     p_source_id: sourceId,
@@ -138,8 +186,17 @@ Deno.serve(async (req) => {
     if (msg.includes("T2_DUPLICATE_IN_FLIGHT")) {
       return json(409, { error: "Evento em processamento — aguarde e reenvie." });
     }
-    if (msg.includes("T2_INVALID_PHONE")) return json(422, { error: "Telefone inválido (E.164 BR)" });
-    if (msg.includes("T2_INVALID_PAYLOAD")) return json(422, { error: "Payload incompleto" });
+    if (msg.includes("T2_INVALID_PHONE") || msg.includes("T2_INVALID_PAYLOAD")) {
+      const reason = msg.includes("T2_INVALID_PHONE") ? "Telefone inválido (E.164 BR)" : "Payload incompleto";
+      await registrarRejeicao(supabase, {
+        organizationId: source.organization_id,
+        sourceId,
+        httpStatus: 422,
+        reason,
+        externalEventId: (validacao.payload as { external_event_id: string }).external_event_id,
+      });
+      return json(422, { error: reason });
+    }
     if (msg.includes("T2_INVALID_SOURCE")) return json(404, { error: "Fonte não encontrada/inativa" });
     // Sem error.message no log (achado do review: unique_violation inclui
     // VALORES da chave — telefone/correlation viraria PII nos logs retidos)

@@ -6,6 +6,7 @@ import { FocusTrap } from '@/lib/a11y';
 import { cn } from '@/lib/utils';
 import type { Contact } from '@/types';
 import type { DuplicateGroup } from '@/lib/query/hooks/useDuplicateContactsQuery';
+import { getInitials } from '@/features/boards/cardFormat';
 
 interface MergeContactsModalProps {
   isOpen: boolean;
@@ -164,7 +165,7 @@ export const MergeContactsModal: React.FC<MergeContactsModalProps> = ({
                               className="text-primary-600 focus:ring-primary-500"
                             />
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900 dark:to-primary-800 text-primary-700 dark:text-primary-200 flex items-center justify-center font-bold text-xs flex-shrink-0">
-                              {(contact?.name || group.contact_names[i] || '?').charAt(0)}
+                              {getInitials(contact?.name || group.contact_names[i])}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-slate-900 dark:text-white truncate">

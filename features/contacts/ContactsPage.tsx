@@ -20,6 +20,7 @@ import {
     useMessagingConversations,
 } from '@/lib/query/hooks';
 import { ConfirmDialog as ConfirmModal } from '@/components/ui/confirm-dialog';
+import { getInitials } from '@/features/boards/cardFormat';
 import type { Contact, DealView } from '@/types';
 
 const ContactFormModal = dynamic(
@@ -279,7 +280,7 @@ export const ContactsPage: React.FC = () => {
                 {selectedContact ? (
                     <>
                         <div className="detail-pane__head">
-                            <span className="avatar avatar--purple avatar--lg">{(selectedContact.name || '?').charAt(0)}</span>
+                            <span className="avatar avatar--purple avatar--lg">{getInitials(selectedContact.name)}</span>
                             <div>
                                 <h2 className="detail-pane__name">{selectedContact.name}</h2>
                                 <p className="detail-pane__sub">

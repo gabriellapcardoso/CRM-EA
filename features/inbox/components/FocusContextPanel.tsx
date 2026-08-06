@@ -751,7 +751,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
 
     return (
         <>
-            <div className={`${isExpanded ? 'fixed inset-0 w-screen h-screen' : ''} flex flex-col bg-slate-950 ${className || ''}`}>
+            <div className={`fixed inset-0 flex flex-col bg-slate-950 ${className || ''}`}>
                 {/* === HEADER with Pipeline Progress === */}
                 <header className="shrink-0 border-b border-dark-border">
                     {/* Top Row: Title + Board Name (center) + Value */}
@@ -766,10 +766,20 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                 {board?.name || 'Board'}
                             </span>
                         </div>
-                        <div className="text-right">
-                            <p className="text-lg font-bold text-emerald-400 font-mono tracking-tight">
-                                R$ {deal.value?.toLocaleString('pt-BR') || '0'}
-                            </p>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right">
+                                <p className="text-lg font-bold text-emerald-400 font-mono tracking-tight">
+                                    R$ {deal.value?.toLocaleString('pt-BR') || '0'}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                aria-label="Fechar e voltar ao inbox"
+                                className="shrink-0 rounded-lg p-2 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                                <X size={20} aria-hidden="true" />
+                            </button>
                         </div>
                     </div>
 

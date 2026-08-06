@@ -21,6 +21,7 @@ import { SkipLink } from '@/lib/a11y';
 import { useResponsiveMode } from '@/hooks/useResponsiveMode';
 import { BottomNav, MoreMenuSheet, NavigationRail } from '@/components/navigation';
 import { useUnreadCount } from '@/lib/query/hooks/useConversationsQuery';
+import { useAIConfigQuery } from '@/lib/query/hooks/useAIConfigQuery';
 import decisionQueueService from '@/features/decisions/services/decisionQueueService';
 import { UIChat } from './ai/UIChat';
 import { NotificationPopover } from './notifications/NotificationPopover';
@@ -86,6 +87,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [pendingDecisions, setPendingDecisions] = useState(0);
 
   const { data: unreadMessagesCount = 0 } = useUnreadCount();
+  const { data: aiConfig } = useAIConfigQuery();
+  const isAIActive = aiConfig?.ai_enabled ?? false;
 
   useEffect(() => {
     setDebugEnabled(isDebugMode());
@@ -150,8 +153,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {isDesktop && (
         <aside className="sidebar" aria-label="Menu principal">
-          <div className="sidebar__brand">
-            <Image className="logo" src="/brand/logo-aaagencia-white.png" alt="aaagência" width={100} height={26} unoptimized />
+          <div className="sidebar__brand" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Image className="logo" src="/brand/logo-aaagencia-white.png" alt="aaagência" width={108} height={26} unoptimized />
+            <span style={{ color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: '0.02em' }}>CRM</span>
           </div>
           <nav className="nav" aria-label="Navegação do sistema">
             <div className="nav__group">
@@ -268,9 +272,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {pendingDecisions} decis{pendingDecisions === 1 ? 'ão' : 'ões'} aguardando você
             </Link>
           )}
-          <p className="status status--on">
+          <p className={`status ${isAIActive ? 'status--on' : 'status--off'}`}>
             <span className="dot" />
-            agente ativo
+            {isAIActive ? 'agente ativo' : 'agente desligado'}
           </p>
         </header>
 

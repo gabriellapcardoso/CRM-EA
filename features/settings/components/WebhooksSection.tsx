@@ -35,6 +35,15 @@ type InboundEventRow = {
   created_deal_id: string | null;
 };
 
+type InboundRejectionRow = {
+  id: string;
+  received_at: string;
+  http_status: number;
+  reason: string;
+  external_event_id: string | null;
+  source_id: string;
+};
+
 function generateSecret() {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
@@ -100,6 +109,7 @@ export const WebhooksSection: React.FC = () => {
   const [inboundProvider, setInboundProvider] = useState<'hotmart' | 'n8n' | 'make'>('n8n');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [inboundEvents, setInboundEvents] = useState<InboundEventRow[]>([]);
+  const [rejections, setRejections] = useState<InboundRejectionRow[]>([]);
   const [testLoading, setTestLoading] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string; raw?: any } | null>(null);
 
@@ -143,6 +153,13 @@ export const WebhooksSection: React.FC = () => {
         .limit(1)
         .maybeSingle();
       setEndpoint((epData as any) || null);
+
+      const { data: rejData } = await supabase
+        .from('webhook_ingest_rejections')
+        .select('id,received_at,http_status,reason,external_event_id,source_id')
+        .order('received_at', { ascending: false })
+        .limit(10);
+      setRejections((rejData as any) || []);
     } finally {
       setLoading(false);
     }
@@ -566,6 +583,42 @@ export const WebhooksSection: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Envios rejeitados */}
+          {rejections.length > 0 ? (
+            <div className="p-5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Envios rejeitados</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    Tentativas recentes recusadas por formato incompatível — o remetente recebeu erro, mas nada foi
+                    criado no CRM.
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-1 rounded uppercase bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400">
+                  {rejections.length} recente{rejections.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="mt-4 space-y-2">
+                {rejections.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-red-50/60 dark:bg-red-500/5 border border-red-100 dark:border-red-500/20"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                        {new Date(r.received_at).toLocaleString()} · HTTP {r.http_status}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {r.reason}
+                        {r.external_event_id ? ` · event_id: ${r.external_event_id}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Saída */}
           <div className="p-5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl">

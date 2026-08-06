@@ -1,6 +1,7 @@
 import React from 'react';
 import { Contact } from '@/types';
 import { Search, RefreshCw } from 'lucide-react';
+import { getInitials } from '@/features/boards/cardFormat';
 
 interface ContactsViewProps {
   contacts: Contact[];
@@ -62,7 +63,7 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
             <div key={contact.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-                  {(contact.name || '?').charAt(0)}
+                  {getInitials(contact.name)}
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-white">{contact.name || 'Sem nome'}</h3>

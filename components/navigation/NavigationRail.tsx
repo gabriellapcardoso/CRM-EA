@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -31,8 +32,11 @@ export function NavigationRail({ onOpenMore }: NavigationRailProps) {
       )}
     >
       <div className="flex flex-col items-center gap-2 py-4">
-        <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary-500/20">
-          N
+        <div
+          className="w-16 h-10 rounded-xl flex items-center justify-center"
+          style={{ background: 'var(--surface-inverse)' }}
+        >
+          <Image src="/brand/logo-aaagencia-white.png" alt="aaagência" width={54} height={13} unoptimized />
         </div>
       </div>
 

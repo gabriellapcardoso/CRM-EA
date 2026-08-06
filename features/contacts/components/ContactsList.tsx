@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Pencil, Trash2, Globe, ArrowUpDown, ArrowUp, ArrowDown, GitMerge } from 'lucide-react';
 import { Contact, Company, ContactSortableColumn } from '@/types';
 import { StageBadge } from './ContactsStageTabs';
+import { getInitials } from '@/features/boards/cardFormat';
 
 // Performance: reuse Intl formatters (they are relatively expensive to instantiate).
 const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR');
@@ -232,7 +233,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({
                                 </td>
                                 <td>
                                     <span className="cell-name">
-                                        <span className="avatar">{(contact.name || '?').charAt(0)}</span>
+                                        <span className="avatar">{getInitials(contact.name)}</span>
                                         <span className="cell-name__text">
                                             {contact.name}
                                             {duplicateContactIds?.has(contact.id) && (
@@ -344,7 +345,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({
                             </td>
                             <td>
                                 <span className="cell-name">
-                                    <span className="avatar avatar--muted">{(company.name || '?').charAt(0)}</span>
+                                    <span className="avatar avatar--muted">{getInitials(company.name)}</span>
                                     <span className="cell-name__text">{company.name}</span>
                                 </span>
                                 {company.website && (

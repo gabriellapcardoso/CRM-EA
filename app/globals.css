@@ -762,6 +762,8 @@ body {
 .status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-600); border-left: 1px solid var(--border-subtle); padding-left: var(--space-3); }
 .status--on { color: var(--ink-600); }
 .status--on .dot { color: var(--success); }
+.status--off { color: var(--text-faint); }
+.status--off .dot { color: var(--text-faint); }
 
 /* ---- components.css ---- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: var(--radius-button); padding: 8px var(--space-4); font-size: 12.5px; font-weight: var(--weight-bold); white-space: nowrap; background: none; color: var(--text-body); }
@@ -1069,7 +1071,7 @@ body {
 .card-conv__top { display: flex; align-items: baseline; gap: 6px; }
 .card-conv__name { font-size: 13px; color: var(--text-strong); font-weight: var(--weight-medium); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-conv__time { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
-.card-conv__org { font-size: var(--text-meta); color: var(--text-muted); }
+.card-conv__org { font-size: var(--text-meta); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-conv__preview { font-size: 12px; color: var(--ink-600); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
 .card-conv__unread { align-self: flex-start; background: var(--pink-500); color: #fff; font-size: 10.5px; font-weight: var(--weight-heavy); min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill); display: grid; place-items: center; }
 .thread { flex: 1; min-width: 440px; display: flex; flex-direction: column; min-height: 0; background: var(--surface-subtle); }

@@ -1,6 +1,6 @@
 import React, { useId, useState } from 'react';
 import { X } from 'lucide-react';
-import { Contact } from '@/types';
+import { Contact, ContactStage } from '@/types';
 import { DebugFillButton } from '@/components/debug/DebugFillButton';
 import { fakeContact } from '@/lib/debug';
 import { FocusTrap, useFocusReturn } from '@/lib/a11y';
@@ -11,7 +11,15 @@ interface ContactFormData {
   phone: string;
   role: string;
   companyName: string;
+  stage: ContactStage;
 }
+
+const STAGE_LABELS: Record<ContactStage, string> = {
+  [ContactStage.LEAD]: 'Lead',
+  [ContactStage.MQL]: 'MQL',
+  [ContactStage.PROSPECT]: 'Prospect',
+  [ContactStage.CUSTOMER]: 'Cliente',
+};
 
 interface ContactFormModalProps {
   isOpen: boolean;
@@ -68,6 +76,7 @@ export const ContactFormModal: React.FC<ContactFormModalProps> = ({
       phone: fake.phone,
       role: fake.role,
       companyName: fake.companyName,
+      stage: formData.stage,
     });
   };
 
@@ -192,12 +201,30 @@ export const ContactFormModal: React.FC<ContactFormModalProps> = ({
             </p>
           </div>
 
+          {editingContact ? (
+            <div>
+              <label htmlFor="contact-stage" className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                Estágio / Jornada
+              </label>
+              <select
+                id="contact-stage"
+                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
+                value={formData.stage}
+                onChange={e => setFormData({ ...formData, stage: e.target.value as ContactStage })}
+              >
+                {Object.values(ContactStage).map(stage => (
+                  <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
             <button
             type="submit"
               disabled={isSubmitting}
             className="w-full bg-primary-600 hover:bg-primary-500 text-white font-bold py-2.5 rounded-lg mt-2 shadow-lg shadow-primary-600/20 transition-all"
           >
-            {isSubmitting ? 'Criando...' : (editingContact ? 'Salvar Alterações' : 'Criar Contato')}
+            {isSubmitting ? (editingContact ? 'Salvando...' : 'Criando...') : (editingContact ? 'Salvar Alterações' : 'Criar Contato')}
           </button>
         </form>
         </div>
