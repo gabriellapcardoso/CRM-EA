@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(dashboard): não força mais minúsculas no primeiro nome da saudação — 2026-08-06
+
+`DashboardPage.tsx` aplicava `.toLowerCase()` no `first_name` do perfil antes
+de exibir na saudação ("Bom dia, gabriella" em vez de "Bom dia, Gabriella").
+Nome próprio não deve ter capitalização alterada pelo sistema — removida a
+chamada, `firstName` agora usa `profile?.first_name` direto.
+
+### revert(ui): reverte tentativa de padronizar textos de UI em minúsculas — 2026-08-06
+
+Uma investigação da sessão anterior concluiu erroneamente que textos de
+interface (títulos de modal, botões, labels de filtro) deveriam seguir um
+"padrão de design lowercase intencional do redesign de agosto/2026". Uma
+leva de 30 arquivos foi alterada para minúsculas com base nessa conclusão.
+O usuário corrigiu diretamente: a interface usa Iniciais Maiúsculas em
+botões/títulos/labels, não minúsculas. Todas as 30 alterações foram
+revertidas via `git checkout` no mesmo dia — nenhuma mudança líquida na
+base de código além do fix de `firstName` acima (mantido por ser correção
+não relacionada). Ver `DESAFIOS.md` para o registro completo do erro.
+
 ### fix(ui): 6ª rodada de QA — modal de deal trocado por cockpit-v2, painel do Inbox parava de cortar coluna direita — 2026-08-06
 
 QA completo dos 10 itens reportados (ver `qa-report` da sessão) revelou que o
