@@ -240,6 +240,13 @@ export {
   useDeleteProduct,
 } from './useProductsQuery';
 
+// Contact product interests (interesse de contato num produto, pré-deal)
+export {
+  useContactProductInterests,
+  useCreateContactProductInterest,
+  useDeleteContactProductInterest,
+} from './useContactProductInterestsQuery';
+
 // Org Settings (user prefs + org AI config)
 export {
   useOrgSettings,

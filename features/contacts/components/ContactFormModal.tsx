@@ -4,6 +4,7 @@ import { Contact, ContactStage } from '@/types';
 import { DebugFillButton } from '@/components/debug/DebugFillButton';
 import { fakeContact } from '@/lib/debug';
 import { FocusTrap, useFocusReturn } from '@/lib/a11y';
+import { ContactProductInterests } from './ContactProductInterests';
 
 interface ContactFormData {
   name: string;
@@ -92,8 +93,8 @@ export const ContactFormModal: React.FC<ContactFormModalProps> = ({
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
-          <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
+        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+          <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center sticky top-0 bg-white dark:bg-dark-card z-10">
             <div className="flex items-center gap-2">
               <h2 id={headingId} className="text-lg font-bold text-slate-900 dark:text-white font-display">
                 {editingContact ? 'Editar Contato' : 'Novo Contato'}
@@ -217,6 +218,10 @@ export const ContactFormModal: React.FC<ContactFormModalProps> = ({
                 ))}
               </select>
             </div>
+          ) : null}
+
+          {editingContact ? (
+            <ContactProductInterests contactId={editingContact.id} />
           ) : null}
 
             <button

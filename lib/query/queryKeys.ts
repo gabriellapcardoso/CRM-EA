@@ -227,6 +227,14 @@ export const queryKeys = {
     products: createQueryKeys('products'),
 
     /**
+     * Interesses de produto de um contato (pré-deal). Ligados ao catálogo
+     * local (`products`), não ao sistema irmão de propostas.
+     */
+    contactProductInterests: createExtendedQueryKeys('contactProductInterests', base => ({
+        byContact: (contactId: string) => [...base.all, 'contact', contactId] as const,
+    })),
+
+    /**
      * Org-level + user settings query keys.
      */
     orgSettings: createQueryKeys('orgSettings'),
