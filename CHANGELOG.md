@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(qa): corrige service worker cacheando GETs da API + interesses não atualizando na UI — 2026-08-06
+
+QA da seção "Interesses de Produto" (contact_product_interests, ver entrega
+anterior) achou 2 bugs reais. `public/sw.js` aplicava cache
+stale-while-revalidate em qualquer GET sem checar origem — incluindo
+chamadas cross-origin ao Supabase, servindo dados apagados/desatualizados
+mesmo depois de uma mutation confirmada no banco (achado sistêmico, afeta
+o app inteiro, não só essa feature). Corrigido restringindo a estratégia
+de cache a requisições de mesma origem.
+
+Separadamente, `useCreateContactProductInterest`/`useDeleteContactProductInterest`
+usavam `invalidateQueries`, que podia coincidir com o refetch de mount
+ainda em voo (dedupe do TanStack Query reaproveitando a fetch em
+andamento) e sobrescrever o cache com dados de antes da mutation. Trocado
+por `setQueryData` direto a partir da resposta da mutation — mesmo padrão
+já usado no `DEALS_VIEW_KEY` deste projeto. Adicionado toast de sucesso
+(antes só havia feedback em erro).
+
+Ver `DESAFIOS.md` para o registro completo da investigação de causa raiz.
+Achado adicional fora de escopo (não corrigido): catálogo de produtos em
+Configurações não atualiza a lista após criar um produto — mesma classe
+de bug, componente diferente.
+
 ### fix(dashboard): não força mais minúsculas no primeiro nome da saudação — 2026-08-06
 
 `DashboardPage.tsx` aplicava `.toLowerCase()` no `first_name` do perfil antes
