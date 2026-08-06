@@ -1,5 +1,52 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## `fixed inset-0` + `w-screen h-screen` juntos cortam painel fora da tela dentro de ancestral com `transform` (2026-08-06)
+
+`features/inbox/components/FocusContextPanel.tsx` (painel de detalhe do
+Inbox, 3 colunas) usava `fixed inset-0 w-screen h-screen` no container raiz.
+Parece redundante mas não é: quando `width`/`height` são especificados
+explicitamente (`w-screen`=100vw, `h-screen`=100vh), o navegador recalcula a
+posição do elemento `fixed` a partir de `left`+`width` em vez de resolver
+`right:0`/`bottom:0` do `inset-0` — e um ancestral qualquer com `transform`
+ativo (aqui, o `motion.div` do framer-motion durante a animação de abertura)
+vira o *containing block* de todo `position: fixed` descendente, no lugar do
+viewport real. Resultado: o painel nasce deslocado pelo `left` herdado (a
+largura da sidebar, 236px) e o `w-screen` soma 100vw a partir desse ponto —
+sobra exatamente uma faixa do tamanho da sidebar cortada na borda direita,
+sem overflow visível, sem erro de console. Sintoma reportado pelo usuário:
+"não vejo o painel de Chat IA/Notas, não dá pra fechar" (o botão de fechar
+também ficava na faixa cortada).
+
+**Como isso não repete**: `fixed inset-0` sozinho já ocupa o containing
+block inteiro — nunca empilhar `w-screen`/`h-screen` (ou qualquer
+`width`/`height` explícito) em cima de `inset-0` num elemento `fixed`. Se o
+elemento precisa mesmo de dimensão explícita por algum motivo, usar `w-full
+h-full` (relativo ao containing block, não ao viewport) em vez de `w-screen
+h-screen`. Vale auditar outros overlays do projeto que combinem
+`fixed`/`absolute` com `w-screen`/`h-screen` dentro de qualquer ancestral
+animado por framer-motion (`motion.div` com `scale`/`transform`) — o mesmo
+padrão pode se repetir em qualquer modal full-screen novo.
+
+## Modal de detalhe do board (`DealDetailModal`) ficou de pé mas parou de ser o caminho real de uso (2026-08-06)
+
+QA revelou que o board (`/boards`) nunca navegava pra `/deals/[id]/
+cockpit-v2` (página cheia, redesenhada e testada desde a 5ª rodada de QA) —
+o clique no card sempre abriu `DealDetailModal` (modal condensado antigo,
+título/estágios/botões sobrepostos em telas normais). Corrigido religando o
+clique (`features/boards/components/PipelineView.tsx`) pra `router.push`
+até o cockpit-v2 em vez de `setSelectedDealId` abrir o modal.
+
+**Pegadinha pra quem for mexer aqui de novo**: `DealDetailModal.tsx`
+continua existindo no repo (~1400 linhas) e continua coberto por
+`DealDetailModal.test.tsx` e `test/stories/US-001-abrir-deal-no-boards.
+test.tsx` (que o renderizam isolado, fora do fluxo real do board) — não é
+dead code no sentido de "sem teste", mas é dead code no sentido de "nenhum
+caminho de clique real do usuário chega nele mais". Antes de investir tempo
+consertando um bug visual *dentro* do `DealDetailModal`, confirmar primeiro
+se o board realmente ainda abre ele (pode não abrir mais, dependendo de
+mudanças futuras) — e considerar deletar o componente + os 2 testes numa
+limpeza futura, já que o cockpit-v2 cobre o mesmo caso de uso.
+
 ## Plugin oficial do Supabase para Claude Code usa OAuth hospedado que estava fora do ar ("Unrecognized client_id") — solução: token de acesso pessoal via `.mcp.json` (2026-08-04)
 
 O plugin `supabase` instalado (`~/.claude/plugins/cache/claude-plugins-official/

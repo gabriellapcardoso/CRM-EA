@@ -7,6 +7,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ui): 6ª rodada de QA — modal de deal trocado por cockpit-v2, painel do Inbox parava de cortar coluna direita — 2026-08-06
+
+QA completo dos 10 itens reportados (ver `qa-report` da sessão) revelou que o
+item mais grave — "tela de detalhe de negócio bugada" — não era um bug de
+CSS pontual: o board (`/boards`) nunca navegava para `/deals/[id]/cockpit-v2`
+(a página cheia já redesenhada e testada na 5ª rodada). O clique no card
+continuava abrindo `DealDetailModal` (modal condensado antigo, `max-w-4xl`
+centralizado) — título longo quebrava em 4 linhas dividindo espaço com os
+botões ganho/perdido/preparar no mesmo `flex` do header, e a barra de
+estágios cortava à direita sem scroll visível. Corrigido em
+`features/boards/components/PipelineView.tsx`: um `useEffect` que observa
+`selectedDealId` agora navega (`router.push`) para `/deals/${id}/cockpit-v2`
+em vez de abrir o modal — `<DealDetailModal>` parou de ser renderizado ali
+(o componente continua existindo, ainda coberto pelo teste
+`US-001-abrir-deal-no-boards.test.tsx`, que renderiza ele isolado).
+
+Segundo bug real, no Inbox: o painel de detalhe (`FocusContextPanel.tsx`,
+aberto via "ver detalhes" num item do foco) cortava a coluna direita (tabs
+Chat IA/Notas/Scripts/Arquivos) fora da viewport, sem botão de fechar
+visível. Causa: `fixed inset-0 w-screen h-screen` no container raiz —
+`w-screen`/`h-screen` fixam largura/altura em 100vw/100vh explícitos, o que
+faz o navegador recalcular a posição a partir de `left`+`width` em vez de
+respeitar `right:0`/`bottom:0` do `inset-0`. Como o overlay pai (`motion.div`
+do `InboxFocusView`, animado por framer-motion) vira *containing block* de
+`position: fixed` por ter `transform`, o painel nascia deslocado pela largura
+da sidebar (236px) e sobrava exatamente essa faixa cortada à direita.
+Corrigido removendo `w-screen h-screen` (o `fixed inset-0` sozinho já ocupa
+o containing block inteiro) e adicionando um botão "X" visível no header
+(antes só existia fechar via tecla Esc, sem controle de UI).
+
+Demais achados corrigidos na mesma rodada: estágio/jornada do contato agora
+editável em `ContactFormModal.tsx` (backend já aceitava `stage` no update,
+só faltava o campo); nome do canal na lista de mensagens (`.card-conv__org`)
+ganhou `text-overflow: ellipsis` — sem isso, nomes longos quebravam linha e
+empurravam o selo do canal por cima do texto; texto "CRM" ao lado da logo +
+correção de ~7% de distorção (largura/altura da `<Image>` não batia com a
+proporção real do PNG) na sidebar desktop; `NavigationRail.tsx` (tablet)
+trocou o selo roxo "N" pela logo real dentro de um chip escuro (a logo é
+branca, precisa de fundo escuro pra não sumir); 4 implementações duplicadas
+de "pegar inicial do nome" (minúsculas em `/contacts`) unificadas em
+`getInitials()` (`features/boards/cardFormat.ts`); selo "agente ativo" no
+topo passou a consultar `ai_enabled` real da organização via
+`useAIConfigQuery()` em vez de ficar fixo verde no código; nav mobile/tablet
+renomeado de "Boards" para "Negociação" (`navConfig.ts`), alinhando com o
+que a sidebar desktop já usava; texto do botão de submit do formulário de
+contato corrigido para distinguir "Salvando..." (edição) de "Criando..."
+(contato novo) — antes sempre mostrava "Criando..." mesmo editando.
+
+Verificado em navegador real (dev server local, sessão autenticada real,
+`claude-in-chrome`): estágio do contato editado e revertido com sucesso
+(RIRÁS Odontologia, Lead→Prospect→Lead, tag e contadores de aba atualizando
+em tempo real); truncate confirmado por CSS computado e injeção visual de
+nome longo; logo/CRM sem distorção visível; NavigationRail com logo legível
+em 900px; iniciais maiúsculas confirmadas em 5 telas (lista, detalhe, aba
+empresas, modal de mesclagem de duplicados); selo IA confirmado dinâmico
+(desligado durante carregamento → ativo com dado real); "Negociação"
+confirmado no bottom nav em 390px; clique num card do board navegando de
+fato para `/deals/[id]/cockpit-v2` (full-page, sem sobreposição, botão
+"← negociação"); painel do Inbox reaberto após hard reload mostrando as 4
+tabs completas e fechando com o novo botão X. `tsc --noEmit`, `eslint
+--max-warnings 0` e `vitest run` (448/453, 5 skipped) verdes depois de cada
+lote de mudanças.
+
+### fix(t2): registro visível de envios rejeitados pelo webhook da prospecção — 2026-08-06
+
+Item #1 do QA (`leads da prospecção não estão chegando ao CRM`) revelou, ao
+consultar produção, que a causa original suspeitada (URL do webhook nunca
+exposta na tela de Configurações) não batia com os dados reais — a fonte
+`Prospecção → CRM (T2)` já processou 7 leads com sucesso entre 23/07 e 03/08
+(confirmado em `webhook_events_in`). O gap real, confirmado por leitura de
+código e por ambas as vozes de revisão (Claude + Codex) do `/autoplan`: um
+envio rejeitado por formato incompatível (JSON inválido, payload fora do
+contrato T2, telefone/campo obrigatório errado) não deixava nenhum rastro
+consultável — só aparecia (se aparecesse) no log da própria edge function.
+
+Nova tabela `webhook_ingest_rejections` (migration
+`20260806000000_t2_webhook_ingest_rejections.sql`, RLS admin-only, mesmo
+padrão de `webhook_events_in`) recebe uma linha toda vez que
+`supabase/functions/ingest-prospeccao/index.ts` rejeita um envio com 400
+(JSON inválido) ou 422 (contrato/telefone/payload). Tela de Configurações
+(`WebhooksSection.tsx`) ganhou um card "Envios rejeitados" que só aparece
+quando há alguma rejeição registrada, listando data, código HTTP, motivo e
+`external_event_id`.
+
+**Testado de ponta a ponta em produção**: `curl` real contra o endpoint
+`ingest-prospeccao` com telefone fora do formato E.164 BR — recusado com
+422 e a rejeição apareceu registrada e consultável em
+`webhook_ingest_rejections` (linha de teste removida depois de confirmar).
+Exposição da URL na UI e atualização de `docs/webhooks.md` ficaram fora
+desta correção (preventivas de baixa prioridade, causa raiz real era outra)
+— decisão registrada via `AskUserQuestion` durante a sessão.
+
 ### T2b — orçamento sugerido da prospecção vira o valor do negócio novo — 2026-08-05
 
 Fase B do plano "Orçamento sugerido" (o outro lado é

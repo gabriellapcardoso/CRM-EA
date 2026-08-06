@@ -241,6 +241,36 @@ tratamento silencioso de erro quando a chave da org não está configurada —
   (não é erro de console nem texto sobreposto) e por ser código não tocado
   pelo redesign.
 
+**6ª rodada** (2026-08-06, QA completo dos 10 itens reportados pela
+fundadora + correção): confirma que o item "próxima ação" continua correto,
+mas revela que o board **nunca ligava pro cockpit-v2** — o card de deal
+abria `DealDetailModal` (modal condensado, `max-w-4xl`), não a página cheia
+já validada na 5ª rodada. Corrigido religando o clique do card
+(`PipelineView.tsx`) pra navegar até `/deals/[id]/cockpit-v2` em vez de
+abrir o modal — a pendência "modal do board = versão condensada do mesmo
+vocabulário" (seção "Negociação (`/boards`) + cockpit" abaixo) fica
+parcialmente obsoleta: o modal continua existindo no código (coberto pelo
+teste `US-001`), mas não é mais o caminho real de uso.
+
+Achado novo, fora do board: `features/inbox/components/FocusContextPanel.tsx`
+(já listado acima como "não restilizado, mas funcional") tinha também um bug
+de **posicionamento**, não só de estilo — `fixed inset-0 w-screen h-screen`
+no container raiz cortava a coluna direita (tabs Chat IA/Notas/Scripts/
+Arquivos) pra fora da viewport, porque o overlay pai (framer-motion,
+`transform` ativo) vira containing block de `position:fixed`, e `w-screen`/
+`h-screen` fixam 100vw/100vh a partir do `left` deslocado da sidebar em vez
+de respeitar `inset-0`. Corrigido removendo `w-screen h-screen` (redundante
+com `inset-0`) e adicionando botão de fechar visível no header (só existia
+Esc antes). Ainda não restilizado — a correção foi só de layout/posição.
+
+Demais achados desta rodada (não relacionados ao redesign visual em si,
+detalhe completo em `CHANGELOG.md`): estágio/jornada editável em
+`/contacts`, truncate no nome do canal em `/messaging`, texto "CRM" +
+correção de distorção da logo, logo real no `NavigationRail` (tablet),
+iniciais de avatar unificadas (maiúsculas em toda parte), selo "agente
+ativo" dinâmico, "Boards"→"Negociação" no nav mobile/tablet, copy do botão
+de submit do formulário de contato.
+
 ## Progresso
 
 - [x] Tokens + camada de componentes CSS integrados em `app/globals.css`.
