@@ -339,3 +339,14 @@ Resultado prático: em teste com reload completo (sem nenhuma interação prévi
 **Fix**: `if (new URL(req.url).origin !== self.location.origin) return;` antes da lógica de cache no `fetch` handler — restringe a estratégia de cache a requisições de mesma origem. Bump de `CACHE_NAME` pra forçar limpeza de qualquer resposta de API já cacheada por engano.
 
 **Como isso não repete**: ao debugar "dado sumiu/não atualizou na UI mesmo com a mutation/invalidation certas no código", checar se existe service worker registrado (`navigator.serviceWorker.getRegistrations()`) e se o `fetch` handler dele filtra por origem — antes de assumir que é corrida do TanStack Query ou bug na lógica de invalidação. Um SW mal escopado pode mascarar como sintoma de "cache do React Query" um problema que na verdade é cache de rede, uma camada abaixo.
+
+## Padrão "refetch depois da mutation" é frágil — atualizar o estado local direto é mais robusto (2026-08-06/07)
+
+Achado em 2 telas na mesma rodada de QA (interesses de produto, catálogo de produtos): componentes que fazem `create()`/`update()`/`delete()` e depois disparam um **segundo request** (`invalidateQueries` do TanStack Query, ou um `load()` manual que refaz o GET) pra atualizar a lista na tela. Esse padrão é frágil de duas formas independentes, já vistas neste projeto:
+
+1. O segundo request pode coincidir com um refetch de mount ainda em andamento (`refetchOnMount: true`) — o dedupe do TanStack Query reaproveita a fetch já em voo em vez de criar uma nova, e essa fetch antiga responde com dados de ANTES da mutation.
+2. Qualquer camada de cache de rede no caminho (service worker, CDN, proxy) pode servir uma resposta antiga da mesma URL — ver entrada acima sobre `public/sw.js`.
+
+Em ambos os casos, o dado no banco está certo, a mutation funcionou, mas a UI mostra o estado errado até um reload manual.
+
+**Como isso não repete**: quando a resposta da própria mutation já contém (ou dá pra deduzir) o dado que mudou, atualizar a lista local direto a partir dela (`queryClient.setQueryData` no TanStack Query, ou `setState` direto em componentes com state local) em vez de depender de um segundo round-trip de rede. Esse é o padrão que `DEALS_VIEW_KEY` já usava neste projeto antes dessas correções — vale generalizar pra qualquer mutation nova, não só reagir quando o bug aparecer de novo em outra tela.
