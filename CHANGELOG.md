@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(qa): registra responsável real nas atividades — 2026-08-06 (commit `ada057c`, não documentado até agora)
+
+`activities.owner_id` já existia na coluna do banco, mas nunca era
+populado na criação — `getAll()`/`create()` passam a fazer join com
+`profiles` e exibir o nome real de quem criou a atividade (apelido →
+nome completo → e-mail → "Usuário", nunca em branco), substituindo o
+"Eu"/"Você" fixo que aparecia pra qualquer atividade de qualquer
+usuário. Como a RLS de `activities` já era escopada por
+`organization_id` (não por owner), admin já enxergava atividades de
+todos — só faltava exibir o nome certo. Atividades automáticas (tipo
+`STATUS_CHANGE`, geradas por webhook/gatilho) continuam sem atribuição
+de pessoa — mostram ícone de raio (⚡) em vez de iniciais, corretamente,
+já que não têm responsável humano.
+
 ### fix(qa): corrige service worker cacheando GETs da API + interesses não atualizando na UI — 2026-08-06
 
 QA da seção "Interesses de Produto" (contact_product_interests, ver entrega
