@@ -26,9 +26,15 @@ já usado no `DEALS_VIEW_KEY` deste projeto. Adicionado toast de sucesso
 (antes só havia feedback em erro).
 
 Ver `DESAFIOS.md` para o registro completo da investigação de causa raiz.
-Achado adicional fora de escopo (não corrigido): catálogo de produtos em
-Configurações não atualiza a lista após criar um produto — mesma classe
-de bug, componente diferente.
+
+### fix(qa): ISSUE-003 — catálogo de produtos não atualizava lista após criar/editar/excluir — 2026-08-07
+
+Follow-up do fix acima. `ProductsCatalogManager.tsx` (Configurações →
+produtos & catálogo) tinha a mesma classe de fragilidade: cada mutation
+chamava `load()` (um segundo GET) em vez de atualizar o estado local a
+partir da própria resposta. Corrigido — criar/ativar-desativar/editar/
+excluir agora atualizam `products` local direto, sem round-trip extra.
+Verificado em browser: os 4 fluxos refletem na lista instantaneamente.
 
 ### fix(dashboard): não força mais minúsculas no primeiro nome da saudação — 2026-08-06
 
