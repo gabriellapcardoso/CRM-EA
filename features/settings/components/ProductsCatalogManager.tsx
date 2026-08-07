@@ -83,7 +83,12 @@ export const ProductsCatalogManager: React.FC = () => {
     setPrice('0');
     setSku('');
     setDescription('');
-    await load();
+    // Atualiza a lista local a partir da resposta da própria mutation, em
+    // vez de um segundo GET (load()) — evita depender de refetch sujeito a
+    // cache de rede (mesma classe de bug achada em QA: ver DESAFIOS.md,
+    // service worker cacheando GETs cross-origin).
+    if (res.data) setProducts(prev => [...prev, res.data as Product]);
+    setLoading(false);
     // Notify app to refresh dropdowns that read from SettingsContext
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('crm:products-updated'));
   };
@@ -97,7 +102,8 @@ export const ProductsCatalogManager: React.FC = () => {
       setLoading(false);
       return;
     }
-    await load();
+    setProducts(prev => prev.map(item => (item.id === p.id ? { ...item, active: next } : item)));
+    setLoading(false);
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('crm:products-updated'));
   };
 
@@ -133,18 +139,27 @@ export const ProductsCatalogManager: React.FC = () => {
 
     setLoading(true);
     setError(null);
+    const editSkuTrimmed = editSku.trim() || undefined;
+    const editDescriptionTrimmed = editDescription.trim() || undefined;
     const res = await productsService.update(editingId, {
       name,
       price,
-      sku: editSku.trim() || undefined,
-      description: editDescription.trim() || undefined,
+      sku: editSkuTrimmed,
+      description: editDescriptionTrimmed,
     });
     if (res.error) {
       setError(res.error.message);
       setLoading(false);
       return;
     }
-    await load();
+    setProducts(prev =>
+      prev.map(item =>
+        item.id === editingId
+          ? { ...item, name, price, sku: editSkuTrimmed, description: editDescriptionTrimmed }
+          : item
+      )
+    );
+    setLoading(false);
     cancelEdit();
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('crm:products-updated'));
   };
@@ -160,7 +175,8 @@ export const ProductsCatalogManager: React.FC = () => {
       setLoading(false);
       return;
     }
-    await load();
+    setProducts(prev => prev.filter(item => item.id !== p.id));
+    setLoading(false);
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('crm:products-updated'));
   };
 
