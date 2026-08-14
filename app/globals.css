@@ -681,7 +681,20 @@ body {
 :where(.app) button { font: inherit; cursor: pointer; }
 :where(.app) input, :where(.app) textarea { font: inherit; color: inherit; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
-.screen { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.screen {
+  flex: 1; min-height: 0; overflow: auto; position: relative;
+  /* Pistas de scroll horizontal (CSS puro, sem JS): sombra some sozinha quando
+   * não há mais o que rolar em cada lado. Cobre .inbox/.thread/.cockpit__body,
+   * que forçam min-width maior que telas de notebook comuns (ver DESAFIOS.md). */
+  background:
+    linear-gradient(to right, var(--surface-page) 30%, transparent) 0 0,
+    linear-gradient(to left, var(--surface-page) 30%, transparent) 100% 0,
+    linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent) 0 0,
+    linear-gradient(to left, rgba(0, 0, 0, 0.12), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
 .screen__inner { padding: var(--space-5) var(--space-6) var(--space-11); display: flex; flex-direction: column; gap: var(--space-4); }
 .screen__inner--narrow { max-width: 920px; }
 .screen__inner--wide { max-width: 1480px; }
