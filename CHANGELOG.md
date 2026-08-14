@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ui): pista visual de scroll horizontal em telas densas (Inbox/Mensagens/cockpit) — 2026-08-14
+
+QA em viewport 1280×800 (notebook comum) achou que o card "aprovações IA"
+na visão geral do Inbox ficava cortado na borda direita da tela, sem
+nenhuma indicação de que dava pra rolar — `.inbox`/`.thread`/`.cockpit__body`
+forçam `min-width: 1180px`, maior que a área útil disponível depois da
+sidebar em telas de 1280px. O dado nunca esteve inacessível de fato (o
+`<main>`/`.screen` já tinha `overflow-x: auto`), só faltava uma pista
+visual — ninguém descobre scroll horizontal escondido sozinho. Adicionada
+sombra em CSS puro (sem JS, técnica de scroll-shadow com múltiplos
+`background` e `background-attachment: local`/`scroll`) nas bordas do
+`.screen`, que aparece só quando há mais conteúdo pra rolar naquele lado e
+some sozinha no fim — cobre Inbox, Mensagens e cockpit de uma vez, já que
+os três compartilham o mesmo container `<main class="screen">`. Achado e
+fix registrados em detalhe no DESAFIOS.md.
+
 ### fix(qa): registra responsável real nas atividades — 2026-08-06 (commit `ada057c`, não documentado até agora)
 
 `activities.owner_id` já existia na coluna do banco, mas nunca era
