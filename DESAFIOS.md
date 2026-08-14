@@ -350,3 +350,13 @@ Achado em 2 telas na mesma rodada de QA (interesses de produto, catálogo de pro
 Em ambos os casos, o dado no banco está certo, a mutation funcionou, mas a UI mostra o estado errado até um reload manual.
 
 **Como isso não repete**: quando a resposta da própria mutation já contém (ou dá pra deduzir) o dado que mudou, atualizar a lista local direto a partir dela (`queryClient.setQueryData` no TanStack Query, ou `setState` direto em componentes com state local) em vez de depender de um segundo round-trip de rede. Esse é o padrão que `DEALS_VIEW_KEY` já usava neste projeto antes dessas correções — vale generalizar pra qualquer mutation nova, não só reagir quando o bug aparecer de novo em outra tela.
+
+## Inbox/cockpit `.inbox { min-width: 1180px }` corta conteúdo em telas de 1280px sem indicar que dá pra rolar (2026-08-14)
+
+QA confirmou ao vivo (viewport 1280×800, resolução comum de notebook) que o card "aprovações IA" na visão geral do Inbox fica 102px fora da área visível — corta na borda direita da tela, sem barra de rolagem visível, sem gradiente ou qualquer pista de que há mais conteúdo. `.inbox` (`app/globals.css:1060`) tem `min-width: 1180px`; com a sidebar de 236px, sobra só 1044px de área útil em telas de 1280px — 136px a menos do que o layout exige.
+
+**O dado não está perdido**: `main` (o container que envolve `.inbox`) já tem `overflow-x: auto`, então dá pra ver o card rolando a tela horizontalmente (confirmado: `document.querySelector('main').scrollLeft = 200` revela o card completo). O problema é 100% de descoberta — nada na UI sugere que existe conteúdo pra rolar.
+
+**Por que não foi corrigido nesta sessão**: essa mesma constraint de `min-width: 1180px` já tinha sido registrada numa sessão de QA anterior (06/08) como compartilhada entre Inbox e cockpit — provavelmente decisão de design pra telas densas de dado. Mudar isso sem confirmar com a fundadora se telas de 1280px são um caso real de uso (vs. só o notebook do QA) arrisca quebrar o espaçamento calculado a dedo em duas telas ao mesmo tempo.
+
+**Como isso não repete**: antes de tratar como bug de layout, testar em viewport de 1280×800 primeiro (menor notebook comum) e verificar se existe overflow horizontal escondido via `element.scrollWidth > element.clientWidth` antes de assumir "conteúdo sumiu". Se a decisão for manter o `min-width`, considerar adicionar uma pista visual de scroll (sombra/gradiente na borda ou scrollbar sempre visível) — mudança de baixo risco que não mexe no layout em si.
