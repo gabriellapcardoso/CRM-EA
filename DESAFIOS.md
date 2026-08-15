@@ -1,5 +1,37 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Reusar o mesmo "evento de negócio" pra automação de 2 canais herda o gate de revisão de só 1 deles (2026-08-15)
+
+**O quê:** no desenho do disparo automático de proposta (estágio "Proposta
+pronta" → e-mail + WhatsApp automáticos), a primeira versão fez o WhatsApp
+automático depender do webhook T3b evento `'enviada'` chegando com
+`target_stage_slug='proposta-enviada'` — o MESMO evento que também dispara
+quando alguém clica "Enviar por e-mail" manualmente no Propostas, pra
+QUALQUER proposta, sem relação nenhuma com o estágio novo "Proposta
+pronta". Resultado: o gate de revisão humana (deal só avança automação
+depois que um humano confirma no estágio novo) valia de verdade só pro
+e-mail — o WhatsApp automático dispararia em cima de qualquer envio manual
+de e-mail, inclusive de propostas antigas sem nenhuma relação com o fluxo
+novo, se a org tivesse o flag ligado.
+**Por que aconteceu:** dois canais (e-mail automático, WhatsApp
+automático) foram amarrados ao mesmo evento de infraestrutura (T3b
+`'enviada'`) por reuso de infra — fazia sentido técnico (mesmo payload,
+mesmo webhook já testado), mas esse evento historicamente significava
+"e-mail foi enviado" (qualquer origem), não "passou pelo gate novo".
+Reusar infraestrutura sem reusar a SEMÂNTICA que ela carrega é o erro.
+**Achado por:** `/review` adversarial (subagent dedicado, achado #5 da
+rodada), não pela implementação original nem pela revisão manual.
+**Correção:** antes de disparar WhatsApp automático, checar o próprio
+outbox (`deal_stage_events` do CRM-EA, mesmo banco, sem depender do
+sistema do outro lado saber a "origem" do envio) por uma linha
+`stage_slug='proposta-pronta'` pra aquele `deal_id` — confirma que o gate
+específico foi cruzado, não só que "um e-mail saiu em algum momento".
+**Generalizável:** sempre que 2+ automações de canal forem amarradas ao
+mesmo evento/webhook compartilhado, perguntar explicitamente "esse evento
+significa a MESMA coisa pros dois gatilhos, ou só peguei carona na infra
+que já existia?" — antes de assumir que reuso de payload = reuso de
+regra de negócio.
+
 ## Indexar `Record<Provider, Model>` pelo valor do banco (não pela constante) quebra silenciosamente com dado stale (2026-08-15)
 
 Durante a migração do provider de IA (Google Gemini → OpenRouter,
