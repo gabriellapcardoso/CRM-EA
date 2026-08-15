@@ -68,6 +68,14 @@ type LeadPayload = {
    * derruba o resto do webhook).
    */
   target_stage_slug?: string;
+
+  /**
+   * T4: link público da proposta comercial (Gerador de Propostas), enviado
+   * junto do evento 'enviada' (target_stage_slug='proposta-enviada').
+   * Persistido em deals.proposal_link — alimenta o botão manual de WhatsApp
+   * no CRM-EA e o disparo automático (ver bloco T4 abaixo).
+   */
+  link_publico?: string;
 };
 
 const corsHeaders = {
@@ -241,6 +249,7 @@ Deno.serve(async (req) => {
   const dealTitleFromPayload = getDealTitle(payload);
   const dealValue = getDealValue(payload);
   const targetStageSlug = toNullableString(payload.target_stage_slug);
+  const linkPublico = toNullableString(payload.link_publico);
 
   // T3b: resolve o slug (dado externo, não confiável) pro id real do
   // estágio no board "negociação" dessa org via RPC — retorna null se o
@@ -486,6 +495,7 @@ Deno.serve(async (req) => {
       };
       if (dealValue !== null) updates.value = dealValue;
       if (clientCompanyId) updates.client_company_id = clientCompanyId;
+      if (linkPublico) updates.proposal_link = linkPublico;
 
       // mantém stage atual (não “puxa” de volta pro stage de entrada)
       // apenas carimba metadados do inbound.
@@ -540,6 +550,7 @@ Deno.serve(async (req) => {
         stage_id: resolveInitialStageId(targetStageId, source.entry_stage_id),
         contact_id: contactId,
         client_company_id: clientCompanyId,
+        proposal_link: linkPublico,
         last_stage_change_date: new Date().toISOString(),
         tags: ["Novo"],
         custom_fields: {
@@ -554,6 +565,78 @@ Deno.serve(async (req) => {
     if (dealErr) return json(500, { error: "Falha ao criar deal", details: dealErr.message });
     dealId = createdDeal?.id ?? null;
     dealAction = "created";
+  }
+
+  // T4: WhatsApp automático — só no evento 'enviada' (target_stage_slug=
+  // 'proposta-enviada'), quando a org tem o flag ligado e o contato tem
+  // telefone. Fire-and-forget (decisão /plan-eng-review 2026-08-15): falha
+  // de rede aqui só loga, não reprocessa — o e-mail já saiu e o deal já
+  // moveu de estágio, WhatsApp automático é um efeito colateral secundário
+  // com o botão manual como rede de segurança.
+  //
+  // Achado do /review (2026-08-15): 'proposta-enviada' chega tanto pelo
+  // fluxo automático (deal passou por "Proposta pronta") quanto por clique
+  // manual direto em Propostas (EnviarEmailButton, sem gate nenhum). Sem
+  // essa checagem, WhatsApp automático dispararia pra QUALQUER e-mail
+  // manual — quebrando a garantia de revisão humana antes do disparo
+  // automático (o gate só valia pro e-mail, não pro WhatsApp). Confirma
+  // aqui, consultando o próprio outbox desta org (mesmo banco, sem
+  // depender do Propostas saber a "origem" do envio), que este deal_id
+  // realmente passou pelo estágio "Proposta pronta" pelo menos uma vez.
+  if (dealId && linkPublico && targetStageSlug === "proposta-enviada") {
+    try {
+      const { data: passouPeloGate, error: gateErr } = await supabase
+        .from("deal_stage_events")
+        .select("id")
+        .eq("deal_id", dealId)
+        .eq("stage_slug", "proposta-pronta")
+        .limit(1)
+        .maybeSingle();
+
+      if (gateErr) {
+        console.error("Falha ao checar gate 'proposta-pronta':", gateErr.message);
+      } else if (!passouPeloGate) {
+        console.log("T4: e-mail 'enviada' sem passar pelo gate 'proposta-pronta' — WhatsApp automático pulado (provável envio manual)", { deal_id: dealId });
+      } else {
+        const { data: orgSettings, error: orgSettingsErr } = await supabase
+          .from("organization_settings")
+          .select("auto_send_proposal_whatsapp")
+          .eq("organization_id", source.organization_id)
+          .maybeSingle();
+
+        if (orgSettingsErr) {
+          console.error("Falha ao ler auto_send_proposal_whatsapp:", orgSettingsErr.message);
+        } else if (orgSettings?.auto_send_proposal_whatsapp && !leadPhone) {
+          console.log("T4: WhatsApp automático ligado mas contato sem telefone — pulado", { deal_id: dealId });
+        } else if (orgSettings?.auto_send_proposal_whatsapp && leadPhone) {
+          const appUrl = Deno.env.get("CRM_EA_APP_URL");
+          const internalSecret = Deno.env.get("CRM_EA_INTERNAL_WEBHOOK_SECRET");
+          if (!appUrl || !internalSecret) {
+            console.error("T4: CRM_EA_APP_URL/CRM_EA_INTERNAL_WEBHOOK_SECRET não configurados — WhatsApp automático pulado");
+          } else {
+            const resp = await fetch(`${appUrl}/api/internal/auto-whatsapp-proposta`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+              body: JSON.stringify({
+                organization_id: source.organization_id,
+                deal_id: dealId,
+                phone: leadPhone,
+                link: linkPublico,
+              }),
+              signal: AbortSignal.timeout(5000),
+            }).catch((e) => {
+              console.error("T4: falha de rede ao chamar auto-whatsapp-proposta:", e instanceof Error ? e.message : String(e));
+              return null;
+            });
+            if (resp && !resp.ok) {
+              console.error("T4: auto-whatsapp-proposta retornou erro:", resp.status, await resp.text().catch(() => ""));
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("T4: erro inesperado no disparo de WhatsApp automático:", e instanceof Error ? e.message : String(e));
+    }
   }
 
   // Atualiza auditoria (best-effort)

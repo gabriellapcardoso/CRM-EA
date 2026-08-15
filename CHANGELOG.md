@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(deals): disparo automático de proposta comercial (e-mail + WhatsApp) — 2026-08-15
+
+Novo estágio "Proposta pronta" no board negociação — quando um deal entra
+nele, a proposta comercial já revisada (rascunho criado antes, no estágio
+"Topou receber proposta") é enviada automaticamente por e-mail e,
+opcionalmente, por WhatsApp. Decidido em `/plan-eng-review` (2026-08-15):
+gate de revisão humana explícito antes de qualquer disparo automático — o
+e-mail nunca sai de um rascunho não revisado.
+
+Reusa o outbox `deal_stage_events` + `deal-stage-dispatcher` já testado em
+produção (T3/T3b/T3c) — só um `stage_slug` novo (`proposta-pronta`) roteado
+pro Gerador de Propostas. WhatsApp automático é opt-in por organização
+(`organization_settings.auto_send_proposal_whatsapp`, default `false`,
+mesmo padrão de `whatsapp_kill_switch_active`) e só dispara se o deal
+realmente passou pelo gate "Proposta pronta" — não em qualquer e-mail
+manual enviado direto no Gerador de Propostas.
+
+Botão manual "enviar proposta" no deal cockpit complementa o automático —
+WhatsApp sempre disponível como fallback humano, nunca substituído pela
+automação. `deals.proposal_link` persiste o link público da proposta
+(recebido via extensão do payload do webhook T3b), alimentando os dois
+caminhos sem round-trip pro Gerador de Propostas no momento do envio.
+
+Achados de segurança endereçados no `/review` adversarial: dedupe de envio
+(mesmo link não sai duas vezes pro mesmo contato), validação de URL antes
+de enviar (fronteira entre sistemas — link vem de um Supabase diferente),
+e resolução de contato via `deal_id` pra evitar conversas órfãs no inbox.
+
 ### feat(ai): migra provider primário de Google Gemini pra OpenRouter — 2026-08-15
 
 Troca do provider de IA do CRM (chat/agente) de Google Gemini (hardcoded,

@@ -1232,6 +1232,29 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
     [addActivity, actor, pushToast, selectedDeal]
   );
 
+  const [sendingWhatsappProposal, setSendingWhatsappProposal] = useState(false);
+
+  const handleSendWhatsappProposal = useCallback(async () => {
+    if (!selectedDeal?.proposalLink) {
+      pushToast('Este negócio ainda não tem link de proposta', 'danger');
+      return;
+    }
+    setSendingWhatsappProposal(true);
+    try {
+      const res = await fetch(`/api/deals/${selectedDeal.id}/send-whatsapp-proposal`, { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        pushToast(body.error || 'Falha ao enviar proposta via WhatsApp', 'danger');
+        return;
+      }
+      pushToast('Proposta enviada via WhatsApp', 'success');
+    } catch {
+      pushToast('Falha ao enviar proposta via WhatsApp', 'danger');
+    } finally {
+      setSendingWhatsappProposal(false);
+    }
+  }, [selectedDeal?.id, selectedDeal?.proposalLink, pushToast]);
+
   const handleCall = useCallback(
     (suggestedTitle?: string) => {
       if (!selectedContact?.phone) {
@@ -1667,6 +1690,21 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
               >
                 <Phone className="h-3.5 w-3.5" aria-hidden="true" />
                 ligar
+              </button>
+              <button
+                type="button"
+                className="channel-actions__btn"
+                onClick={handleSendWhatsappProposal}
+                disabled={!deal.proposalLink || sendingWhatsappProposal}
+                title={deal.proposalLink ? 'Enviar link da proposta via WhatsApp' : 'Sem link de proposta ainda'}
+              >
+                <span
+                  className="badge-channel badge-channel--whatsapp badge-channel--sm"
+                  aria-hidden="true"
+                >
+                  W
+                </span>
+                {sendingWhatsappProposal ? 'enviando...' : 'enviar proposta'}
               </button>
             </div>
             <dl className="data-list">

@@ -91,6 +91,8 @@ export interface DestinoEnv {
   PROPOSTAS_INGEST_SECRET?: string;
   PROSPECCAO_REAQUECER_URL?: string;
   PROSPECCAO_REAQUECER_SECRET?: string;
+  PROPOSTAS_PRONTA_URL?: string;
+  PROPOSTAS_PRONTA_SECRET?: string;
 }
 
 export interface Destino {
@@ -99,14 +101,22 @@ export interface Destino {
 }
 
 /**
- * T3c: `deal_stage_events` agora carrega eventos de 2 direções diferentes
- * (T3 topou-proposta → Gerador de Propostas, T3c perdido → Prospecção).
- * Roteamento por `stage_slug`, não por tabela nova — mesmo outbox, mesmo
- * cron, destino HTTP diferente por linha.
+ * T4: 3º destino no outbox — proposta-pronta → Gerador de Propostas (rota
+ * diferente de topou-proposta: dispara envio automático de e-mail/WhatsApp,
+ * não criação de rascunho).
+ *
+ * T3c: `deal_stage_events` agora carrega eventos de 3 direções diferentes
+ * (T3 topou-proposta → Gerador de Propostas, T3c perdido → Prospecção,
+ * T4 proposta-pronta → Gerador de Propostas). Roteamento por `stage_slug`,
+ * não por tabela nova — mesmo outbox, mesmo cron, destino HTTP diferente
+ * por linha.
  */
 export function resolverDestino(stageSlug: string, env: DestinoEnv): Destino {
   if (stageSlug === "perdido") {
     return { url: env.PROSPECCAO_REAQUECER_URL, secret: env.PROSPECCAO_REAQUECER_SECRET };
+  }
+  if (stageSlug === "proposta-pronta") {
+    return { url: env.PROPOSTAS_PRONTA_URL, secret: env.PROPOSTAS_PRONTA_SECRET };
   }
   return { url: env.PROPOSTAS_INGEST_URL, secret: env.PROPOSTAS_INGEST_SECRET };
 }

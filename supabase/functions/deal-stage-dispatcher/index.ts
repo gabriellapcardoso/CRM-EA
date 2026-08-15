@@ -38,6 +38,8 @@ Deno.serve(async (_req) => {
     PROPOSTAS_INGEST_SECRET: Deno.env.get("PROPOSTAS_INGEST_SECRET") ?? undefined,
     PROSPECCAO_REAQUECER_URL: Deno.env.get("PROSPECCAO_REAQUECER_URL") ?? undefined,
     PROSPECCAO_REAQUECER_SECRET: Deno.env.get("PROSPECCAO_REAQUECER_SECRET") ?? undefined,
+    PROPOSTAS_PRONTA_URL: Deno.env.get("PROPOSTAS_PRONTA_URL") ?? undefined,
+    PROPOSTAS_PRONTA_SECRET: Deno.env.get("PROPOSTAS_PRONTA_SECRET") ?? undefined,
   };
 
   if (!supabaseUrl || !serviceKey) return json(500, { error: "Supabase não configurado no runtime" });
