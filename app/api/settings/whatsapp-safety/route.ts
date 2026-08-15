@@ -20,6 +20,7 @@ const UpdateWhatsAppSafetySchema = z
   .object({
     killSwitchActive: z.boolean().optional(),
     alertEmail: z.string().nullable().optional(),
+    autoSendProposalWhatsapp: z.boolean().optional(),
   })
   .strict();
 
@@ -46,7 +47,7 @@ export async function GET(req: Request) {
 
   const { data: orgSettings, error: orgError } = await supabase
     .from('organization_settings')
-    .select('whatsapp_kill_switch_active, alert_email')
+    .select('whatsapp_kill_switch_active, alert_email, auto_send_proposal_whatsapp')
     .eq('organization_id', profile.organization_id)
     .maybeSingle();
 
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
   return json({
     killSwitchActive: Boolean(orgSettings?.whatsapp_kill_switch_active),
     alertEmail: orgSettings?.alert_email ?? null,
+    autoSendProposalWhatsapp: Boolean(orgSettings?.auto_send_proposal_whatsapp),
   });
 }
 
@@ -112,6 +114,9 @@ export async function POST(req: Request) {
   }
   if (updates.alertEmail !== undefined) {
     dbUpdates.alert_email = trimmedEmail;
+  }
+  if (updates.autoSendProposalWhatsapp !== undefined) {
+    dbUpdates.auto_send_proposal_whatsapp = updates.autoSendProposalWhatsapp;
   }
 
   const { error: upsertError } = await supabase

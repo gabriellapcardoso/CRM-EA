@@ -68,4 +68,29 @@
 **Priority:** P2
 **Depends on:** T4 em produção há tempo suficiente pra confirmar que o caso acontece de verdade (não é hipotético).
 
+### Settings de admin renderizam mesmo pra não-admin (falha só no POST)
+
+**What:** `SettingsPage.tsx` só usa `isAdmin` pra filtrar quais abas aparecem na navegação (`tabs`), mas `renderContent()` não checa `isAdmin` — um não-admin que navega direto pra `/settings/integracoes#whatsapp-safety` (ou `/settings/products`) vê a tela renderizada por completo, inclusive o toggle interativo "Enviar proposta automaticamente por WhatsApp" com confirm dialog. Só falha (403) quando tenta de fato salvar.
+
+**Why:** Achado do adversarial review (`/review`/`/ship`, 2026-08-15) do toggle de disparo automático de proposta. Não é bypass real (POST valida `role==='admin'` no servidor, sempre validou), mas é UX ruim: não-admin percorre um fluxo de confirmação inteiro ("o CRM vai enviar... sem revisão humana") pra só então descobrir que não tinha permissão — pior ainda numa ação que promete disparo automático de mensagem real pra cliente. Padrão idêntico provavelmente existe nas outras abas admin-only (ex: Produtos & Catálogo).
+
+**Pros:** Fecha um gap de UX/confiança em toda superfície de settings admin-only, não só WhatsApp.
+**Cons:** Toca `SettingsPage.tsx` como um todo — fora do escopo do diff que achou o problema. Precisa decidir o comportamento (redirect? mensagem de acesso negado? esconder a sub-aba?).
+**Context:** `features/settings/SettingsPage.tsx` — `isAdmin` gate só em `tabs`, não em `renderContent()`.
+**Effort:** S-M
+**Priority:** P2
+**Depends on:** None
+
+### Status do canal WhatsApp na tela de settings não considera múltiplos canais nem revalida antes do confirm
+
+**What:** O aviso de "canal desconectado" em `WhatsAppSafetySection.tsx` (1) pega só o primeiro canal com `channel_type==='whatsapp'` via `.find()` — se a org tiver mais de um número WhatsApp configurado, o status mostrado pode não refletir o canal real usado pra enviar propostas; (2) busca o status uma vez no mount e nunca revalida — se o canal cair depois que a tela carregou, o admin pode confirmar o toggle achando que está tudo certo.
+
+**Why:** Achado do adversarial review (`/review`/`/ship`, 2026-08-15). Hoje a aaagência só tem 1 canal WhatsApp (`status='disconnected'`), então o `.find()` não causa problema na prática — mas é uma armadilha silenciosa se a org configurar um segundo número. A falta de revalidação é uma janela pequena mas real: confirm dialog promete "envia automaticamente" sem garantir que isso ainda é verdade no momento do clique.
+**Pros:** Deixa o aviso confiável em vez de "quase sempre certo".
+**Cons:** Multi-canal-por-tipo não é um caso confirmado hoje (baixa prioridade prática); revalidar antes do confirm exige mais um fetch síncrono no clique.
+**Context:** `features/settings/components/WhatsAppSafetySection.tsx`, useEffect de `/api/messaging/channels`.
+**Effort:** S
+**Priority:** P3
+**Depends on:** Confirmar se multi-canal-por-tipo é um caso real de produto antes de investir no fix.
+
 ## Completed

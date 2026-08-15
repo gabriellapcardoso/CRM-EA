@@ -38,13 +38,18 @@ function buildProfileQB(role: 'admin' | 'member' | null = 'admin', orgId: string
 
 function buildOrgSettingsQB(
   killSwitch = false,
-  alertEmail: string | null = null
+  alertEmail: string | null = null,
+  autoSendProposalWhatsapp = false
 ) {
   return {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn(async () => ({
-      data: { whatsapp_kill_switch_active: killSwitch, alert_email: alertEmail },
+      data: {
+        whatsapp_kill_switch_active: killSwitch,
+        alert_email: alertEmail,
+        auto_send_proposal_whatsapp: autoSendProposalWhatsapp,
+      },
       error: null,
     })),
   }
@@ -65,10 +70,15 @@ function setupClient(opts?: {
   role?: 'admin' | 'member' | null
   killSwitch?: boolean
   alertEmail?: string | null
+  autoSendProposalWhatsapp?: boolean
   userId?: string | null
 }) {
   profileQueryBuilder = buildProfileQB(opts?.role ?? 'admin')
-  orgSettingsQueryBuilder = buildOrgSettingsQB(opts?.killSwitch ?? false, opts?.alertEmail ?? null)
+  orgSettingsQueryBuilder = buildOrgSettingsQB(
+    opts?.killSwitch ?? false,
+    opts?.alertEmail ?? null,
+    opts?.autoSendProposalWhatsapp ?? false
+  )
   authMock = buildAuthMock('userId' in (opts ?? {}) ? opts!.userId! : USER_ID)
   upsertSpy = vi.fn(async () => ({ error: null }))
 
@@ -120,6 +130,7 @@ describe('GET /api/settings/whatsapp-safety', () => {
     expect(body).toEqual({
       killSwitchActive: true,
       alertEmail: 'ops@aaagencia.com.br',
+      autoSendProposalWhatsapp: false,
     })
   })
 
@@ -130,7 +141,17 @@ describe('GET /api/settings/whatsapp-safety', () => {
     expect(body).toEqual({
       killSwitchActive: false,
       alertEmail: null,
+      autoSendProposalWhatsapp: false,
     })
+  })
+
+  it('retorna auto_send_proposal_whatsapp ligado quando a org habilitou', async () => {
+    setupClient({ autoSendProposalWhatsapp: true })
+
+    const res = await callGet()
+    const body = await res.json()
+
+    expect(body).toMatchObject({ autoSendProposalWhatsapp: true })
   })
 })
 
@@ -201,6 +222,72 @@ describe('POST /api/settings/whatsapp-safety', () => {
     const res = await callPost({ alertEmail: 'nao-e-email' })
 
     expect(res.status).toBe(400)
+    expect(upsertSpy).not.toHaveBeenCalled()
+  })
+
+  it('retorna 400 para autoSendProposalWhatsapp com tipo inválido', async () => {
+    const res = await callPost({ autoSendProposalWhatsapp: 'not-a-boolean' })
+
+    expect(res.status).toBe(400)
+    expect(upsertSpy).not.toHaveBeenCalled()
+  })
+
+  it('desliga o envio automático de proposta por WhatsApp e persiste em organization_settings', async () => {
+    const res = await callPost({ autoSendProposalWhatsapp: false })
+
+    expect(res.status).toBe(200)
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organization_id: ORG_ID,
+        auto_send_proposal_whatsapp: false,
+      }),
+      { onConflict: 'organization_id' }
+    )
+  })
+
+  it('ativa o envio automático de proposta por WhatsApp e persiste em organization_settings', async () => {
+    const res = await callPost({ autoSendProposalWhatsapp: true })
+
+    expect(res.status).toBe(200)
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organization_id: ORG_ID,
+        auto_send_proposal_whatsapp: true,
+      }),
+      { onConflict: 'organization_id' }
+    )
+  })
+
+  it('atualiza apenas autoSendProposalWhatsapp no upsert, sem tocar em outros campos', async () => {
+    const res = await callPost({ autoSendProposalWhatsapp: true })
+
+    expect(res.status).toBe(200)
+    const [payload] = upsertSpy.mock.calls[0]
+    expect(Object.keys(payload).sort()).toEqual(
+      ['auto_send_proposal_whatsapp', 'organization_id', 'updated_at'].sort()
+    )
+  })
+
+  it('atualiza killSwitchActive e autoSendProposalWhatsapp juntos no mesmo POST', async () => {
+    const res = await callPost({ killSwitchActive: true, autoSendProposalWhatsapp: true })
+
+    expect(res.status).toBe(200)
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organization_id: ORG_ID,
+        whatsapp_kill_switch_active: true,
+        auto_send_proposal_whatsapp: true,
+      }),
+      { onConflict: 'organization_id' }
+    )
+  })
+
+  it('retorna 403 quando usuário não é admin e tenta ligar autoSendProposalWhatsapp', async () => {
+    setupClient({ role: 'member' })
+
+    const res = await callPost({ autoSendProposalWhatsapp: true })
+
+    expect(res.status).toBe(403)
     expect(upsertSpy).not.toHaveBeenCalled()
   })
 })
