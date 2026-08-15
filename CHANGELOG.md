@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(settings): toggle de admin para o envio automático de proposta por WhatsApp — 2026-08-15
+
+`organization_settings.auto_send_proposal_whatsapp` (flag do disparo
+automático de proposta, T4) agora tem UI própria — antes só existia no
+banco, sem forma de ligar/desligar sem acesso direto ao Supabase. Aba
+Configurações → Integrações → "Segurança WhatsApp", ao lado do kill
+switch já existente, mesmo padrão de `Switch` do design system.
+
+Ligar o toggle abre um `ConfirmDialog` (`variant="danger"`) explicando
+que o CRM vai enviar WhatsApp automaticamente sem revisão humana —
+desligar não precisa de confirmação (direção segura é "desligado").
+Mostra aviso inline se o canal WhatsApp (Evolution) não estiver
+`connected`, sem bloquear o toggle (aviso é só informativo — o e-mail
+automático não depende do canal WhatsApp).
+
+Encontrado durante investigação de por que o WhatsApp automático não
+disparava: dois motivos esperados (flag `false` por padrão, nenhuma org
+ligou; canal Evolution nunca conectado em produção), nenhum bug. `/review`
++ `/ship` rodaram 3 rounds de revisão adversarial (testing/maintainability/
+security especialistas + adversarial Claude) — achados reais corrigidos:
+tipo `ChannelStatus` duplicado (agora reusa `lib/messaging/types/channel.types`),
+guard de `setState` pós-unmount, cobertura de teste pro banner de canal
+desconectado (confirma que não bloqueia o toggle) e pro cancelamento do
+confirm dialog. Dois achados adiados pra `TODOS.md` (P2/P3): abas de
+settings admin-only renderizam pra não-admin antes de falhar no servidor
+(padrão pré-existente, não introduzido aqui); status de canal não
+considera múltiplos canais do mesmo tipo nem revalida antes do confirm.
+
 ### feat(deals): disparo automático de proposta comercial (e-mail + WhatsApp) — 2026-08-15
 
 Novo estágio "Proposta pronta" no board negociação — quando um deal entra
