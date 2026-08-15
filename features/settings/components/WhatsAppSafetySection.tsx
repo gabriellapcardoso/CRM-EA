@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { ConfirmDialog as ConfirmModal } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/context/ToastContext';
+import type { ChannelStatus, ChannelType } from '@/lib/messaging/types/channel.types';
 
 interface WhatsAppSafetyState {
   killSwitchActive: boolean;
   alertEmail: string;
+  autoSendProposalWhatsapp: boolean;
 }
 
 /**
@@ -16,9 +19,15 @@ interface WhatsAppSafetyState {
  */
 export const WhatsAppSafetySection: React.FC = () => {
   const { addToast } = useToast();
-  const [state, setState] = useState<WhatsAppSafetyState>({ killSwitchActive: false, alertEmail: '' });
+  const [state, setState] = useState<WhatsAppSafetyState>({
+    killSwitchActive: false,
+    alertEmail: '',
+    autoSendProposalWhatsapp: false,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [channelStatus, setChannelStatus] = useState<ChannelStatus | null>(null);
+  const [confirmAutoSendOpen, setConfirmAutoSendOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,10 +40,27 @@ export const WhatsAppSafetySection: React.FC = () => {
           setState({
             killSwitchActive: Boolean(data.killSwitchActive),
             alertEmail: data.alertEmail ?? '',
+            autoSendProposalWhatsapp: Boolean(data.autoSendProposalWhatsapp),
           });
         }
       } finally {
         if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    (async () => {
+      try {
+        const res = await fetch('/api/messaging/channels');
+        if (!res.ok) return;
+        const data = await res.json();
+        const whatsappChannel = (data.channels ?? []).find(
+          (c: { channel_type: ChannelType }) => c.channel_type === 'whatsapp'
+        );
+        if (!cancelled) {
+          setChannelStatus(whatsappChannel?.status ?? null);
+        }
+      } catch {
+        // Status do canal é só um aviso informativo — falha aqui não deve travar a tela.
       }
     })();
 
@@ -43,7 +69,9 @@ export const WhatsAppSafetySection: React.FC = () => {
     };
   }, []);
 
-  const save = async (updates: Partial<{ killSwitchActive: boolean; alertEmail: string }>): Promise<boolean> => {
+  const save = async (
+    updates: Partial<{ killSwitchActive: boolean; alertEmail: string; autoSendProposalWhatsapp: boolean }>
+  ): Promise<boolean> => {
     setIsSaving(true);
     try {
       const res = await fetch('/api/settings/whatsapp-safety', {
@@ -76,6 +104,28 @@ export const WhatsAppSafetySection: React.FC = () => {
     save({ alertEmail: state.alertEmail });
   };
 
+  const applyAutoSendProposal = async (checked: boolean) => {
+    const previous = state.autoSendProposalWhatsapp;
+    setState((prev) => ({ ...prev, autoSendProposalWhatsapp: checked }));
+    const ok = await save({ autoSendProposalWhatsapp: checked });
+    if (!ok) {
+      setState((prev) => ({ ...prev, autoSendProposalWhatsapp: previous }));
+    }
+  };
+
+  const handleToggleAutoSendProposal = (checked: boolean) => {
+    if (checked) {
+      setConfirmAutoSendOpen(true);
+      return;
+    }
+    applyAutoSendProposal(false);
+  };
+
+  const handleConfirmAutoSendProposal = () => {
+    setConfirmAutoSendOpen(false);
+    applyAutoSendProposal(true);
+  };
+
   return (
     <section className="panel">
       <h2 className="panel__title title-md" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -99,7 +149,47 @@ export const WhatsAppSafetySection: React.FC = () => {
             aria-label="Kill switch do canal WhatsApp"
           />
         </li>
+        <li className="setting-row">
+          <span className="setting-row__text">
+            <span className="setting-row__title">Enviar proposta automaticamente por WhatsApp</span>
+            <span className="setting-row__desc">
+              Quando um deal entra em &quot;Proposta pronta&quot;, envia o link da proposta por WhatsApp além do
+              e-mail automático.
+            </span>
+            {channelStatus !== null && channelStatus !== 'connected' && (
+              <span
+                className="setting-row__desc"
+                style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-warning, #b45309)' }}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Canal WhatsApp está desconectado — nada será enviado até reconectar.
+              </span>
+            )}
+          </span>
+          <Switch
+            checked={state.autoSendProposalWhatsapp}
+            onCheckedChange={handleToggleAutoSendProposal}
+            disabled={isLoading || isSaving}
+            aria-label="Enviar proposta automaticamente por WhatsApp"
+          />
+        </li>
       </ul>
+
+      <ConfirmModal
+        isOpen={confirmAutoSendOpen}
+        onClose={() => setConfirmAutoSendOpen(false)}
+        onConfirm={handleConfirmAutoSendProposal}
+        title="Ligar envio automático de proposta por WhatsApp?"
+        message={
+          <div>
+            A partir de agora, sempre que um deal entrar em &quot;Proposta pronta&quot;, o CRM vai enviar o link da
+            proposta por WhatsApp automaticamente para o lead — sem revisão humana antes do envio.
+          </div>
+        }
+        confirmText="Ligar"
+        cancelText="Cancelar"
+        variant="primary"
+      />
 
       <div className="field" style={{ marginTop: 'var(--space-3)', maxWidth: 420 }}>
         <label htmlFor="whatsapp-alert-email" className="field__label">
