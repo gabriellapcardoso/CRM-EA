@@ -55,4 +55,17 @@
 **Priority:** P3
 **Depends on:** Nenhuma.
 
+### Sinal na UI quando WhatsApp automático falha por falta de canal configurado
+
+**What:** Quando `auto_send_proposal_whatsapp=true` mas a org não tem canal WhatsApp conectado (`get-active-channel.ts` retorna null), `enviarPropostaWhatsapp` retorna `motivo:'sem_canal'` e a rota interna só loga (`console.error`) — sem nenhum sinal visível no CRM. Adicionar um indicador na UI (badge no deal, notificação, ou relatório periódico) quando isso acontecer.
+
+**Why:** Achado do adversarial review (`/review`, 2026-08-15) do disparo automático de proposta (T4). Diferente de falha transitória de rede (que já é best-effort por decisão explícita), "org ligou o flag mas nunca conectou canal" é erro de configuração permanente — todo deal que passa por "Proposta pronta" falha o WhatsApp silenciosamente, pra sempre, sem ninguém do time perceber. Vendedor vê e-mail saindo e deal avançando, assume que WhatsApp também saiu — risco de "cliente nunca recebeu a proposta" sem causa raiz óbvia.
+
+**Pros:** Fecha um buraco real de observabilidade num fluxo que já é 100% automático (ninguém está "olhando" pra confirmar que funcionou).
+**Cons:** Precisa decidir onde mora o sinal (badge no deal? alerta pro admin? relatório semanal?) — não é só código, é decisão de produto. Fora de escopo da entrega T4 original.
+**Context:** Ver `lib/messaging/send-proposta-whatsapp.ts` (retorna `motivo`) e `app/api/internal/auto-whatsapp-proposta/route.ts` (só loga). Plano completo em `plano-disparo-automatico-proposta.md`.
+**Effort:** M (decisão de produto + implementação)
+**Priority:** P2
+**Depends on:** T4 em produção há tempo suficiente pra confirmar que o caso acontece de verdade (não é hipotético).
+
 ## Completed
