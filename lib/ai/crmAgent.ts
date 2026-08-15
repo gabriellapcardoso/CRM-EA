@@ -1,11 +1,10 @@
 import { ToolLoopAgent, stepCountIs } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { CRMCallOptionsSchema, type CRMCallOptions } from '@/types/ai';
 import { createCRMTools } from './tools';
 import { formatPriorityPtBr } from '@/lib/utils/priority';
 import { AI_DEFAULT_MODELS, AI_DEFAULT_PROVIDER } from './defaults';
-
-type AIProvider = 'google';
+import type { AIProvider } from './config';
 
 function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -218,14 +217,14 @@ APRESENTAÇÃO (MUITO IMPORTANTE):
  * 
  * @param context - Type-safe context from the request
  * @param userId - Current user ID
- * @param apiKey - Google AI API key from organization_settings
+ * @param apiKey - OpenRouter API key from organization_settings
  * @param modelId - Model to use (default from AI_DEFAULT_MODELS)
  */
 export async function createCRMAgent(
     context: CRMCallOptions,
     userId: string,
     apiKey: string,
-    modelId: string = AI_DEFAULT_MODELS.google,
+    modelId: string = AI_DEFAULT_MODELS.openrouter,
     provider: AIProvider = AI_DEFAULT_PROVIDER
 ) {
     console.log('[CRMAgent] 🤖 Creating agent with context:', {
@@ -237,8 +236,8 @@ export async function createCRMAgent(
         provider,
     });
 
-    const google = createGoogleGenerativeAI({ apiKey });
-    const model = google(modelId);
+    const openrouter = createOpenRouter({ apiKey });
+    const model = openrouter.chat(modelId);
 
     // Create tools with context injected
     const tools = createCRMTools(context, userId);

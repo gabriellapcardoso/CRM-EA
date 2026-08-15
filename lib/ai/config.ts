@@ -1,49 +1,38 @@
 /**
  * @fileoverview Configuração de provedores de IA para o CRM.
- * 
- * Este módulo abstrai a criação de clientes de diferentes provedores de IA
- * (Google Gemini, OpenAI, Anthropic Claude), permitindo trocar entre eles
- * de forma transparente.
- * 
+ *
+ * Este módulo abstrai a criação de clientes de diferentes provedores de IA.
+ * Provider ativo: OpenRouter (roteador multi-modelo). `AIProvider` é um union
+ * type deliberadamente extensível — hoje só tem 1 literal real, mas adicionar
+ * um segundo provider no futuro não exige reescrever o tipo.
+ *
  * @module services/ai/config
  */
 
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { AI_DEFAULT_MODELS, AI_DEFAULT_PROVIDER } from './defaults';
 
-export type AIProvider = 'google';
+export type AIProvider = 'openrouter';
 
-const ALLOWED_GOOGLE_MODELS = new Set([
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-pro',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
-  'gemini-2.5-pro-preview-03-25',
-  'gemini-2.5-flash-preview-04-17',
-]);
+// Formato de modelo da OpenRouter é sempre "provider/model" (ex: google/gemini-2.0-flash-001,
+// anthropic/claude-3.5-sonnet). Catálogo tem centenas de modelos e muda toda semana — uma
+// allowlist fixa (padrão antigo do Gemini) ficaria desatualizada. Validamos só o formato;
+// modelo inexistente é rejeitado pela própria API da OpenRouter com erro claro.
+const OPENROUTER_MODEL_ID_PATTERN = /^[\w.-]+\/[\w.:-]+$/;
 
 /**
- * Cria e retorna uma instância do modelo de IA configurada.
- * 
- * Suporta múltiplos provedores com modelos padrão:
- * - Google: gemini-3-flash-preview
- * - OpenAI: gpt-4o
- * - Anthropic: claude-3-5-sonnet-20240620
- * 
- * @param provider - Provedor de IA a ser utilizado.
- * @param apiKey - Chave de API do provedor.
- * @param modelId - ID do modelo específico (opcional, usa padrão se não informado).
+ * Cria e retorna uma instância do modelo de IA configurada via OpenRouter.
+ *
+ * @param provider - Provedor de IA a ser utilizado (hoje só 'openrouter').
+ * @param apiKey - Chave de API da OpenRouter.
+ * @param modelId - ID do modelo no formato "provider/model" (ex: 'google/gemini-2.0-flash-001').
+ *                  Se ausente ou com formato inválido, usa o modelo padrão.
  * @returns Instância configurada do modelo de IA.
- * @throws Error se a API key não for fornecida ou provedor não for suportado.
- * 
+ * @throws Error se a API key não for fornecida.
+ *
  * @example
  * ```typescript
- * // Usando Google Gemini
- * const model = getModel('google', 'sua-api-key', 'gemini-3-pro-preview');
- * 
- * // Usando OpenAI com modelo padrão
- * const model = getModel('openai', 'sua-api-key', '');
+ * const model = getModel('openrouter', 'sua-api-key', 'anthropic/claude-3.5-sonnet');
  * ```
  */
 export const getModel = (provider: AIProvider, apiKey: string, modelId: string) => {
@@ -51,12 +40,16 @@ export const getModel = (provider: AIProvider, apiKey: string, modelId: string) 
         throw new Error('API Key is missing');
     }
 
-    const resolvedModel = modelId && ALLOWED_GOOGLE_MODELS.has(modelId)
+    // Nunca indexar AI_DEFAULT_MODELS[provider]: orgs criadas antes da migration pra
+    // OpenRouter podem ter organization_settings.ai_provider = 'google' (valor antigo
+    // ainda no banco) — indexar por esse valor stale retornaria undefined e quebraria
+    // openrouter.chat(undefined) em runtime. Só existe 1 provider real hoje.
+    const resolvedModel = modelId && OPENROUTER_MODEL_ID_PATTERN.test(modelId)
         ? modelId
-        : AI_DEFAULT_MODELS.google;
+        : AI_DEFAULT_MODELS.openrouter;
 
-    const google = createGoogleGenerativeAI({ apiKey });
-    return google(resolvedModel);
+    const openrouter = createOpenRouter({ apiKey });
+    return openrouter.chat(resolvedModel);
 };
 
 /**
@@ -68,31 +61,25 @@ export interface ModelConfig {
 }
 
 /**
- * Retorna um modelo de IA usando variáveis de ambiente.
+ * Retorna um modelo de IA usando variável de ambiente.
  *
- * Usa as seguintes env vars:
- * - GOOGLE_GENERATIVE_AI_API_KEY
- * - OPENAI_API_KEY
- * - ANTHROPIC_API_KEY
+ * Usa: OPENROUTER_API_KEY
  *
  * @param config - Configuração opcional (provider e model)
  * @returns Instância configurada do modelo de IA
  *
  * @example
  * ```typescript
- * // Usa provider padrão (google) com model padrão
  * const model = getModelFromEnv();
- *
- * // Especifica provider e model
- * const model = getModelFromEnv({ provider: 'openai', model: 'gpt-4o-mini' });
+ * const model = getModelFromEnv({ model: 'anthropic/claude-3.5-sonnet' });
  * ```
  */
 export const getModelFromEnv = (config?: ModelConfig) => {
     const model = config?.model || '';
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
 
     if (!apiKey) {
-        throw new Error('API Key for google not found in environment (GOOGLE_GENERATIVE_AI_API_KEY)');
+        throw new Error('API Key for openrouter not found in environment (OPENROUTER_API_KEY)');
     }
 
     return getModel(AI_DEFAULT_PROVIDER, apiKey, model);

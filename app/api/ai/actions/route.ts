@@ -194,7 +194,7 @@ export async function POST(req: Request) {
 
   const { data: orgSettings, error: orgError } = await supabase
     .from('organization_settings')
-    .select('ai_enabled, ai_model, ai_google_key')
+    .select('ai_enabled, ai_model, ai_openrouter_key')
     .eq('organization_id', profile.organization_id)
     .single();
 
@@ -233,8 +233,8 @@ export async function POST(req: Request) {
   }
 
   // Frontend expects "AI consent required" as a *payload* error.
-  const provider: AIProvider = 'google';
-  const apiKey: string | null = orgSettings?.ai_google_key ?? null;
+  const provider: AIProvider = 'openrouter';
+  const apiKey: string | null = orgSettings?.ai_openrouter_key ?? null;
 
   if (orgError || !apiKey) {
     return json<AIActionResponse>({ error: 'AI consent required', consentType: 'AI_CONSENT' }, 200);

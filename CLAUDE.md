@@ -23,7 +23,7 @@ npx vitest run path/to/file.test.ts
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Supabase (PostgreSQL + Auth + Edge Functions) · TanStack Query v5 · Zustand v5 · Tailwind CSS v4 · Radix UI · Zod v4 · AI SDK v6 (multi-provider: Anthropic/OpenAI/Google)
+Next.js 16 (App Router) · React 19 · TypeScript · Supabase (PostgreSQL + Auth + Edge Functions) · TanStack Query v5 · Zustand v5 · Tailwind CSS v4 · Radix UI · Zod v4 · AI SDK v6 (OpenRouter — provider único, roteador multi-modelo)
 
 ## Arquitetura
 
@@ -119,9 +119,11 @@ result.output // typed result
 await generateObject({ ... })
 ```
 
-**Chaves de API do AI**: ficam em `organization_settings` (banco), não em env vars
+**Chaves de API do AI**: ficam em `organization_settings` (banco), não em env vars.
+`ai_openrouter_key` é a chave primária (chat/agente). `ai_google_key` é separada,
+usada só pro RAG (Google File Search Store) — nunca pro chat.
 ```typescript
-const config = await getOrgAIConfig(orgId) // lê ai_google_key, ai_openai_key, ai_anthropic_key
+const config = await getOrgAIConfig(orgId) // config.apiKey = ai_openrouter_key; config.ragApiKey = ai_google_key
 const model = getModel(config.provider, config.apiKey, config.model)
 ```
 

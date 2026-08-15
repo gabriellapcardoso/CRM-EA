@@ -21,9 +21,10 @@ const STAGE_NOVO = { id: 'stage-novo', order: 0 }
 
 const ORG_SETTINGS = {
   ai_enabled: true,
-  ai_provider: 'google',
-  ai_model: 'gemini-2.0-flash',
-  ai_google_key: 'key-test',
+  ai_provider: 'openrouter',
+  ai_model: 'google/gemini-2.0-flash-001',
+  ai_openrouter_key: 'key-test',
+  ai_google_key: 'key-test', // usada só pro teste de RAG
   ai_openai_key: null,
   ai_anthropic_key: null,
   ai_hitl_threshold: 0.85,
@@ -172,10 +173,10 @@ vi.mock('@/lib/ai/agent/provider-failover', () => ({
   generateWithFailover: vi.fn(async () => ({
     text: 'Olá! Como posso ajudar?',
     usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-    modelUsed: 'gemini-2.0-flash',
-    provider: 'google',
+    modelUsed: 'google/gemini-2.0-flash-001',
+    provider: 'openrouter',
   })),
-  buildProviderList: vi.fn(() => [{ provider: 'google', model: 'gemini-2.0-flash', apiKey: 'key-test' }]),
+  buildProviderList: vi.fn(() => [{ provider: 'openrouter', model: 'google/gemini-2.0-flash-001', apiKey: 'key-test' }]),
 }))
 
 vi.mock('@/lib/ai/agent/stage-evaluator', () => ({

@@ -1,8 +1,8 @@
 /**
  * @fileoverview AI Models API
  *
- * Retorna a lista de modelos disponíveis para o provider solicitado,
- * buscando diretamente da API do provider com a chave configurada no banco.
+ * Retorna a lista de modelos disponíveis na OpenRouter — catálogo público,
+ * não exige chave de API pra listar (só pra usar o modelo no chat/agente).
  *
  * @module app/api/ai/models/route
  */
@@ -18,8 +18,8 @@ import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 export interface AIModelInfo {
   id: string;
   name: string;
-  provider: 'google';
-  /** true = alias auto-atualizado (ex: gemini-flash-latest) */
+  provider: 'openrouter';
+  /** OpenRouter não tem conceito de alias auto-atualizado — sempre false. */
   isAlias: boolean;
 }
 
@@ -34,58 +34,21 @@ function json<T>(body: T, status = 200): Response {
   });
 }
 
-// Padrões de modelos a excluir do fetch do Google
-const GOOGLE_EXCLUDED_PATTERNS = [
-  'tts',
-  'image',
-  'robotics',
-  'computer-use',
-  'deep-research',
-  'lyria',
-  'gemma',
-  'embedding',
-  'aqa',
-];
+async function fetchOpenRouterModels(): Promise<AIModelInfo[]> {
+  // Catálogo público — não requer Authorization (só a chamada de chat exige a chave).
+  const res = await fetch('https://openrouter.ai/api/v1/models');
+  if (!res.ok) throw new Error(`OpenRouter API error: HTTP ${res.status}`);
 
-function isExcluded(id: string): boolean {
-  return GOOGLE_EXCLUDED_PATTERNS.some((p) => id.includes(p));
-}
+  const data = await res.json() as { data?: Array<{ id: string; name?: string }> };
 
-async function fetchGoogleModels(apiKey: string): Promise<AIModelInfo[]> {
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
-    { headers: { 'x-goog-api-key': apiKey } }
-  );
-  if (!res.ok) throw new Error(`Google API error: HTTP ${res.status}`);
-
-  const data = await res.json() as { models?: Array<{ name: string; displayName?: string; supportedGenerationMethods?: string[] }> };
-
-  const all: AIModelInfo[] = (data.models ?? [])
-    .filter((m) => {
-      const id = m.name.replace('models/', '');
-      return (
-        Array.isArray(m.supportedGenerationMethods) &&
-        m.supportedGenerationMethods.includes('generateContent') &&
-        !isExcluded(id)
-      );
-    })
-    .map((m) => {
-      const id = m.name.replace('models/', '');
-      return {
-        id,
-        name: m.displayName || id,
-        provider: 'google' as const,
-        isAlias: id.endsWith('-latest'),
-      };
-    });
-
-  // Aliases primeiro (sempre atualizados), depois versões fixas mais recente → mais antigo
-  const aliases = all.filter((m) => m.isAlias);
-  const pinned = all
-    .filter((m) => !m.isAlias)
-    .sort((a, b) => b.id.localeCompare(a.id));
-
-  return [...aliases, ...pinned];
+  return (data.data ?? [])
+    .map((m) => ({
+      id: m.id,
+      name: m.name || m.id,
+      provider: 'openrouter' as const,
+      isAlias: false,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 // =============================================================================
@@ -114,18 +77,8 @@ export async function GET(request: NextRequest) {
     return json({ models: [] });
   }
 
-  const { data: settings, error: settingsError } = await supabase
-    .from('organization_settings')
-    .select('ai_google_key')
-    .eq('organization_id', profile.organization_id)
-    .maybeSingle();
-
-  if (settingsError || !settings?.ai_google_key) {
-    return json({ models: [] });
-  }
-
   try {
-    const models = await fetchGoogleModels(settings.ai_google_key);
+    const models = await fetchOpenRouterModels();
     return json({ models });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro desconhecido';

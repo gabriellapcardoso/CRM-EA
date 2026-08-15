@@ -376,21 +376,16 @@ Se você já tem dados em planilhas:
 
 ### Configurar Inteligência Artificial
 
-Para usar o assistente de IA, você precisa configurar uma chave de API:
+Para usar o assistente de IA, você precisa configurar uma chave de API da **OpenRouter**
+(provider único — roteador que dá acesso a centenas de modelos de IA, incluindo Gemini,
+GPT e Claude, com uma única chave):
 
 1. Vá em **Configurações → Central de I.A.**
-2. Escolha um provedor:
-   - **Google Gemini** (recomendado para começar)
-   - **OpenAI** (GPT-4)
-   - **Anthropic** (Claude)
-3. Cole sua chave de API
-4. Escolha o modelo
-5. Ative "IA ativa na organização"
+2. Cole sua chave de API da OpenRouter
+3. Escolha o modelo (formato `provider/model`, ex: `google/gemini-2.0-flash-001`)
+4. Ative "IA ativa na organização"
 
-> 💡 **Onde conseguir chaves?**
-> - Google Gemini: [Google AI Studio](https://makersuite.google.com/app/apikey)
-> - OpenAI: [platform.openai.com](https://platform.openai.com/api-keys)
-> - Anthropic: [console.anthropic.com](https://console.anthropic.com/)
+> 💡 **Onde conseguir a chave?** [openrouter.ai/keys](https://openrouter.ai/keys)
 
 ### Configurar Permissões
 
@@ -527,7 +522,7 @@ Veja o guia completo em: [docs/webhooks.md](./docs/webhooks.md)
 - **Backend**: Next.js API Routes
 - **Banco de Dados**: Supabase (PostgreSQL)
 - **Autenticação**: Supabase Auth
-- **IA**: AI SDK v6 (Google Gemini, OpenAI, Anthropic)
+- **IA**: AI SDK v6 (OpenRouter)
 - **UI**: Radix UI + Tailwind CSS
 
 ### Instalação para Desenvolvimento

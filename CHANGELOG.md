@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(ai): migra provider primário de Google Gemini pra OpenRouter — 2026-08-15
+
+Troca do provider de IA do CRM (chat/agente) de Google Gemini (hardcoded,
+`type AIProvider = 'google'`) pra OpenRouter (roteador multi-modelo), decidida
+em `/plan-eng-review` (2026-08-14) após avaliar duas abordagens: OpenRouter
+como único provider ativo vs. generalização completa multi-provider. Optamos
+pelo primeiro — sem um segundo provider real esperando entrar em produção,
+generalizar a lista de failover (`provider-failover.ts`) seria abstração
+especulativa. `AIProvider` virou union type extensível (hoje 1 literal real,
+`'openrouter'`) pra manter esse caminho barato se/quando surgir um segundo
+provider de verdade.
+
+`lib/ai/config.ts` troca `createGoogleGenerativeAI` por `createOpenRouter`
+(`@openrouter/ai-sdk-provider`, provider oficial do AI SDK v6). A allowlist
+fixa de modelos Gemini (`ALLOWED_GOOGLE_MODELS`, ~7 entradas mantidas à mão)
+virou validação de formato (`provider/model`, regex) — o catálogo da
+OpenRouter tem centenas de modelos e mudaria toda semana, uma lista fixa não
+escalava; modelo inexistente é rejeitado pela própria API deles com erro
+claro. `app/api/ai/models/route.ts` (`fetchGoogleModels`) virou
+`fetchOpenRouterModels`, contra o catálogo público `openrouter.ai/api/v1/models`
+(não exige chave pra listar).
+
+Nova coluna aditiva `organization_settings.ai_openrouter_key` (migration
+`20260815144155_ai_openrouter_key`, aplicada em produção). `ai_google_key`
+foi **preservada** — não é dívida esquecida, é decisão: o RAG (Google File
+Search Store, `lib/ai/messaging/file-search.ts`) usa o SDK `@google/genai`
+direto e não tem equivalente na OpenRouter (que só roteia chamadas de chat,
+não é serviço de RAG gerenciado). `getOrgAIConfig` (`agent.service.ts`) agora
+retorna `apiKey` (OpenRouter, pro chat) e `ragApiKey` (Google, só pro RAG)
+como campos separados; se `knowledge_store_id` está configurado num board mas
+`ai_google_key` está ausente, o agente loga aviso e segue pro chat normal em
+vez de quebrar.
+
+Revisão independente (subagente, Codex deu timeout de 5min) corrigiu o escopo
+inicial: `ai_google_key` não era "só RAG" como o plano original assumia — era
+lida como chave principal em ~15 pontos (chat, settings UI, admin tool,
+health check, listagem de modelos). Todos esses pontos foram migrados pra
+`ai_openrouter_key`, incluindo a UI de configurações
+(`AIConfigSection.tsx`/`useOrgSettingsQuery.ts`/`app/api/settings/ai/route.ts`)
+que originalmente não estava no escopo dos achados mas fazia parte da mesma
+cadeia de chave — deixar destravado quebraria o settings UI silenciosamente.
+Validação de chave na UI trocou de uma chamada de teste ao Gemini pra
+`openrouter.ai/api/v1/auth/key`; textos de LGPD/consentimento atualizados pra
+não citar mais "Google Gemini" como destino dos dados.
+
+`/review` no diff final achou e corrigiu 2 bugs críticos antes do commit:
+`AI_DEFAULT_MODELS[provider]` (em `config.ts` e `agent.service.ts`) indexava
+pelo valor de `ai_provider` lido do banco — orgs criadas antes dessa migration
+têm essa coluna com o valor antigo `'google'` (o `DEFAULT` da coluna nunca foi
+atualizado), e `AI_DEFAULT_MODELS` só tem a chave `openrouter`; a indexação
+stale retornava `undefined` e quebraria `openrouter.chat(undefined)` em
+runtime pra qualquer org antiga sem `ai_model` setado. Trocado pra indexar a
+constante `AI_DEFAULT_MODELS.openrouter` direto, independente do que estiver
+no banco.
+
+**Fora de escopo, registrado em TODOS.md:** limpar colunas mortas
+`ai_openai_key`/`ai_anthropic_key` (sobra de uma consolidação anterior);
+configurar fallback nativo de modelo da OpenRouter (`models: [...]`, feature
+deles, resiliência sem tocar `provider-failover.ts`). **Dívida pré-existente
+não tocada** (fora do escopo desse diff, zero importador fora do próprio
+arquivo): `lib/validations/schemas.ts` (`aiConfigSchema`),
+`lib/ai/actionsClient.ts` (`AIConfigLegacy`), `lib/ai/agent/types.ts`
+(`DEFAULT_AGENT_CONFIG`) — ainda com literal `'google'`, código morto, não
+afeta runtime. Coluna `organization_settings.ai_provider` ainda tem
+`DEFAULT 'google'` pro schema — inofensivo pra resolução de modelo após o fix
+acima, mas cosmético em logs/metadata pra orgs antigas; backfill fica pra uma
+migration futura se necessário.
+
 ### fix(ui): pista visual de scroll horizontal em telas densas (Inbox/Mensagens/cockpit) — 2026-08-14
 
 QA em viewport 1280×800 (notebook comum) achou que o card "aprovações IA"

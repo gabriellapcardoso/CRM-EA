@@ -47,7 +47,7 @@ export function registerAdminTools(server: McpServer) {
     {
       title: 'Get AI settings',
       description:
-        'Read-only. Returns AI configuration for the authenticated organization. API keys are never returned — only boolean flags (hasGoogleKey, hasOpenAIKey, hasAnthropicKey) indicate whether keys are configured.',
+        'Read-only. Returns AI configuration for the authenticated organization. API keys are never returned — only boolean flags (hasOpenRouterKey, hasGoogleKey) indicate whether keys are configured. hasOpenRouterKey covers chat/agent; hasGoogleKey covers RAG only (File Search Store).',
       inputSchema: {},
     },
     async () => {
@@ -56,7 +56,7 @@ export function registerAdminTools(server: McpServer) {
       const { data, error } = await getDb()
         .from('organization_settings')
         .select(
-          'organization_id, ai_enabled, ai_provider, ai_model, ai_google_key, ai_takeover_enabled, ai_config_mode, ai_template_id, ai_hitl_threshold'
+          'organization_id, ai_enabled, ai_provider, ai_model, ai_openrouter_key, ai_google_key, ai_takeover_enabled, ai_config_mode, ai_template_id, ai_hitl_threshold'
         )
         .eq('organization_id', ctx.organizationId)
         .maybeSingle();
@@ -65,9 +65,13 @@ export function registerAdminTools(server: McpServer) {
       if (!data) return err('Organization settings not found');
 
       // Mask API keys — never return the actual values
-      const { ai_google_key, ...safe } = data as typeof data & { ai_google_key?: string | null };
+      const { ai_openrouter_key, ai_google_key, ...safe } = data as typeof data & {
+        ai_openrouter_key?: string | null;
+        ai_google_key?: string | null;
+      };
       const result = {
         ...safe,
+        hasOpenRouterKey: !!ai_openrouter_key,
         hasGoogleKey: !!ai_google_key,
       };
 

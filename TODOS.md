@@ -14,4 +14,32 @@
 **Priority:** P2
 **Depends on:** None
 
+## AI Provider
+
+### Configurar fallback nativo de modelo da OpenRouter (`models: [...]`)
+
+**What:** Ao criar o client OpenRouter em `lib/ai/config.ts`, configurar o parâmetro nativo `models: [fallback-list]` (feature da própria API da OpenRouter, não do Vercel AI SDK) — se o modelo primário falhar, a OpenRouter tenta o próximo da lista automaticamente, sem passar pelo `provider-failover.ts` do projeto.
+
+**Why:** Dá resiliência a falha de modelo específico (rate limit, outage pontual) sem exigir a generalização multi-provider (Opção B, descartada em `/plan-eng-review` de 2026-08-14 por não ter um segundo provider real esperando pra usar).
+
+**Pros:** Configuração de ~1 linha, resolve um caso real (modelo específico fora do ar) sem tocar `provider-failover.ts`.
+**Cons:** Nenhuma lista de fallback foi escolhida ainda — decisão de quais modelos entram na lista fica pra quando for implementado.
+**Context:** Achado durante `/plan-eng-review` da troca Google Gemini → OpenRouter (2026-08-14). Confirmado via docs oficiais do AI SDK (`ai-sdk.dev/providers/community-providers/openrouter`) que o pacote `@openrouter/ai-sdk-provider` é o caminho oficial pro AI SDK v6, sem adapter customizado.
+**Effort:** S
+**Priority:** P3
+**Depends on:** Migração pra OpenRouter (troca de provider) já concluída.
+
+### Remover colunas mortas `ai_openai_key`/`ai_anthropic_key` de `organization_settings`
+
+**What:** Migration `DROP COLUMN ai_openai_key, ai_anthropic_key` (schema, não código de app — `getOrgAIConfig` já não seleciona essas colunas).
+
+**Why:** Sobra da consolidação pro Google Gemini (documentada no CHANGELOG, "Provider Consolidation" — remoção de referências a OpenAI/Anthropic). As colunas existem no banco desde `20251201000000_schema_init.sql` mas nenhum código lê ou escreve nelas hoje — dívida de schema que pode confundir quem olhar a tabela achando que esses providers ainda são suportados.
+
+**Pros:** Schema mais limpo, remove superfície de dúvida futura sobre "esses providers ainda funcionam?".
+**Cons:** Não é urgente — coluna órfã não causa bug, só ruído. Migration destrutiva (`DROP COLUMN`) precisa rodar separada da migration aditiva que cria `ai_openrouter_key`, nunca junto (mistura aditivo com destrutivo é anti-padrão).
+**Context:** Achado durante `/plan-eng-review` da troca Google Gemini → OpenRouter (2026-08-14), ao mapear o schema de `organization_settings` pra decidir onde a chave da OpenRouter deveria morar.
+**Effort:** S
+**Priority:** P3
+**Depends on:** Nenhuma tecnicamente, mas faz sentido rodar depois que `ai_openrouter_key` estiver estável em produção (evita fazer duas migrations "ai_*" seguidas por nada).
+
 ## Completed

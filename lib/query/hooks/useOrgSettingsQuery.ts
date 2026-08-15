@@ -16,16 +16,15 @@ export interface OrgAISettings {
   aiEnabled: boolean;
   aiProvider: string;
   aiModel: string;
-  aiGoogleKey: string;
-  aiOpenaiKey: string;
-  aiAnthropicKey: string;
-  aiHasGoogleKey?: boolean;
-  aiHasOpenaiKey?: boolean;
-  aiHasAnthropicKey?: boolean;
+  aiOpenrouterKey: string;
+  aiHasOpenrouterKey?: boolean;
 }
 
 export interface MergedOrgSettings extends UserSettings {
-  // Org-level AI overrides/additions
+  // Org-level AI overrides/additions (organization_settings.ai_openrouter_key — NÃO é o
+  // legado UserSettings.aiGoogleKey/aiApiKey, que vive em user_settings e não é mais usado
+  // pelo chat/agente)
+  aiOpenrouterKey: string;
   aiOrgEnabled: boolean;
   aiKeyConfigured: boolean;
 }
@@ -55,7 +54,7 @@ export const useOrgSettings = (options?: { enabled?: boolean }) => {
       const aiData: OrgAISettings = await aiRes.json();
 
       const base: UserSettings = settings ?? {
-        aiProvider: 'google',
+        aiProvider: 'openrouter',
         aiApiKey: '',
         aiGoogleKey: '',
         aiModel: '',
@@ -69,13 +68,13 @@ export const useOrgSettings = (options?: { enabled?: boolean }) => {
       };
 
       const aiKeyConfigured =
-        !!(aiData.aiGoogleKey) || !!(aiData.aiHasGoogleKey);
+        !!(aiData.aiOpenrouterKey) || !!(aiData.aiHasOpenrouterKey);
 
       return {
         ...base,
-        aiProvider: 'google' as const,
+        aiProvider: 'openrouter' as const,
         aiModel: aiData.aiModel || base.aiModel,
-        aiGoogleKey: aiData.aiGoogleKey || base.aiGoogleKey,
+        aiOpenrouterKey: aiData.aiOpenrouterKey || '',
         // Merged extras
         aiOrgEnabled: aiData.aiEnabled ?? false,
         aiKeyConfigured,

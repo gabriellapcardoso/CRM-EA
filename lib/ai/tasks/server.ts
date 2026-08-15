@@ -87,7 +87,7 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
 
   const { data: orgSettings, error: orgError } = await supabase
     .from('organization_settings')
-    .select('ai_enabled, ai_model, ai_google_key')
+    .select('ai_enabled, ai_model, ai_openrouter_key')
     .eq('organization_id', organizationId)
     .maybeSingle();
 
@@ -96,14 +96,14 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
     throw new AITaskHttpError(403, 'AI_DISABLED', 'IA desativada pela organização. Um admin pode ativar em Configurações → Central de I.A.');
   }
 
-  const provider: AIProvider = 'google';
-  const apiKey: string | null = orgSettings?.ai_google_key ?? null;
+  const provider: AIProvider = 'openrouter';
+  const apiKey: string | null = orgSettings?.ai_openrouter_key ?? null;
 
   if (orgError || !apiKey) {
     throw new AITaskHttpError(
       400,
       'AI_KEY_NOT_CONFIGURED',
-      'API key não configurada para Google Gemini. Configure em Configurações → Inteligência Artificial.'
+      'API key não configurada para OpenRouter. Configure em Configurações → Inteligência Artificial.'
     );
   }
 

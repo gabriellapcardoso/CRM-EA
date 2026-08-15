@@ -22,7 +22,7 @@ export interface UseAIEnabledResult {
   /** A API Key configurada */
   apiKey: string | null;
   /** Provider configurado */
-  provider: 'google';
+  provider: 'openrouter';
   /** Navega para as configurações de IA */
   goToSettings: () => void;
 }
@@ -47,7 +47,7 @@ export function useAIEnabled(): UseAIEnabledResult {
   return {
     isAIEnabled,
     apiKey: null,
-    provider: aiProvider || 'google',
+    provider: (aiProvider as 'openrouter') || 'openrouter',
     goToSettings,
   };
 }

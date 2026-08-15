@@ -35,7 +35,7 @@ export interface DbLifecycleStage {
 }
 
 export interface UserSettings {
-  aiProvider: 'google';
+  aiProvider: 'openrouter';
   aiApiKey: string;
   aiGoogleKey: string;
   aiModel: string;
@@ -51,7 +51,7 @@ export interface UserSettings {
 // Transform DB -> App
 const transformSettings = (db: DbUserSettings): UserSettings => {
   return {
-    aiProvider: 'google',
+    aiProvider: 'openrouter',
     aiApiKey: db.ai_google_key || db.ai_api_key || '',
     aiGoogleKey: db.ai_google_key || '',
     aiModel: db.ai_model,

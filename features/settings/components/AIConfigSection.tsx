@@ -5,37 +5,26 @@ import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import type { AIModelInfo } from '@/app/api/ai/models/route';
 
-// Função para validar API key Gemini fazendo uma chamada real à API
-async function validateApiKey(apiKey: string, model: string): Promise<{ valid: boolean; error?: string }> {
+// Função para validar API key da OpenRouter fazendo uma chamada real à API
+async function validateApiKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
     if (!apiKey || apiKey.trim().length < 10) {
         return { valid: false, error: 'Chave muito curta' };
     }
 
     try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: 'Hi' }] }],
-                    generationConfig: { maxOutputTokens: 1 }
-                })
-            }
-        );
+        const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
+            headers: { Authorization: `Bearer ${apiKey}` },
+        });
 
         if (response.ok) return { valid: true };
 
-        const error = await response.json();
-        if (response.status === 400 && error?.error?.message?.includes('API key not valid')) {
+        if (response.status === 401) {
             return { valid: false, error: 'Chave de API inválida' };
-        }
-        if (response.status === 403) {
-            return { valid: false, error: 'Chave sem permissão para este modelo' };
         }
         if (response.status === 429) {
             return { valid: true }; // rate limit = key válida
         }
+        const error = await response.json().catch(() => null);
         return { valid: false, error: error?.error?.message || 'Erro desconhecido' };
     } catch {
         return { valid: false, error: 'Erro de conexão. Verifique sua internet.' };
@@ -60,7 +49,7 @@ export const AIConfigSection: React.FC = () => {
     const aiKeyConfigured = orgSettings?.aiKeyConfigured ?? false;
     const aiThinking = orgSettings?.aiThinking ?? true;
     const aiSearch = orgSettings?.aiSearch ?? true;
-    const aiApiKey = orgSettings?.aiGoogleKey ?? '';
+    const aiApiKey = orgSettings?.aiOpenrouterKey ?? '';
 
     const [localModel, setLocalModel] = useState<string | null>(null);
 
@@ -84,7 +73,7 @@ export const AIConfigSection: React.FC = () => {
     }, []);
 
     const setAiApiKey = async (key: string) => {
-        await updateAISettings.mutateAsync({ aiGoogleKey: key });
+        await updateAISettings.mutateAsync({ aiOpenrouterKey: key });
     };
     const setAiModel = async (model: string) => {
         await updateAISettings.mutateAsync({ aiModel: model });
@@ -137,7 +126,7 @@ export const AIConfigSection: React.FC = () => {
         setIsValidating(true);
         setValidationError(null);
 
-        const result = await validateApiKey(localApiKey, aiModel);
+        const result = await validateApiKey(localApiKey);
 
         setIsValidating(false);
 
@@ -203,7 +192,7 @@ export const AIConfigSection: React.FC = () => {
                             <span className="font-semibold">Status:</span> Configurado pela organização
                         </div>
                         <div className="text-sm text-slate-700 dark:text-slate-200 mt-1">
-                            <span className="font-semibold">Provedor:</span> Google Gemini
+                            <span className="font-semibold">Provedor:</span> OpenRouter
                         </div>
                         <div className="text-sm text-slate-700 dark:text-slate-200 mt-1">
                             <span className="font-semibold">Modelo:</span> {aiModel}
@@ -331,7 +320,7 @@ export const AIConfigSection: React.FC = () => {
                 {/* API Key */}
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        <Key size={14} /> Chave de API (Google Gemini)
+                        <Key size={14} /> Chave de API (OpenRouter)
                     </label>
                     <div className="flex gap-2">
                         <div className="relative flex-1">
@@ -339,7 +328,7 @@ export const AIConfigSection: React.FC = () => {
                                 type="password"
                                 value={localApiKey}
                                 onChange={(e) => handleKeyChange(e.target.value)}
-                                placeholder="Cole sua chave AIza..."
+                                placeholder="Cole sua chave sk-or-..."
                                 className={`w-full bg-slate-50 dark:bg-slate-800 border rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all font-mono ${validationStatus === 'invalid'
                                         ? 'border-red-300 dark:border-red-500/50'
                                         : validationStatus === 'valid'
@@ -437,7 +426,7 @@ export const AIConfigSection: React.FC = () => {
                                 <div className="pt-2 border-t border-amber-200 dark:border-amber-500/20">
                                     <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
                                         <strong>Base legal:</strong> Consentimento do titular (Art. 7º, I e Art. 11, I da LGPD).
-                                        Seus dados são enviados diretamente ao Google Gemini.
+                                        Seus dados são enviados diretamente à OpenRouter (que roteia para o modelo selecionado).
                                         Nós não armazenamos ou intermediamos essas comunicações.
                                     </p>
                                 </div>
@@ -475,7 +464,7 @@ export const AIConfigSection: React.FC = () => {
                         </p>
                         <p className="opacity-90 mt-1">
                             {validationStatus === 'valid' && localApiKey
-                                ? `O sistema está configurado para usar o Google Gemini (${aiModel}).`
+                                ? `O sistema está configurado para usar a OpenRouter (${aiModel}).`
                                 : validationStatus === 'invalid'
                                     ? 'Verifique sua chave de API e tente novamente.'
                                     : 'Insira uma chave de API válida e clique em Salvar para usar o assistente.'}

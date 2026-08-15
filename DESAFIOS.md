@@ -1,5 +1,38 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Indexar `Record<Provider, Model>` pelo valor do banco (não pela constante) quebra silenciosamente com dado stale (2026-08-15)
+
+Durante a migração do provider de IA (Google Gemini → OpenRouter,
+`/plan-eng-review` + implementação em 2026-08-15), `lib/ai/config.ts` e
+`lib/ai/agent/agent.service.ts` tinham `AI_DEFAULT_MODELS[provider]`, onde
+`provider` vinha de `orgSettings.ai_provider` (coluna do banco) com um cast
+`as AIProvider`. Depois da migração, `AIProvider` só tem 1 literal real
+(`'openrouter'`) e `AI_DEFAULT_MODELS` só tem essa chave — mas
+`organization_settings.ai_provider` tem `DEFAULT 'google'` no schema (nunca
+atualizado) e orgs criadas antes da migration carregam esse valor stale no
+banco. `AI_DEFAULT_MODELS['google']` retorna `undefined` silenciosamente (TS
+não acusa erro — o cast `as AIProvider` mente em compile-time, mas o valor
+real em runtime continua sendo o que está no banco), e esse `undefined` só
+vira erro de verdade lá na frente, dentro do SDK (`openrouter.chat(undefined)`),
+pra qualquer org antiga sem `ai_model` explicitamente setado.
+
+Achado por `/review` no diff final (não no `/plan-eng-review` nem na
+implementação inicial) — confiança 9/10, motivador citado: a linha
+`AI_DEFAULT_MODELS[provider]` lida junto com a definição de `AI_DEFAULT_MODELS`
+(só 1 chave) e o `DEFAULT 'google'` da coluna no `schema_init.sql`.
+
+**Como isso não repete**: nunca indexar um objeto `Record<EnumType, X>` pelo
+valor *lido de uma fonte externa* (banco, API, arquivo) quando esse enum
+tiver só 1 literal real (ou quando a fonte externa pode ter dado desatualizado
+de antes de uma migration de app). O cast TypeScript não protege — só o
+compilador acredita que o valor bate com o union type, o runtime não. Indexar
+direto pela constante (`AI_DEFAULT_MODELS.openrouter`) em vez do valor
+dinâmico elimina a classe inteira de bug. Se o enum algum dia tiver múltiplos
+literais reais, esse padrão de indexação dinâmica volta a fazer sentido — mas
+exige então validar/normalizar o valor lido do banco antes de indexar
+(fallback explícito pra um literal válido, não confiar que o dado já está
+migrado).
+
 ## `fixed inset-0` + `w-screen h-screen` juntos cortam painel fora da tela dentro de ancestral com `transform` (2026-08-06)
 
 `features/inbox/components/FocusContextPanel.tsx` (painel de detalhe do

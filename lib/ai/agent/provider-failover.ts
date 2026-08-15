@@ -98,6 +98,13 @@ export async function generateWithFailover(
 /**
  * Build an ordered list of provider configs from org settings.
  * Primary provider first, then others that have API keys configured.
+ *
+ * Hoje só existe 1 provider real (OpenRouter) — esta função sempre retorna
+ * no máximo 1 item. O retry/catch/error-aggregation em generateWithFailover
+ * acima nunca é exercitado de fato até que um segundo provider seja
+ * configurado aqui. Decisão deliberada (plan-eng-review 2026-08-14): manter
+ * a infraestrutura pronta em vez de generalizar sem um segundo provider real
+ * pra testar contra.
  */
 export function buildProviderList(orgConfig: {
   provider: AIProvider;

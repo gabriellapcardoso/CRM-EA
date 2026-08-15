@@ -3,7 +3,7 @@
  *
  * Verifica a saúde básica da aplicação:
  * - Conexão com Supabase
- * - Disponibilidade dos provedores de AI (Google Gemini)
+ * - Disponibilidade dos provedores de AI (OpenRouter)
  * - Status de Edge Functions de webhooks
  *
  * @route GET /api/health
@@ -44,7 +44,7 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
   const startTime = Date.now();
   const components: HealthCheckResult['components'] = {
     database: { status: 'error' },
-    ai_provider: { status: 'error', provider: 'google' },
+    ai_provider: { status: 'error', provider: 'openrouter' },
     webhooks: { status: 'unknown', edge_functions: [] },
   };
 
@@ -90,10 +90,10 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
 
   // 2. Check AI Provider Configuration
   try {
-    const aiApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const aiApiKey = process.env.OPENROUTER_API_KEY;
 
     if (!aiApiKey) {
-      throw new Error('Google AI API key not configured');
+      throw new Error('OpenRouter API key not configured');
     }
 
     // Validate API key format (basic check)
@@ -103,12 +103,12 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
 
     components.ai_provider = {
       status: 'ok',
-      provider: 'google',
+      provider: 'openrouter',
     };
   } catch (err) {
     components.ai_provider = {
       status: 'error',
-      provider: 'google',
+      provider: 'openrouter',
       error: err instanceof Error ? err.message : 'Unknown AI provider error',
     };
   }
@@ -156,7 +156,7 @@ export async function HEAD(): Promise<NextResponse> {
     const supabaseAnonKey =
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const aiApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const aiApiKey = process.env.OPENROUTER_API_KEY;
 
     const dbConfigured = !!(supabaseUrl && supabaseAnonKey);
     const aiConfigured = !!(aiApiKey && aiApiKey.length > 20);
