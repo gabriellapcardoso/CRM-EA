@@ -258,6 +258,7 @@ export interface Deal {
   lastStageChangeDate?: string; // For stagnation tracking
   lossReason?: string; // For win/loss analysis
   aiExtracted?: Record<string, any>; // AI-extracted BANT fields (zero config)
+  proposalLink?: string; // T4: link público da proposta comercial (via webhook T3b)
 
   // @deprecated - Use clientCompanyId instead
   companyId?: string;

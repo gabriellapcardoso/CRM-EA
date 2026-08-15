@@ -102,6 +102,8 @@ export interface DbDeal {
   closed_at: string | null;
   /** AI-extracted BANT fields (zero config). */
   ai_extracted: Record<string, any> | null;
+  /** T4: link público da proposta comercial (via webhook T3b). */
+  proposal_link: string | null;
 }
 
 /**
@@ -175,6 +177,7 @@ const transformDeal = (db: DbDeal | DbDealWithItems, items?: DbDealItem[]): Deal
     lastStageChangeDate: db.last_stage_change_date || undefined,
     customFields: db.custom_fields || {},
     aiExtracted: db.ai_extracted || undefined,
+    proposalLink: db.proposal_link || undefined,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
     items: filteredItems.map(i => ({
