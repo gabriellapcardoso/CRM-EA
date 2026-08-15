@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { ConfirmDialog as ConfirmModal } from '@/components/ui/confirm-dialog';
@@ -28,6 +28,13 @@ export const WhatsAppSafetySection: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [channelStatus, setChannelStatus] = useState<ChannelStatus | null>(null);
   const [confirmAutoSendOpen, setConfirmAutoSendOpen] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,13 +88,13 @@ export const WhatsAppSafetySection: React.FC = () => {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        addToast(body.error || 'Erro ao salvar', 'error');
+        if (mountedRef.current) addToast(body.error || 'Erro ao salvar', 'error');
         return false;
       }
-      addToast('Configuração salva', 'success');
+      if (mountedRef.current) addToast('Configuração salva', 'success');
       return true;
     } finally {
-      setIsSaving(false);
+      if (mountedRef.current) setIsSaving(false);
     }
   };
 
@@ -95,7 +102,7 @@ export const WhatsAppSafetySection: React.FC = () => {
     const previous = state.killSwitchActive;
     setState((prev) => ({ ...prev, killSwitchActive: checked }));
     const ok = await save({ killSwitchActive: checked });
-    if (!ok) {
+    if (!ok && mountedRef.current) {
       setState((prev) => ({ ...prev, killSwitchActive: previous }));
     }
   };
@@ -108,7 +115,7 @@ export const WhatsAppSafetySection: React.FC = () => {
     const previous = state.autoSendProposalWhatsapp;
     setState((prev) => ({ ...prev, autoSendProposalWhatsapp: checked }));
     const ok = await save({ autoSendProposalWhatsapp: checked });
-    if (!ok) {
+    if (!ok && mountedRef.current) {
       setState((prev) => ({ ...prev, autoSendProposalWhatsapp: previous }));
     }
   };
@@ -188,7 +195,7 @@ export const WhatsAppSafetySection: React.FC = () => {
         }
         confirmText="Ligar"
         cancelText="Cancelar"
-        variant="primary"
+        variant="danger"
       />
 
       <div className="field" style={{ marginTop: 'var(--space-3)', maxWidth: 420 }}>
