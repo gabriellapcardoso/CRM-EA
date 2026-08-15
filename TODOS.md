@@ -42,4 +42,17 @@
 **Priority:** P3
 **Depends on:** Nenhuma tecnicamente, mas faz sentido rodar depois que `ai_openrouter_key` estiver estável em produção (evita fazer duas migrations "ai_*" seguidas por nada).
 
+### Backfill `organization_settings.ai_provider` pra `'openrouter'`
+
+**What:** Migration `UPDATE organization_settings SET ai_provider = 'openrouter' WHERE ai_provider = 'google'` + `ALTER COLUMN ai_provider SET DEFAULT 'openrouter'`.
+
+**Why:** Coluna ainda tem `DEFAULT 'google'` e orgs criadas antes da migration OpenRouter (2026-08-15) carregam esse valor stale no banco. O crash em runtime já foi neutralizado (`AI_DEFAULT_MODELS.openrouter` indexado direto, não pelo valor do banco — ver `DESAFIOS.md`), mas o campo `provider` que flui por `buildProviderList`/`generateWithFailover` ainda pode aparecer como `'google'` em logs/metadata (`providerUsed`) pra essas orgs.
+
+**Pros:** Elimina resíduo cosmético, schema fica coerente com o provider real em uso.
+**Cons:** Sem impacto funcional — não é urgente. `UPDATE` em massa precisa rodar fora de horário de pico se a tabela crescer (hoje baixo volume, risco mínimo).
+**Context:** Achado por `/review` no diff da migração OpenRouter (2026-08-15), classificado como informational (não bloqueou o ship). Detalhes em `CHANGELOG.md`/`DESAFIOS.md` (entrada "Indexar Record<Provider, Model>...").
+**Effort:** S
+**Priority:** P3
+**Depends on:** Nenhuma.
+
 ## Completed
