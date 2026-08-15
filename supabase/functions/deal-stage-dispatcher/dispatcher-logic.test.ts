@@ -106,7 +106,16 @@ describe('resolverDestino', () => {
     PROPOSTAS_INGEST_SECRET: 'segredo-propostas',
     PROSPECCAO_REAQUECER_URL: 'https://prospeccao.test/webhook',
     PROSPECCAO_REAQUECER_SECRET: 'segredo-prospeccao',
+    PROPOSTAS_PRONTA_URL: 'https://propostas.test/webhook/proposta-pronta',
+    PROPOSTAS_PRONTA_SECRET: 'segredo-propostas-pronta',
   };
+
+  it("roteia stage_slug 'proposta-pronta' pro destino dedicado do gerador de propostas (T4)", () => {
+    expect(resolverDestino('proposta-pronta', env)).toEqual({
+      url: 'https://propostas.test/webhook/proposta-pronta',
+      secret: 'segredo-propostas-pronta',
+    });
+  });
 
   it("roteia stage_slug 'perdido' pro destino da prospecção (T3c)", () => {
     expect(resolverDestino('perdido', env)).toEqual({
