@@ -49,6 +49,7 @@ import {
   CHANNEL_TYPE_INFO,
 } from '@/lib/messaging/types';
 import { ChannelSetupWizard } from './ChannelSetupWizard';
+import { QrConnectModal } from './QrConnectModal';
 import {
   useLeadRoutingRules,
   useBoardsWithStages,
@@ -322,6 +323,9 @@ function WebhookInfo({ channelId, provider, verifyToken }: { channelId: string; 
 // CHANNEL CARD
 // =============================================================================
 
+// Providers WhatsApp que suportam o fluxo de reconexão por QR code
+const QR_CONNECT_PROVIDERS = ['evolution', 'z-api'];
+
 interface ChannelCardProps {
   channel: MessagingChannel;
   routingRule?: LeadRoutingRuleView;
@@ -334,7 +338,7 @@ interface ChannelCardProps {
   isRoutingLoading?: boolean;
 }
 
-function ChannelCard({
+export function ChannelCard({
   channel,
   routingRule,
   boards,
@@ -345,6 +349,9 @@ function ChannelCard({
   isLoading,
   isRoutingLoading,
 }: ChannelCardProps) {
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const usesQrConnect =
+    channel.channelType === 'whatsapp' && QR_CONNECT_PROVIDERS.includes(channel.provider);
   const Icon = CHANNEL_ICONS[channel.channelType] || MessageSquare;
   const StatusIcon = STATUS_ICONS[channel.status];
   const typeInfo = CHANNEL_TYPE_INFO[channel.channelType];
@@ -487,8 +494,8 @@ function ChannelCard({
               Configurar
             </button>
             <button
-              onClick={onToggle}
-              disabled={isLoading || isConnecting}
+              onClick={usesQrConnect && !isConnected ? () => setIsQrModalOpen(true) : onToggle}
+              disabled={isLoading || (isConnecting && !usesQrConnect)}
               className={cn(
                 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50',
                 isConnected
@@ -653,6 +660,14 @@ function ChannelCard({
         )}
       </div>
 
+      {usesQrConnect && (
+        <QrConnectModal
+          channelId={channel.id}
+          channelName={channel.name}
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

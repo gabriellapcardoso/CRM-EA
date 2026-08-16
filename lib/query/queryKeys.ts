@@ -72,6 +72,8 @@ export const queryKeys = {
         byType: (type: string) => [...base.all, 'byType', type] as const,
         /** Connected channels only */
         connected: () => [...base.all, 'connected'] as const,
+        /** Lightweight status-only poll target (no credentials) — used by QrConnectModal */
+        connectionStatus: (channelId: string) => [...base.all, 'connectionStatus', channelId] as const,
     })),
 
     /**

@@ -13,9 +13,16 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+const QR_SUPPORTED_PROVIDERS = ['z-api', 'evolution'] as const;
+type QrSupportedProvider = (typeof QR_SUPPORTED_PROVIDERS)[number];
+
+function isQrSupportedProvider(provider: string): provider is QrSupportedProvider {
+  return (QR_SUPPORTED_PROVIDERS as readonly string[]).includes(provider);
+}
+
 /**
  * POST /api/messaging/channels/[id]/qr-code
- * Obtém QR code para conexão do canal Z-API
+ * Obtém QR code para conexão do canal WhatsApp (Z-API ou Evolution)
  */
 export async function POST(req: Request, { params }: RouteParams) {
   if (!isAllowedOrigin(req)) {
@@ -59,9 +66,9 @@ export async function POST(req: Request, { params }: RouteParams) {
     return json({ error: 'Channel not found' }, 404);
   }
 
-  // Verificar se é canal Z-API
-  if (channel.channel_type !== 'whatsapp' || channel.provider !== 'z-api') {
-    return json({ error: 'QR code is only available for Z-API WhatsApp channels' }, 400);
+  // Verificar se o provider suporta QR code
+  if (channel.channel_type !== 'whatsapp' || !isQrSupportedProvider(channel.provider)) {
+    return json({ error: 'QR code is only available for z-api or evolution WhatsApp channels' }, 400);
   }
 
   // Verificar se já está conectado
@@ -70,32 +77,37 @@ export async function POST(req: Request, { params }: RouteParams) {
   }
 
   try {
-    // Criar provider e obter QR code
-    const provider = ChannelProviderFactory.createProvider('whatsapp', 'z-api');
+    // Criar provider e obter QR code (dinâmico — z-api ou evolution)
+    const provider = ChannelProviderFactory.createProvider('whatsapp', channel.provider);
 
     await provider.initialize({
       channelId: channel.id,
       channelType: 'whatsapp',
-      provider: 'z-api',
+      provider: channel.provider,
       externalIdentifier: channel.external_identifier,
       credentials: channel.credentials as Record<string, string>,
     });
 
-    // Chamar método específico do Z-API provider
     if (!('getQrCode' in provider)) {
       return json({ error: 'Provider does not support QR code' }, 500);
     }
 
     const qrResult = await (provider as { getQrCode: () => Promise<{ qrCode: string; expiresAt: string }> }).getQrCode();
 
-    // Atualizar status do canal para waiting_qr
-    await supabase
+    // Atualizar status do canal para waiting_qr — logar falha de update sem
+    // quebrar a resposta (o QR já foi gerado no provider, o admin ainda pode
+    // escaneá-lo mesmo que o status no banco fique desatualizado)
+    const { error: updateError } = await supabase
       .from('messaging_channels')
       .update({
         status: 'waiting_qr',
         updated_at: new Date().toISOString(),
       })
       .eq('id', channelId);
+
+    if (updateError) {
+      console.error('Failed to update channel status to waiting_qr:', updateError);
+    }
 
     return json({
       qrCode: qrResult.qrCode,

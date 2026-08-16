@@ -391,7 +391,10 @@ Deno.serve(async (req) => {
     .from("messaging_channels")
     .select("id, organization_id, business_unit_id, external_identifier, status, credentials")
     .eq("id", channelId)
-    .in("status", ["connected", "active"])
+    // waiting_qr: canal aguardando o scan do QR — sem isso, o próprio
+    // connection.update que confirma a conexão é descartado aqui e o
+    // canal nunca sai de waiting_qr (ver TODOS.md / issue #3).
+    .in("status", ["connected", "active", "waiting_qr"])
     .maybeSingle();
 
   if (channelErr) {
