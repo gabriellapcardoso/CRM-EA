@@ -1,5 +1,31 @@
 # TODOS
 
+## Messaging
+
+### Botão "Conectar" do canal WhatsApp não conecta nada (crítico, achado em produção)
+
+**Status:** spec completo e revisado, filado como [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3) — não implementar direto a partir deste TODO, ler o issue (passou por `/plan-eng-review`, escopo mudou depois do outside voice achar 3 bloqueios reais na primeira versão).
+
+**What:** botão "Conectar" só faz `UPDATE status='connecting'` no banco, nunca chama a Evolution API nem mostra QR code. Detalhes completos, arquivos exatos e escopo corrigido estão no issue #3.
+
+**Why:** Reconectar um canal WhatsApp pela UI é impossível hoje. Canal real da aaagência preso em `connecting` desde antes desta investigação.
+
+**Context:** Achado por `/qa` dirigido ao fluxo de conexão WhatsApp, 2026-08-15. Relatório em `.gstack/qa-reports/qa-report-whatsapp-connect-2026-08-15.md`. Spec revisado após `/plan-eng-review` achar que provider vinha hardcoded errado no endpoint e que o webhook descartaria o próprio evento de conexão — ambos corrigidos no issue.
+**Effort:** M (~9h, revisado de ~6h)
+**Priority:** P0
+**Depends on:** None
+
+### `EvolutionWhatsAppProvider.disconnect()` não desconecta de verdade (só loga)
+
+**What:** `lib/messaging/providers/whatsapp/evolution.provider.ts:203-207` — `disconnect()` apenas escreve um log, nunca chama a Evolution API pra encerrar a sessão. A sessão continua ativa no servidor Evolution mesmo depois do admin clicar "Desconectar" no CRM.
+
+**Why:** Botão "Desconectar" no CRM mente sobre o que faz — usuário acha que desconectou o WhatsApp, mas a sessão continua viva do lado da Evolution. Se alguém reconectar outro número na mesma instância sem saber disso, pode causar comportamento inesperado (mensagens indo pro número errado, sessão duplicada).
+
+**Context:** Achado durante `/plan-eng-review` do issue #3 (fix do botão Conectar), 2026-08-15 — fora de escopo daquele fix, documentado ali como limitação conhecida.
+**Effort:** S — precisa investigar se a Evolution API tem endpoint de logout/disconnect de instância (`/instance/logout/{instanceName}` é comum nesse tipo de API, não confirmado ainda)
+**Priority:** P2
+**Depends on:** None
+
 ## Infrastructure
 
 ### `lib/supabase.ts` sombreia `lib/supabase/index.ts` — barrel morto, nunca alcançado por nenhum import
