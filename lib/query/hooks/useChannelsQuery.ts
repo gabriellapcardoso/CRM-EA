@@ -261,3 +261,50 @@ export function useToggleChannelStatusMutation() {
     },
   });
 }
+
+/**
+ * Request a QR code to (re)connect a WhatsApp channel (z-api or evolution).
+ * Calls the real provider via the API route — unlike useToggleChannelStatusMutation,
+ * this actually talks to the messaging provider.
+ */
+export function useConnectChannelMutation() {
+  return useMutation({
+    mutationFn: async (channelId: string): Promise<{ qrCode: string; expiresAt: string }> => {
+      const res = await fetch(`/api/messaging/channels/${channelId}/qr-code`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Failed to get QR code' }));
+        throw new Error(body.error ?? 'Failed to get QR code');
+      }
+
+      return res.json();
+    },
+  });
+}
+
+/**
+ * Lightweight status-only poll target for QrConnectModal.
+ * Deliberately does NOT reuse useChannelQuery — that hook selects '*',
+ * including `credentials`, which would leak API keys to the browser on
+ * every poll tick.
+ */
+export function useChannelConnectionStatus(channelId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.messagingChannels.connectionStatus(channelId),
+    queryFn: async (): Promise<{ id: string; status: string; updated_at: string }> => {
+      const { data, error } = await supabase
+        .from('messaging_channels')
+        .select('id, status, updated_at')
+        .eq('id', channelId)
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    },
+    enabled,
+    refetchInterval: enabled ? 3000 : false,
+  });
+}
