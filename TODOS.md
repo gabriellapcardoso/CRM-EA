@@ -2,16 +2,25 @@
 
 ## Messaging
 
-### Botão "Conectar" do canal WhatsApp não conecta nada (crítico, achado em produção)
+### Botão "Conectar" do canal WhatsApp não conecta nada — CÓDIGO CORRIGIDO, bloqueado por infra externa
 
-**Status:** spec completo e revisado, filado como [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3) — não implementar direto a partir deste TODO, ler o issue (passou por `/plan-eng-review`, escopo mudou depois do outside voice achar 3 bloqueios reais na primeira versão).
+**Status:** código mergeado ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4), [PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5) — fecha [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3)). Testado ao vivo em produção 2026-08-17: modal abre, gera QR, mostra erro corretamente quando falha — **mas a Evolution API do servidor da agência está com problema próprio**, ver item abaixo ("Instância Evolution 'aaagencia' não existe no servidor"). Reconexão real do canal `+553131619138` continua impossível até esse segundo problema ser resolvido.
 
-**What:** botão "Conectar" só faz `UPDATE status='connecting'` no banco, nunca chama a Evolution API nem mostra QR code. Detalhes completos, arquivos exatos e escopo corrigido estão no issue #3.
+**What:** botão "Conectar" agora chama a Evolution/Z-API de verdade e mostra QR code num modal — comportamento antigo (só `UPDATE status='connecting'`) corrigido.
 
-**Why:** Reconectar um canal WhatsApp pela UI é impossível hoje. Canal real da aaagência preso em `connecting` desde antes desta investigação.
+**Context:** Achado por `/qa`, 2026-08-15. Spec revisado via `/plan-eng-review` (outside voice achou 3 bloqueios reais antes do código ser escrito). Testado em produção 2026-08-17: achado um bug novo (modal travava em "Gerando QR code..." pra sempre em erro) e corrigido no mesmo dia (PR #5). Nesse teste, apareceu o problema de infra documentado abaixo.
+**Effort:** Concluído (código)
+**Priority:** —
+**Depends on:** None
 
-**Context:** Achado por `/qa` dirigido ao fluxo de conexão WhatsApp, 2026-08-15. Relatório em `.gstack/qa-reports/qa-report-whatsapp-connect-2026-08-15.md`. Spec revisado após `/plan-eng-review` achar que provider vinha hardcoded errado no endpoint e que o webhook descartaria o próprio evento de conexão — ambos corrigidos no issue.
-**Effort:** M (~9h, revisado de ~6h)
+### Instância Evolution "aaagencia" não existe no servidor (bloqueia reconexão do canal real)
+
+**What:** `GET https://evolutionapi.gabriellapcardoso.com.br/instance/connect?instanceName=aaagencia` retorna `404 {"message":["Cannot GET /instance/connect?instanceName=aaagencia"]}`. Confirmado nos logs de runtime do Vercel ao testar o fluxo de QR code em produção — o endpoint do CRM está correto, mas o servidor Evolution não reconhece essa instância nesse endpoint.
+
+**Why:** Sem isso, o canal WhatsApp real da aaagência (`+553131619138`) nunca reconecta pela UI, mesmo com o fluxo de QR code já corrigido (issue #3, PRs #4 e #5). É a última coisa faltando pra esse canal voltar a funcionar — e é infra externa, não código do CRM.
+
+**Context:** Achado testando o PR #4 ao vivo, 2026-08-17. Hipóteses possíveis (não investigadas): instância foi deletada/renomeada no servidor Evolution, versão da Evolution API mudou o path desse endpoint, ou serverUrl/instanceName salvos nas credentials do canal estão desatualizados. Precisa acesso direto ao painel/servidor Evolution (`evolutionapi.gabriellapcardoso.com.br`) pra diagnosticar — fora do alcance de um agente de código.
+**Effort:** Desconhecido — depende do diagnóstico
 **Priority:** P0
 **Depends on:** None
 
