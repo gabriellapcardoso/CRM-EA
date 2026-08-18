@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): botão "Conectar" do canal WhatsApp gera e exibe QR code de verdade — 2026-08-17
+
+Botão "Conectar" (canais Evolution/Z-API) só fazia `UPDATE status='connecting'`
+direto no Supabase, sem nunca chamar a Evolution/Z-API nem mostrar QR code —
+canal ficava preso em `connecting` pra sempre, sem jeito de reconectar pela
+UI. Achado por `/qa` dirigido ao fluxo de conexão (2026-08-15), spec revisado
+via `/plan-eng-review` — outside voice (codex) achou 3 bloqueios reais antes
+de qualquer código ser escrito: `qr-code/route.ts` instanciava sempre o
+provider `z-api` hardcoded (mesmo pra canal Evolution), o webhook
+`messaging-webhook-evolution` só aceitava canal com `status IN
+('connected','active')` no lookup — descartando o próprio `connection.update`
+que confirmaria o scan do QR — e o botão já vinha `disabled` no estado real
+do canal (`connecting`). Os três corrigidos antes da implementação (issue #3,
+[PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4)).
+
+Novo `QrConnectModal` controla seu próprio fetch/retry e faz polling (via
+`refetchInterval` nativo do TanStack Query, não `setInterval` manual)
+enquanto aberto, fechando sozinho quando o canal vira `connected`. Nova query
+`useChannelConnectionStatus` dedicada ao polling — `useChannelQuery`
+existente faz `select('*')` e vazaria `credentials` (API keys) pro browser a
+cada poll se reusada aqui. Gate por `channelType`/`provider` garante que só
+canais WhatsApp Evolution/Z-API entram nesse fluxo novo — outros tipos de
+canal mantêm o `onToggle` antigo, sem regressão.
+
+Testado ao vivo em produção no mesmo dia do merge: achado um segundo bug
+(modal travava em "Gerando QR code..." pra sempre quando o endpoint
+retornava erro — `connectMutation.isPending`/`isError` não refletiam de
+forma confiável no render) e corrigido no mesmo dia
+([PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5)): `QrConnectModal`
+reescrito pra estado local explícito (`idle`/`loading`/`success`/`error`)
+setado direto nos callbacks `onSuccess`/`onError` do `mutate()`, em vez de
+derivar do estado da mutation; `retry: 0` explícito (retry automático
+silencioso só atrasava a mensagem de erro chegando na tela).
+
+Causa raiz final do canal real (`+55...`, aaagência) não era código nem
+infra quebrada: `credentials.instanceName` salvo no banco tinha typo
+(`"aaagencia"`, sem acento) contra o nome real da instância no servidor
+Evolution (`"aaagência"`, com acento, confirmado no painel `/manager`). O
+WhatsApp já estava conectado do lado da Evolution o tempo todo — corrigido
+com um `UPDATE` direto no `instanceName`, canal confirmado `Conectado` na UI.
+
 ### feat(settings): toggle de admin para o envio automático de proposta por WhatsApp — 2026-08-15
 
 `organization_settings.auto_send_proposal_whatsapp` (flag do disparo
