@@ -34,28 +34,37 @@ function normalizeQrSrc(qrCode: string): string {
   return qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`;
 }
 
+type FetchState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; qrCode: string; expiresAt: string }
+  | { status: 'error'; message: string };
+
 export function QrConnectModal({ channelId, channelName, isOpen, onClose }: QrConnectModalProps) {
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [state, setState] = useState<FetchState>({ status: 'idle' });
   const [now, setNow] = useState(() => Date.now());
 
   const connectMutation = useConnectChannelMutation();
   const statusQuery = useChannelConnectionStatus(channelId, isOpen);
 
-  // Busca o QR ao abrir o modal
+  const fetchQrCode = () => {
+    setState({ status: 'loading' });
+    connectMutation.mutate(channelId, {
+      onSuccess: (data) => setState({ status: 'success', qrCode: data.qrCode, expiresAt: data.expiresAt }),
+      onError: (error) =>
+        setState({ status: 'error', message: error instanceof Error ? error.message : 'Erro ao gerar QR code.' }),
+    });
+  };
+
+  // Busca o QR ao abrir o modal. state.status leva a ref para fora do array de
+  // deps de propósito — reabrir precisa refazer o fetch mesmo se a última
+  // tentativa terminou em erro; ver fetchQrCode acima pro fluxo de retry.
   useEffect(() => {
     if (!isOpen) {
-      setQrCode(null);
-      setExpiresAt(null);
+      setState({ status: 'idle' });
       return;
     }
-
-    connectMutation.mutate(channelId, {
-      onSuccess: (data) => {
-        setQrCode(data.qrCode);
-        setExpiresAt(data.expiresAt);
-      },
-    });
+    fetchQrCode();
   }, [isOpen, channelId]);
 
   // Tick pra recalcular expiração enquanto o modal está aberto
@@ -72,36 +81,23 @@ export function QrConnectModal({ channelId, channelName, isOpen, onClose }: QrCo
     }
   }, [isOpen, statusQuery.data?.status, onClose]);
 
-  const isExpired = expiresAt ? now >= new Date(expiresAt).getTime() : false;
+  const isExpired = state.status === 'success' ? now >= new Date(state.expiresAt).getTime() : false;
 
-  const handleRegenerate = () => {
-    setQrCode(null);
-    setExpiresAt(null);
-    connectMutation.mutate(channelId, {
-      onSuccess: (data) => {
-        setQrCode(data.qrCode);
-        setExpiresAt(data.expiresAt);
-      },
-    });
-  };
+  const handleRegenerate = () => fetchQrCode();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Conectar ${channelName}`} size="sm">
       <div className="flex flex-col items-center gap-4 py-2">
-        {connectMutation.isPending && (
+        {state.status === 'loading' && (
           <div className="flex flex-col items-center gap-3 py-8">
             <RefreshCw className="w-6 h-6 text-slate-400 animate-spin" />
             <p className="text-sm text-slate-500 dark:text-slate-400">Gerando QR code...</p>
           </div>
         )}
 
-        {connectMutation.isError && !connectMutation.isPending && (
+        {state.status === 'error' && (
           <div className="flex flex-col items-center gap-3 py-6">
-            <p className="text-sm text-red-600 dark:text-red-400 text-center">
-              {connectMutation.error instanceof Error
-                ? connectMutation.error.message
-                : 'Erro ao gerar QR code.'}
-            </p>
+            <p className="text-sm text-red-600 dark:text-red-400 text-center">{state.message}</p>
             <button
               type="button"
               onClick={handleRegenerate}
@@ -113,7 +109,7 @@ export function QrConnectModal({ channelId, channelName, isOpen, onClose }: QrCo
           </div>
         )}
 
-        {qrCode && !connectMutation.isPending && !connectMutation.isError && (
+        {state.status === 'success' && (
           <>
             {isExpired ? (
               <div className="flex flex-col items-center gap-3 py-6">
@@ -131,7 +127,7 @@ export function QrConnectModal({ channelId, channelName, isOpen, onClose }: QrCo
             ) : (
               <>
                 <img
-                  src={normalizeQrSrc(qrCode)}
+                  src={normalizeQrSrc(state.qrCode)}
                   alt="QR code para conectar o WhatsApp"
                   className="w-56 h-56 rounded-lg border border-slate-200 dark:border-white/10"
                 />

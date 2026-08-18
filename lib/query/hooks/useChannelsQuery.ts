@@ -269,6 +269,10 @@ export function useToggleChannelStatusMutation() {
  */
 export function useConnectChannelMutation() {
   return useMutation({
+    // Retry explícito 0: o caller (QrConnectModal) já oferece "tentar novamente"
+    // manual; um retry automático silencioso só atrasa a mensagem de erro chegando
+    // na tela sem ganhar nada (erro de provider não se resolve sozinho em 1s).
+    retry: 0,
     mutationFn: async (channelId: string): Promise<{ qrCode: string; expiresAt: string }> => {
       const res = await fetch(`/api/messaging/channels/${channelId}/qr-code`, {
         method: 'POST',
