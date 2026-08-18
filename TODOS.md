@@ -2,27 +2,19 @@
 
 ## Messaging
 
-### Botão "Conectar" do canal WhatsApp não conecta nada — CÓDIGO CORRIGIDO, bloqueado por infra externa
+### ~~Botão "Conectar" do canal WhatsApp não conecta nada~~ — RESOLVIDO
 
-**Status:** código mergeado ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4), [PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5) — fecha [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3)). Testado ao vivo em produção 2026-08-17: modal abre, gera QR, mostra erro corretamente quando falha — **mas a Evolution API do servidor da agência está com problema próprio**, ver item abaixo ("Instância Evolution 'aaagencia' não existe no servidor"). Reconexão real do canal `[número do canal]` continua impossível até esse segundo problema ser resolvido.
+**Status:** RESOLVIDO 2026-08-17. Código corrigido ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4), [PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5) — fechou [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3)) + causa raiz real identificada e corrigida (ver item abaixo, "instanceName com acento errado"). Canal `evolution` da aaagência confirmado `Conectado` na UI em produção.
 
-**What:** botão "Conectar" agora chama a Evolution/Z-API de verdade e mostra QR code num modal — comportamento antigo (só `UPDATE status='connecting'`) corrigido.
+**What:** botão "Conectar" agora chama a Evolution/Z-API de verdade e mostra QR code num modal.
 
-**Context:** Achado por `/qa`, 2026-08-15. Spec revisado via `/plan-eng-review` (outside voice achou 3 bloqueios reais antes do código ser escrito). Testado em produção 2026-08-17: achado um bug novo (modal travava em "Gerando QR code..." pra sempre em erro) e corrigido no mesmo dia (PR #5). Nesse teste, apareceu o problema de infra documentado abaixo.
-**Effort:** Concluído (código)
-**Priority:** —
-**Depends on:** None
+**Context:** Achado por `/qa`, 2026-08-15. Spec revisado via `/plan-eng-review`. Testado em produção 2026-08-17, achado e corrigido um bug novo no mesmo dia (modal travava em erro, PR #5) e a causa raiz real do canal específico (mismatch de nome de instância, item abaixo).
 
-### Instância Evolution "aaagencia" não existe no servidor (bloqueia reconexão do canal real)
+### ~~Instância Evolution "aaagencia" não existe no servidor~~ — RESOLVIDO (era typo de configuração)
 
-**What:** `GET https://evolutionapi.gabriellapcardoso.com.br/instance/connect?instanceName=aaagencia` retorna `404 {"message":["Cannot GET /instance/connect?instanceName=aaagencia"]}`. Confirmado nos logs de runtime do Vercel ao testar o fluxo de QR code em produção — o endpoint do CRM está correto, mas o servidor Evolution não reconhece essa instância nesse endpoint.
+**Status:** RESOLVIDO 2026-08-17. Causa raiz: `credentials.instanceName` salvo no canal era `"aaagencia"` (sem acento), mas a instância real no servidor Evolution se chama `"aaagência"` (com acento — confirmado no painel `/manager`). O WhatsApp já estava conectado do lado da Evolution o tempo todo; o CRM só nunca conseguia falar com o endpoint certo por causa do nome errado. Corrigido com `UPDATE messaging_channels SET credentials = jsonb_set(credentials, '{instanceName}', '"aaagência"')`. **Não era bug de código nem do servidor** — nunca foi infra quebrada, era erro de digitação de quando o canal foi cadastrado no CRM.
 
-**Why:** Sem isso, o canal WhatsApp real da aaagência (`[número do canal]`) nunca reconecta pela UI, mesmo com o fluxo de QR code já corrigido (issue #3, PRs #4 e #5). É a última coisa faltando pra esse canal voltar a funcionar — e é infra externa, não código do CRM.
-
-**Context:** Achado testando o PR #4 ao vivo, 2026-08-17. Hipóteses possíveis (não investigadas): instância foi deletada/renomeada no servidor Evolution, versão da Evolution API mudou o path desse endpoint, ou serverUrl/instanceName salvos nas credentials do canal estão desatualizados. Precisa acesso direto ao painel/servidor Evolution (`evolutionapi.gabriellapcardoso.com.br`) pra diagnosticar — fora do alcance de um agente de código.
-**Effort:** Desconhecido — depende do diagnóstico
-**Priority:** P0
-**Depends on:** None
+**Context:** Achado testando o PR #4 ao vivo, 2026-08-17, confirmado acessando o painel `/manager` da Evolution diretamente.
 
 ### `EvolutionWhatsAppProvider.disconnect()` não desconecta de verdade (só loga)
 
