@@ -4,7 +4,7 @@
 
 ### Botão "Conectar" do canal WhatsApp não conecta nada — CÓDIGO CORRIGIDO, bloqueado por infra externa
 
-**Status:** código mergeado ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4), [PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5) — fecha [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3)). Testado ao vivo em produção 2026-08-17: modal abre, gera QR, mostra erro corretamente quando falha — **mas a Evolution API do servidor da agência está com problema próprio**, ver item abaixo ("Instância Evolution 'aaagencia' não existe no servidor"). Reconexão real do canal `+553131619138` continua impossível até esse segundo problema ser resolvido.
+**Status:** código mergeado ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4), [PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5) — fecha [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3)). Testado ao vivo em produção 2026-08-17: modal abre, gera QR, mostra erro corretamente quando falha — **mas a Evolution API do servidor da agência está com problema próprio**, ver item abaixo ("Instância Evolution 'aaagencia' não existe no servidor"). Reconexão real do canal `[número do canal]` continua impossível até esse segundo problema ser resolvido.
 
 **What:** botão "Conectar" agora chama a Evolution/Z-API de verdade e mostra QR code num modal — comportamento antigo (só `UPDATE status='connecting'`) corrigido.
 
@@ -17,7 +17,7 @@
 
 **What:** `GET https://evolutionapi.gabriellapcardoso.com.br/instance/connect?instanceName=aaagencia` retorna `404 {"message":["Cannot GET /instance/connect?instanceName=aaagencia"]}`. Confirmado nos logs de runtime do Vercel ao testar o fluxo de QR code em produção — o endpoint do CRM está correto, mas o servidor Evolution não reconhece essa instância nesse endpoint.
 
-**Why:** Sem isso, o canal WhatsApp real da aaagência (`+553131619138`) nunca reconecta pela UI, mesmo com o fluxo de QR code já corrigido (issue #3, PRs #4 e #5). É a última coisa faltando pra esse canal voltar a funcionar — e é infra externa, não código do CRM.
+**Why:** Sem isso, o canal WhatsApp real da aaagência (`[número do canal]`) nunca reconecta pela UI, mesmo com o fluxo de QR code já corrigido (issue #3, PRs #4 e #5). É a última coisa faltando pra esse canal voltar a funcionar — e é infra externa, não código do CRM.
 
 **Context:** Achado testando o PR #4 ao vivo, 2026-08-17. Hipóteses possíveis (não investigadas): instância foi deletada/renomeada no servidor Evolution, versão da Evolution API mudou o path desse endpoint, ou serverUrl/instanceName salvos nas credentials do canal estão desatualizados. Precisa acesso direto ao painel/servidor Evolution (`evolutionapi.gabriellapcardoso.com.br`) pra diagnosticar — fora do alcance de um agente de código.
 **Effort:** Desconhecido — depende do diagnóstico
