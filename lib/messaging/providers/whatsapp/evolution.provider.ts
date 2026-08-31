@@ -278,9 +278,21 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
    * @throws Error if QR code cannot be retrieved
    */
   async getQrCode(): Promise<QrCodeResult> {
+    // Endpoint correto é /instance/connect/{instance} (path param) — a doc
+    // oficial da Evolution não tem `?instanceName=` na v2. Achado ao vivo em
+    // 2026-08-31: dava 404 "Cannot GET /instance/connect?instanceName=..."
+    // porque essa rota nunca existiu no servidor.
+    //
+    // `number` é obrigatório na doc oficial e confirmado ao vivo: sem ele a
+    // Evolution devolve 200 com corpo vazio (`{}`) e a instância nunca sai de
+    // `close`, mesmo com credenciais Baileys válidas salvas de antes do
+    // logout — com `number`, ela reconecta na hora usando a sessão salva,
+    // sem precisar de QR novo nenhum.
+    const number = this.config?.externalIdentifier?.replace(/\D/g, '');
+    const query = number ? `?number=${number}` : '';
     const response = await this.request<EvolutionQrCodeResponse>(
       'GET',
-      `/instance/connect?instanceName=${this.instanceName}`
+      `/instance/connect/${this.instanceName}${query}`
     );
 
     if (response.error) {
