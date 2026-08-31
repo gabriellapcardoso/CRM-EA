@@ -263,6 +263,52 @@ export function useToggleChannelStatusMutation() {
 }
 
 /**
+ * Result of POST /api/messaging/channels/[id]/disconnect.
+ * `providerDisconnected: false` significa que o canal foi marcado como
+ * desconectado no CRM, mas a sessão no provider pode continuar ativa.
+ * `persisted: false` significa que o UPDATE no banco falhou — o status
+ * pode não refletir a desconexão real mesmo com providerDisconnected=true.
+ */
+export interface DisconnectChannelResult {
+  success: true;
+  providerDisconnected: boolean;
+  persisted: boolean;
+  warning?: string;
+}
+
+/**
+ * Disconnect a channel for real: encerra a sessão no provider (Evolution
+ * logout / Z-API disconnect) e marca o canal como desconectado.
+ *
+ * Diferente de useToggleChannelStatusMutation, que só escreve o status no
+ * banco e deixa a sessão viva do lado do provider.
+ */
+export function useDisconnectChannelMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    retry: 0,
+    mutationFn: async (channelId: string): Promise<DisconnectChannelResult> => {
+      const res = await fetch(`/api/messaging/channels/${channelId}/disconnect`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Failed to disconnect channel' }));
+        throw new Error(body.error ?? 'Failed to disconnect channel');
+      }
+
+      return res.json();
+    },
+    onSettled: (_data, _error, channelId) => {
+      queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('messagingChannels') });
+      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.detail(channelId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.connected() });
+    },
+  });
+}
+
+/**
  * Request a QR code to (re)connect a WhatsApp channel (z-api or evolution).
  * Calls the real provider via the API route — unlike useToggleChannelStatusMutation,
  * this actually talks to the messaging provider.
