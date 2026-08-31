@@ -200,10 +200,21 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
     });
   }
 
+  /**
+   * Log the WhatsApp session out on the Evolution server.
+   *
+   * `DELETE /instance/logout/{instance}` encerra a sessão sem apagar a
+   * instância — reconectar depois é só pedir um QR code novo pela mesma
+   * instância. Sem esta chamada o "Desconectar" do CRM só mudaria o status no
+   * banco, deixando a sessão viva do lado da Evolution.
+   *
+   * @throws Error se a Evolution recusar o logout — o caller decide o que
+   * mostrar pro admin (nunca engolir, senão a UI volta a mentir).
+   */
   async disconnect(): Promise<void> {
-    // Evolution API does not require an explicit disconnect call.
-    // The session persists on the self-hosted server.
-    this.log('info', 'Evolution API provider disconnected');
+    await this.request('DELETE', `/instance/logout/${this.instanceName}`);
+    this.log('info', 'Evolution API session logged out', { instanceName: this.instanceName });
+    await super.disconnect();
   }
 
   // ---------------------------------------------------------------------------
@@ -922,6 +933,13 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
 
     if (!response.ok) {
       throw new Error(`Evolution API request failed: ${response.status} ${responseText}`);
+    }
+
+    // Sucesso com corpo vazio (ex: 204 em DELETE) não é resposta malformada —
+    // sem este check, um logout que funcionou de verdade vira "erro" só por
+    // não ter JSON pra parsear.
+    if (responseText.trim() === '') {
+      return {} as T;
     }
 
     try {
