@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): reconectar após "Desconectar" quebrava com 404 ou marcava canal são como erro — 2026-08-31
+
+Achado por `/qa` ao vivo (não simulado) enquanto verificava o fix do botão
+"Desconectar" logo abaixo — testado contra o WhatsApp real da aaagência em
+produção, com autorização, sabendo que derrubaria a sessão de verdade.
+
+Dois bugs em cadeia no fluxo de reconexão:
+
+1. `EvolutionWhatsAppProvider.getQrCode()` chamava
+   `GET /instance/connect?instanceName=X` — rota que nunca existiu no
+   servidor (404 "Cannot GET..."). Endpoint correto, confirmado na doc
+   oficial: `GET /instance/connect/{instance}` (path param), com `number`
+   como query **obrigatória**.
+2. Mesmo com o endpoint certo, sem `number` a Evolution respondia `200 {}`
+   (corpo vazio) e a instância nunca saía de `close` — apesar de ter sessão
+   Baileys válida salva do logout anterior. Com `number`, ela reconecta na
+   hora, sem QR nenhum. `qr-code/route.ts` não esperava esse caminho e
+   gravava `status='error'` num canal que tinha acabado de reconectar de
+   verdade — reproduzido ao vivo: banco disse `error`, Evolution disse
+   `open`, dessincronia real em produção, reconciliada manualmente via SQL
+   antes do fix da rota estar pronto.
+
+Fix: endpoint + `number` corrigidos em `getQrCode()`; `qr-code/route.ts`
+agora confere `provider.getStatus()` de verdade (genérico, qualquer
+provider) antes de marcar erro — confirma `connected` → grava `connected` e
+retorna `{alreadyConnected:true}` em vez de 500. `QrConnectModal` ganhou um
+estado `reconnected` que só mostra uma mensagem tranquila e deixa o polling
+que já existia (`useChannelConnectionStatus`, a cada 3s) fechar o modal
+sozinho — sem duplicar a lógica de detecção de "conectado".
+
+Isso não é uma borda rara: como o fix de "Desconectar" agora faz logout
+real, reconectar em seguida É o caminho mais comum, não exceção.
+
+Testes: `test/whatsappQrCodeRoute.test.ts`.
+
 ### fix(messaging): botão "Desconectar" encerra a sessão no provider de verdade — 2026-08-31
 
 Espelho do bug do "Conectar" ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4)):

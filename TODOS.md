@@ -2,6 +2,20 @@
 
 ## Messaging
 
+### ~~getQrCode() usava endpoint errado + rota marcava canal conectado como erro~~ — RESOLVIDO
+
+**Status:** RESOLVIDO 2026-08-31, achado por `/qa` ao vivo (não em teste isolado — contra o WhatsApp real da aaagência em produção) enquanto verificava o fix do botão "Desconectar".
+
+**What:** dois bugs em cadeia no fluxo de reconexão:
+1. `EvolutionWhatsAppProvider.getQrCode()` chamava `GET /instance/connect?instanceName=X` — endpoint que nunca existiu (404). Correto: `GET /instance/connect/{instance}?number=...` (path param + query obrigatória, confirmado na doc oficial).
+2. Com o endpoint certo mas sem `number`: Evolution devolvia `200 {}` (corpo vazio) sem nunca sair de `close`, mesmo com sessão salva válida. Com `number`: reconecta na hora sem QR — e a rota `qr-code/route.ts`, que não esperava esse caminho, gravava `status='error'` num canal que na verdade tinha acabado de conectar.
+
+**Fix:** endpoint + `number` corrigidos; rota agora confere `provider.getStatus()` de verdade antes de marcar erro — se confirma `connected`, grava `connected` e retorna `{alreadyConnected:true}`; `QrConnectModal` ganhou estado `reconnected` que aproveita o polling já existente pra fechar sozinho.
+
+**Por que importa:** é a continuação direta do fix de "Desconectar" (que agora faz logout real) — reconectar logo em seguida é o caminho mais comum, não uma borda rara. Sem este fix, todo ciclo desconectar→reconectar quebraria a UI mostrando "erro" num canal são.
+
+**Context:** Testes em `test/whatsappQrCodeRoute.test.ts`. Reproduzido e corrigido ao vivo contra `evolutionapi.gabriellapcardoso.com.br` — status do banco ficou temporariamente dessincronizado (`error` vs `open` real) e foi reconciliado manualmente via SQL antes do fix da rota estar testado em produção.
+
 ### ~~Botão "Conectar" do canal WhatsApp não conecta nada~~ — RESOLVIDO
 
 **Status:** RESOLVIDO 2026-08-17. Código corrigido ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4), [PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5) — fechou [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3)) + causa raiz real identificada e corrigida (ver item abaixo, "instanceName com acento errado"). Canal `evolution` da aaagência confirmado `Conectado` na UI em produção.
