@@ -319,7 +319,9 @@ export function useConnectChannelMutation() {
     // manual; um retry automático silencioso só atrasa a mensagem de erro chegando
     // na tela sem ganhar nada (erro de provider não se resolve sozinho em 1s).
     retry: 0,
-    mutationFn: async (channelId: string): Promise<{ qrCode: string; expiresAt: string }> => {
+    mutationFn: async (
+      channelId: string
+    ): Promise<{ qrCode: string; expiresAt: string } | { alreadyConnected: true }> => {
       const res = await fetch(`/api/messaging/channels/${channelId}/qr-code`, {
         method: 'POST',
       });

@@ -38,6 +38,7 @@ type FetchState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'success'; qrCode: string; expiresAt: string }
+  | { status: 'reconnected' }
   | { status: 'error'; message: string };
 
 export function QrConnectModal({ channelId, channelName, isOpen, onClose }: QrConnectModalProps) {
@@ -50,7 +51,10 @@ export function QrConnectModal({ channelId, channelName, isOpen, onClose }: QrCo
   const fetchQrCode = () => {
     setState({ status: 'loading' });
     connectMutation.mutate(channelId, {
-      onSuccess: (data) => setState({ status: 'success', qrCode: data.qrCode, expiresAt: data.expiresAt }),
+      onSuccess: (data) =>
+        'alreadyConnected' in data
+          ? setState({ status: 'reconnected' })
+          : setState({ status: 'success', qrCode: data.qrCode, expiresAt: data.expiresAt }),
       onError: (error) =>
         setState({ status: 'error', message: error instanceof Error ? error.message : 'Erro ao gerar QR code.' }),
     });
@@ -92,6 +96,15 @@ export function QrConnectModal({ channelId, channelName, isOpen, onClose }: QrCo
           <div className="flex flex-col items-center gap-3 py-8">
             <RefreshCw className="w-6 h-6 text-slate-400 animate-spin" />
             <p className="text-sm text-slate-500 dark:text-slate-400">Gerando QR code...</p>
+          </div>
+        )}
+
+        {state.status === 'reconnected' && (
+          <div className="flex flex-col items-center gap-3 py-8">
+            <Wifi className="w-6 h-6 text-green-500" />
+            <p className="text-sm text-slate-600 dark:text-slate-300 text-center">
+              Sessão reconectada automaticamente, sem precisar de QR code.
+            </p>
           </div>
         )}
 
