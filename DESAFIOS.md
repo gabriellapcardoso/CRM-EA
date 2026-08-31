@@ -53,6 +53,13 @@ redeploy do serviço, porque ele reescreve a spec. Se um domínio voltar a dar
 correção de raiz seria reiniciar o daemon do Docker (`systemctl restart
 docker`), que reconstrói o IPVS — o `dnsrr` é contorno, não cura.
 
+**Confirmado no mesmo dia:** rotacionar a `AUTHENTICATION_API_KEY` da
+Evolution pelo painel Easypanel (Environment → Salvar → Implantar) disparou
+um redeploy do serviço, que reverteu `endpoint-mode` pra `vip` de novo —
+502 voltou imediatamente após o deploy, `dnsrr` reaplicado pra resolver.
+Qualquer clique em "Implantar" no Easypanel, não só reboot da VPS, é gatilho
+suficiente pra reverter o `dnsrr`.
+
 ## Método de serviço sem caller nenhum = botão que mente (2026-08-31)
 
 **O quê:** o TODO dizia "`EvolutionWhatsAppProvider.disconnect()` só loga,
