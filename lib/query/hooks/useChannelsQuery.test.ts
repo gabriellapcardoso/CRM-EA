@@ -19,7 +19,11 @@ vi.mock('@/lib/supabase/client', () => ({
   },
 }));
 
-import { useConnectChannelMutation, useChannelConnectionStatus } from './useChannelsQuery';
+import {
+  useConnectChannelMutation,
+  useChannelConnectionStatus,
+  useDisconnectChannelMutation,
+} from './useChannelsQuery';
 
 function createWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -65,6 +69,63 @@ describe('useConnectChannelMutation', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(Error);
     expect((result.current.error as Error).message).toBe('Channel is already connected');
+  });
+});
+
+describe('useDisconnectChannelMutation', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  it('retorna providerDisconnected e warning quando o provider falha mas o canal foi marcado desconectado', async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, providerDisconnected: false, warning: 'timeout' }),
+    });
+
+    const { result } = renderHook(() => useDisconnectChannelMutation(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      result.current.mutate('channel-1');
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({ success: true, providerDisconnected: false, warning: 'timeout' });
+    expect(global.fetch).toHaveBeenCalledWith('/api/messaging/channels/channel-1/disconnect', { method: 'POST' });
+  });
+
+  it('lança erro com a mensagem do backend quando a resposta não é ok', async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Channel not found' }),
+    });
+
+    const { result } = renderHook(() => useDisconnectChannelMutation(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      result.current.mutate('channel-1');
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as Error).message).toBe('Channel not found');
+  });
+
+  it('usa mensagem padrão quando o corpo do erro não é JSON válido', async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      json: async () => {
+        throw new Error('not json');
+      },
+    });
+
+    const { result } = renderHook(() => useDisconnectChannelMutation(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      result.current.mutate('channel-1');
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as Error).message).toBe('Failed to disconnect channel');
   });
 });
 

@@ -200,10 +200,21 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
     });
   }
 
+  /**
+   * Log the WhatsApp session out on the Evolution server.
+   *
+   * `DELETE /instance/logout/{instance}` encerra a sessão sem apagar a
+   * instância — reconectar depois é só pedir um QR code novo pela mesma
+   * instância. Sem esta chamada o "Desconectar" do CRM só mudaria o status no
+   * banco, deixando a sessão viva do lado da Evolution.
+   *
+   * @throws Error se a Evolution recusar o logout — o caller decide o que
+   * mostrar pro admin (nunca engolir, senão a UI volta a mentir).
+   */
   async disconnect(): Promise<void> {
-    // Evolution API does not require an explicit disconnect call.
-    // The session persists on the self-hosted server.
-    this.log('info', 'Evolution API provider disconnected');
+    await this.request('DELETE', `/instance/logout/${this.instanceName}`);
+    this.log('info', 'Evolution API session logged out', { instanceName: this.instanceName });
+    await super.disconnect();
   }
 
   // ---------------------------------------------------------------------------
@@ -267,9 +278,21 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
    * @throws Error if QR code cannot be retrieved
    */
   async getQrCode(): Promise<QrCodeResult> {
+    // Endpoint correto é /instance/connect/{instance} (path param) — a doc
+    // oficial da Evolution não tem `?instanceName=` na v2. Achado ao vivo em
+    // 2026-08-31: dava 404 "Cannot GET /instance/connect?instanceName=..."
+    // porque essa rota nunca existiu no servidor.
+    //
+    // `number` é obrigatório na doc oficial e confirmado ao vivo: sem ele a
+    // Evolution devolve 200 com corpo vazio (`{}`) e a instância nunca sai de
+    // `close`, mesmo com credenciais Baileys válidas salvas de antes do
+    // logout — com `number`, ela reconecta na hora usando a sessão salva,
+    // sem precisar de QR novo nenhum.
+    const number = this.config?.externalIdentifier?.replace(/\D/g, '');
+    const query = number ? `?number=${number}` : '';
     const response = await this.request<EvolutionQrCodeResponse>(
       'GET',
-      `/instance/connect?instanceName=${this.instanceName}`
+      `/instance/connect/${this.instanceName}${query}`
     );
 
     if (response.error) {
@@ -922,6 +945,13 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
 
     if (!response.ok) {
       throw new Error(`Evolution API request failed: ${response.status} ${responseText}`);
+    }
+
+    // Sucesso com corpo vazio (ex: 204 em DELETE) não é resposta malformada —
+    // sem este check, um logout que funcionou de verdade vira "erro" só por
+    // não ter JSON pra parsear.
+    if (responseText.trim() === '') {
+      return {} as T;
     }
 
     try {

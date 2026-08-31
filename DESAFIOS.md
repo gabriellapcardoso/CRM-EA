@@ -1,5 +1,97 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## VPS suspensa e religada: Evolution volta quebrada em 3 camadas, não 1 (2026-08-31)
+
+**O quê:** VPS Hostinger venceu e foi religada. Pagar
+e ver `state: running` no painel **não** significa Evolution no ar. Depois do
+reboot, três coisas separadas estavam quebradas ao mesmo tempo:
+
+1. **Conflito de porta 80/443** — o Caddy do host (systemd, `enabled`) subiu
+   antes do `easypanel-traefik` e ocupou as portas. Traefik ficou `0/1` com
+   `failed to bind host port 0.0.0.0:80/tcp: address already in use`. Sintoma
+   enganoso: porta 80 respondia (`Server: Caddy`, 308 pra https) e 443 dava
+   `tlsv1 alert internal error` / `no peer certificate available` — parece
+   certificado vencido, **não é**. O Caddyfile só conhecia um domínio
+   `sslip.io` de fallback (app BetAnalytics na 8000); nunca teve o domínio da
+   Evolution. Correção: `systemctl stop caddy && systemctl disable caddy`
+   (backup do Caddyfile salvo em `/root` antes de desabilitar).
+2. **Load balancer do Swarm (IPVS) morto** — com o Traefik no ar, todos os
+   domínios davam 502. DNS interno resolvia o VIP do serviço
+   (`evolution_evolution-api`), mas o container real estava em outro IP
+   da rede overlay e o VIP respondia `Host is unreachable`. Correção sem
+   reiniciar o daemon: `docker service update --force --endpoint-mode dnsrr
+   <serviço>` — com `dnsrr` o DNS entrega o IP do container e o IPVS sai do
+   caminho.
+3. **Redis desconectado** — mesma causa do item 2 (Evolution alcançava o Redis
+   por VIP). Resolveu com `dnsrr` no `evolution_evolution-api-redis`; log passa
+   de `redis disconnected` em loop pra `redis ready`.
+
+**Ordem de diagnóstico que funcionou** (repetir nesta ordem numa próxima):
+`state` da VPS → `docker service ls` (procurar réplica `0/1`) →
+`docker service ps <serviço> --no-trunc` pro erro real → `ss -tlnp | grep ":80 "`
+pra achar quem roubou a porta → de dentro do Traefik,
+`getent hosts <serviço>` + `wget` pro backend, comparando com o IP real do
+container (`docker inspect`).
+
+**Armadilha principal:** cada camada mascara a de baixo. Com a porta tomada, o
+erro parece de TLS/certificado. Com o TLS resolvido, o 502 parece de aplicação.
+A Evolution respondia 200 em `localhost:8080` dentro do container o tempo todo —
+o container nunca foi o problema.
+
+**Serviços com `dnsrr` aplicado (todos os 4 domínios em 200):**
+`evolution_evolution-api`, `evolution_evolution-api-redis`, `n8n_n8n`,
+`gerador-design_web`, `easypanel`.
+
+**Pendência deixada:** BetAnalytics Pro (`betanalytics.service`, uvicorn na
+8000) continua rodando mas perdeu o HTTPS no domínio `sslip.io` de fallback —
+precisa ser republicado pelo Easypanel se o domínio importar.
+
+**Atenção pro futuro:** o `dnsrr` pode ser revertido pelo Easypanel num
+redeploy do serviço, porque ele reescreve a spec. Se um domínio voltar a dar
+502 do nada, checar `endpoint-mode` (`docker service inspect <serviço>
+--format '{{.Spec.EndpointSpec.Mode}}'`) antes de qualquer outra coisa. A
+correção de raiz seria reiniciar o daemon do Docker (`systemctl restart
+docker`), que reconstrói o IPVS — o `dnsrr` é contorno, não cura.
+
+## Método de serviço sem caller nenhum = botão que mente (2026-08-31)
+
+**O quê:** o TODO dizia "`EvolutionWhatsAppProvider.disconnect()` só loga,
+não chama a Evolution". Verdade, mas incompleto: mesmo com o provider
+corrigido nada mudaria, porque o botão "Desconectar" nunca chegava no
+provider — ia direto num `UPDATE messaging_channels SET status` feito do
+browser. `ChannelRouterService.disconnectChannel()`, o único caminho que
+chamaria `provider.disconnect()`, era código morto (zero callers no
+projeto inteiro).
+**Por que aconteceu:** o método existia, tinha assinatura correta e
+tratamento de erro — parecia vivo em qualquer leitura de código local. O
+que denunciou foi `grep` pelo nome do método no projeto inteiro, não a
+leitura do arquivo.
+**Regra prática:** ao pegar um TODO do tipo "função X não faz o que
+promete", antes de corrigir X rodar `grep -rn "X("` pra confirmar **quem
+chama X**. Se ninguém chama, o bug real é o caminho ausente, e corrigir X
+sozinho é entrega que não muda nada na tela.
+**Custo se ignorado:** PR "corrige disconnect", merge, deploy, bug
+continua idêntico em produção — exatamente o ciclo que já tinha acontecido
+com o botão "Conectar" (issue #3, dois PRs até funcionar).
+**Bônus:** o mesmo `grep` mostrou que "Desconectar" tinha a mesma origem
+de bug que "Conectar" — quando um par de botões compartilha o mesmo
+`onToggle`, corrigir um lado não corrige o outro; vale checar o gêmeo.
+
+## Falha no provider não pode travar o estado local (2026-08-31)
+
+**O quê:** primeira versão da rota `POST /channels/[id]/disconnect`
+retornava 500 e não gravava nada quando a Evolution recusava o logout.
+Consequência: canal com credencial errada ou servidor fora do ar ficaria
+com `status='connected'` no CRM pra sempre, sem o admin ter como marcar
+como desconectado pela UI.
+**Correção:** status no banco sempre reflete a intenção do admin (vira
+`disconnected`); a resposta carrega `providerDisconnected: false` +
+`warning`, e a UI mostra toast de aviso em vez de "Canal desconectado".
+Honestidade sem travar o usuário.
+**Regra prática:** ação que toca sistema externo + estado local deve
+poder terminar em "estado local atualizado, externo falhou, e o usuário
+sabe disso" — não em tudo-ou-nada.
+
 ## Reusar o mesmo "evento de negócio" pra automação de 2 canais herda o gate de revisão de só 1 deles (2026-08-15)
 
 **O quê:** no desenho do disparo automático de proposta (estágio "Proposta

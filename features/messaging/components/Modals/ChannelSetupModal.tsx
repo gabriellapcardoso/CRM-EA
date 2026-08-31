@@ -22,6 +22,7 @@ import {
   useChannelQuery,
   useUpdateChannelMutation,
   useDeleteChannelMutation,
+  useDisconnectChannelMutation,
   useToggleChannelStatusMutation,
 } from '@/lib/query/hooks/useChannelsQuery';
 import {
@@ -668,6 +669,7 @@ export function ChannelSetupModal({
   const updateMutation = useUpdateChannelMutation();
   const deleteMutation = useDeleteChannelMutation();
   const toggleMutation = useToggleChannelStatusMutation();
+  const disconnectMutation = useDisconnectChannelMutation();
 
   // Local state
   const [view, setView] = useState<ModalView>('info');
@@ -773,15 +775,38 @@ export function ChannelSetupModal({
 
     const isConnected = channel.status === 'connected';
 
+    // Desconectar passa pela rota que encerra a sessão no provider de verdade.
+    if (isConnected) {
+      try {
+        const result = await disconnectMutation.mutateAsync(channel.id);
+        if (result.providerDisconnected && result.persisted) {
+          addToast('Canal desconectado.', 'success');
+        } else if (!result.persisted) {
+          addToast(
+            'Sessão encerrada no provedor, mas não foi possível salvar o status no CRM. Atualize a página pra conferir.',
+            'warning'
+          );
+        } else {
+          addToast(
+            `Canal marcado como desconectado, mas a sessão no provedor pode continuar ativa: ${result.warning ?? 'erro desconhecido'}`,
+            'warning'
+          );
+        }
+      } catch (error) {
+        addToast(
+          error instanceof Error ? error.message : 'Erro ao desconectar o canal.',
+          'error'
+        );
+      }
+      return;
+    }
+
     try {
       await toggleMutation.mutateAsync({
         channelId: channel.id,
-        connect: !isConnected,
+        connect: true,
       });
-      addToast(
-        isConnected ? 'Canal desconectado.' : 'Conectando canal...',
-        'success'
-      );
+      addToast('Conectando canal...', 'success');
     } catch (error) {
       addToast(
         error instanceof Error ? error.message : 'Erro ao alterar status.',
@@ -843,7 +868,7 @@ export function ChannelSetupModal({
           onEditCredentials={() => setView('credentials')}
           onToggleStatus={handleToggleStatus}
           onDelete={() => setView('delete')}
-          isToggling={toggleMutation.isPending}
+          isToggling={toggleMutation.isPending || disconnectMutation.isPending}
         />
       )}
 

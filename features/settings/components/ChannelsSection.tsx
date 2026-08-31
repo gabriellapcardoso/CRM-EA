@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils/cn';
 import {
   useChannelsQuery,
   useDeleteChannelMutation,
+  useDisconnectChannelMutation,
   useToggleChannelStatusMutation,
 } from '@/lib/query/hooks/useChannelsQuery';
 import { useInstanceFlagsQuery } from '@/lib/query/hooks/useInstanceFlagsQuery';
@@ -719,6 +720,7 @@ export function ChannelsSection() {
   // Mutations
   const deleteMutation = useDeleteChannelMutation();
   const toggleMutation = useToggleChannelStatusMutation();
+  const disconnectMutation = useDisconnectChannelMutation();
   const createRoutingMutation = useCreateLeadRoutingRule();
   const updateRoutingMutation = useUpdateLeadRoutingRule();
   const deleteRoutingMutation = useDeleteLeadRoutingRule();
@@ -774,15 +776,37 @@ export function ChannelsSection() {
   // Handlers
   const handleToggleChannel = async (channel: MessagingChannel) => {
     const isConnected = channel.status === 'connected';
+
+    // Desconectar passa pela rota que encerra a sessão no provider de verdade.
+    // O toggle direto no banco só serve pra "conectar" (canais sem QR code).
+    if (isConnected) {
+      try {
+        const result = await disconnectMutation.mutateAsync(channel.id);
+        if (result.providerDisconnected && result.persisted) {
+          addToast('Canal desconectado.', 'success');
+        } else if (!result.persisted) {
+          addToast(
+            'Sessão encerrada no provedor, mas não foi possível salvar o status no CRM. Atualize a página pra conferir.',
+            'warning'
+          );
+        } else {
+          addToast(
+            `Canal marcado como desconectado, mas a sessão no provedor pode continuar ativa: ${result.warning ?? 'erro desconhecido'}`,
+            'warning'
+          );
+        }
+      } catch {
+        addToast('Erro ao desconectar o canal.', 'error');
+      }
+      return;
+    }
+
     try {
       await toggleMutation.mutateAsync({
         channelId: channel.id,
-        connect: !isConnected,
+        connect: true,
       });
-      addToast(
-        isConnected ? 'Canal desconectado.' : 'Conectando canal...',
-        'success'
-      );
+      addToast('Conectando canal...', 'success');
     } catch {
       addToast('Erro ao alterar status do canal.', 'error');
     }
@@ -852,7 +876,11 @@ export function ChannelsSection() {
               onToggle={() => handleToggleChannel(channel)}
               onDelete={() => setChannelToDelete(channel)}
               onRoutingChange={handleRoutingChange}
-              isLoading={toggleMutation.isPending || deleteMutation.isPending}
+              isLoading={
+                toggleMutation.isPending ||
+                disconnectMutation.isPending ||
+                deleteMutation.isPending
+              }
               isRoutingLoading={isRoutingMutating || routingLoading || boardsLoading}
             />
           ))}

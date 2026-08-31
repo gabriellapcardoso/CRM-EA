@@ -188,10 +188,20 @@ export class ZApiWhatsAppProvider extends BaseChannelProvider {
     });
   }
 
+  /**
+   * Disconnect the WhatsApp number from the Z-API instance.
+   *
+   * `POST /instance/disconnect` derruba a sessão de verdade (reconectar exige
+   * escanear o QR de novo). Sem esta chamada o "Desconectar" do CRM só mudaria
+   * o status no banco, deixando o número conectado do lado da Z-API.
+   *
+   * @throws Error se a Z-API recusar a desconexão — o caller decide o que
+   * mostrar pro admin.
+   */
   async disconnect(): Promise<void> {
-    // Z-API doesn't require explicit disconnect
-    // Session persists on their servers
-    this.log('info', 'Z-API provider disconnected');
+    await this.request('POST', '/disconnect');
+    this.log('info', 'Z-API session disconnected', { instanceId: this.instanceId });
+    await super.disconnect();
   }
 
   // ---------------------------------------------------------------------------
@@ -792,6 +802,12 @@ export class ZApiWhatsAppProvider extends BaseChannelProvider {
 
     if (!response.ok) {
       throw new Error(`Z-API request failed: ${response.status} ${responseText}`);
+    }
+
+    // Sucesso com corpo vazio (ex: 204) não é resposta malformada — sem este
+    // check, um disconnect que funcionou de verdade vira "erro" de parse.
+    if (responseText.trim() === '') {
+      return {} as T;
     }
 
     return JSON.parse(responseText) as T;

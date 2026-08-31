@@ -2,6 +2,20 @@
 
 ## Messaging
 
+### ~~getQrCode() usava endpoint errado + rota marcava canal conectado como erro~~ — RESOLVIDO
+
+**Status:** RESOLVIDO 2026-08-31, achado por `/qa` ao vivo (não em teste isolado — contra o WhatsApp real da aaagência em produção) enquanto verificava o fix do botão "Desconectar".
+
+**What:** dois bugs em cadeia no fluxo de reconexão:
+1. `EvolutionWhatsAppProvider.getQrCode()` chamava `GET /instance/connect?instanceName=X` — endpoint que nunca existiu (404). Correto: `GET /instance/connect/{instance}?number=...` (path param + query obrigatória, confirmado na doc oficial).
+2. Com o endpoint certo mas sem `number`: Evolution devolvia `200 {}` (corpo vazio) sem nunca sair de `close`, mesmo com sessão salva válida. Com `number`: reconecta na hora sem QR — e a rota `qr-code/route.ts`, que não esperava esse caminho, gravava `status='error'` num canal que na verdade tinha acabado de conectar.
+
+**Fix:** endpoint + `number` corrigidos; rota agora confere `provider.getStatus()` de verdade antes de marcar erro — se confirma `connected`, grava `connected` e retorna `{alreadyConnected:true}`; `QrConnectModal` ganhou estado `reconnected` que aproveita o polling já existente pra fechar sozinho.
+
+**Por que importa:** é a continuação direta do fix de "Desconectar" (que agora faz logout real) — reconectar logo em seguida é o caminho mais comum, não uma borda rara. Sem este fix, todo ciclo desconectar→reconectar quebraria a UI mostrando "erro" num canal são.
+
+**Context:** Testes em `test/whatsappQrCodeRoute.test.ts`. Reproduzido e corrigido ao vivo contra `evolutionapi.gabriellapcardoso.com.br` — status do banco ficou temporariamente dessincronizado (`error` vs `open` real) e foi reconciliado manualmente via SQL antes do fix da rota estar testado em produção.
+
 ### ~~Botão "Conectar" do canal WhatsApp não conecta nada~~ — RESOLVIDO
 
 **Status:** RESOLVIDO 2026-08-17. Código corrigido ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4), [PR #5](https://github.com/gabriellapcardoso/CRM-EA/pull/5) — fechou [issue #3](https://github.com/gabriellapcardoso/CRM-EA/issues/3)) + causa raiz real identificada e corrigida (ver item abaixo, "instanceName com acento errado"). Canal `evolution` da aaagência confirmado `Conectado` na UI em produção.
@@ -16,15 +30,73 @@
 
 **Context:** Achado testando o PR #4 ao vivo, 2026-08-17, confirmado acessando o painel `/manager` da Evolution diretamente.
 
-### `EvolutionWhatsAppProvider.disconnect()` não desconecta de verdade (só loga)
+### ~~`EvolutionWhatsAppProvider.disconnect()` não desconecta de verdade (só loga)~~ — RESOLVIDO
 
-**What:** `lib/messaging/providers/whatsapp/evolution.provider.ts:203-207` — `disconnect()` apenas escreve um log, nunca chama a Evolution API pra encerrar a sessão. A sessão continua ativa no servidor Evolution mesmo depois do admin clicar "Desconectar" no CRM.
+**Status:** RESOLVIDO 2026-08-31. Escopo maior que o descrito no item original: o botão "Desconectar" **nunca chegava no provider** — `handleToggleChannel` chamava `useToggleChannelStatusMutation`, que só faz `UPDATE messaging_channels SET status='disconnected'` direto do browser; `ChannelRouterService.disconnectChannel()` era código morto (nenhum caller no projeto). Espelho exato do bug do botão "Conectar" (issue #3).
 
-**Why:** Botão "Desconectar" no CRM mente sobre o que faz — usuário acha que desconectou o WhatsApp, mas a sessão continua viva do lado da Evolution. Se alguém reconectar outro número na mesma instância sem saber disso, pode causar comportamento inesperado (mensagens indo pro número errado, sessão duplicada).
+**Fix:** `disconnect()` real nos dois providers (Evolution: `DELETE /instance/logout/{instance}`; Z-API: `POST /instance/disconnect` — endpoints confirmados na documentação oficial via Context7) + nova rota `POST /api/messaging/channels/[id]/disconnect` (auth + admin + isolamento por org, espelhando a rota de QR code) + `useDisconnectChannelMutation` + `ChannelsSection`/`ChannelSetupModal` roteando o "Desconectar" pra ela. Falha no provider não impede marcar o canal como desconectado no CRM (senão canal com credencial quebrada ficaria "conectado" pra sempre), mas a resposta traz `providerDisconnected: false` + `warning` e a UI mostra toast de aviso em vez de "Canal desconectado". Campo `persisted` na resposta cobre o caso inverso: provider desconectou mas o `UPDATE` no banco falhou — toast avisa que o status pode estar desatualizado em vez de afirmar sucesso. Testes: `test/whatsappProviderDisconnect.test.ts`, `test/whatsappDisconnectRoute.test.ts`, `lib/query/hooks/useChannelsQuery.test.ts`.
 
-**Context:** Achado durante `/plan-eng-review` do issue #3 (fix do botão Conectar), 2026-08-15 — fora de escopo daquele fix, documentado ali como limitação conhecida.
-**Effort:** S — precisa investigar se a Evolution API tem endpoint de logout/disconnect de instância (`/instance/logout/{instanceName}` é comum nesse tipo de API, não confirmado ainda)
-**Priority:** P2
+**Context:** Achado durante `/plan-eng-review` do issue #3 (fix do botão Conectar), 2026-08-15 — fora de escopo daquele fix. Resolvido 2026-08-31.
+
+### Duplicação: bloco de auth+busca de canal repetido entre `qr-code/route.ts` e `disconnect/route.ts`
+
+**What:** As duas rotas repetem quase literal: `isAllowedOrigin` → `auth.getUser()` → lookup de `profiles` com checagem de `role==='admin'` → lookup de `messaging_channels` filtrado por `organization_id`. Extrair um helper compartilhado (ex: `lib/messaging/routeAuth.ts: resolveAdminChannelContext(req, channelId)`) que devolve `{channel, profile}` ou um `Response` de erro.
+
+**Why:** Achado pelo specialist de maintainability do `/ship`, 2026-08-31. Toda vez que uma das duas rotas mudar essa lógica (ex: novo campo no select, nova checagem de permissão), a outra precisa ser lembrada e atualizada manualmente — risco de drift silencioso.
+
+**Pros:** Menos código duplicado, um único lugar pra corrigir bug de auth nas duas rotas.
+**Cons:** Refactor cross-cutting mexendo nas duas rotas de conexão do WhatsApp — risco desnecessário pra fazer junto com um bugfix já testado em produção. Melhor isolado, com seu próprio teste de regressão.
+**Context:** `app/api/messaging/channels/[id]/disconnect/route.ts` e `app/api/messaging/channels/[id]/qr-code/route.ts`.
+**Effort:** S
+**Priority:** P3
+**Depends on:** None
+
+### Duplicação: mesmo esqueleto fetch+erro entre `useConnectChannelMutation` e `useDisconnectChannelMutation`
+
+**What:** As duas mutations em `lib/query/hooks/useChannelsQuery.ts` fazem `fetch(POST) → if (!res.ok) parse error body → throw`. Extrair um helper genérico tipo `postChannelAction<T>(channelId, path)`.
+
+**Why:** Achado pelo specialist de maintainability do `/ship`, 2026-08-31. Mesma lógica copiada, sem mudança de comportamento — puro DRY.
+**Pros:** Menos código pra manter sincronizado se o formato de erro da API mudar.
+**Cons:** Não é urgente, não muda comportamento nenhum, só reduz duplicação.
+**Context:** `lib/query/hooks/useChannelsQuery.ts`.
+**Effort:** S
+**Priority:** P4
+**Depends on:** None
+
+### Sem teste de componente pros toasts de "Desconectar" em `ChannelsSection`/`ChannelSetupModal`
+
+**What:** `ChannelsSection.tsx` e `ChannelSetupModal.tsx` não têm NENHUM teste de componente no repo hoje (nem antes do fix de disconnect). A lógica nova de 3 toasts (sucesso / aviso de provider / aviso de persistência) ficou coberta só a nível de hook (`useChannelsQuery.test.ts`), não a nível de componente.
+
+**Why:** Achado pelo specialist de testing do `/ship`, 2026-08-31. Cobrir isso direito exige criar a convenção de teste de componente pra essas telas do zero — não é só adicionar um teste isolado.
+**Pros:** Fecharia o único buraco de cobertura real que sobrou no fix de disconnect.
+**Cons:** Escopo maior que "adicionar 1 teste" — decisão de qual framework/convenção usar (Testing Library + qual setup de providers) fica pra quando isso for priorizado.
+**Context:** `features/settings/components/ChannelsSection.tsx`, `features/messaging/components/Modals/ChannelSetupModal.tsx`.
+**Effort:** M
+**Priority:** P3
+**Depends on:** None
+
+### Mensagem crua do provider persistida em `status_message` e devolvida ao client
+
+**What:** Em `disconnect/route.ts`, `error.message` (que inclui `responseText` bruto da Evolution/Z-API — pode ser HTML de página de erro ou detalhe de infraestrutura self-hosted) é gravado em `messaging_channels.status_message` e devolvido em `warning` na resposta JSON.
+
+**Why:** Achado pelo adversarial review (subagent Claude) do `/ship`, 2026-08-31. Hoje só o admin da própria org vê isso (auth + role + `organization_id` corretos), risco baixo — mas se `status_message` aparecer em algum export, tela de suporte ou log agregado, pode vazar detalhe interno do servidor.
+**Pros:** Fecha uma superfície pequena de vazamento de infra.
+**Cons:** Sanitizar trunca informação útil pra debugar de verdade quando o provider falha — precisa de decisão sobre onde cortar.
+**Context:** `app/api/messaging/channels/[id]/disconnect/route.ts`.
+**Effort:** S
+**Priority:** P4
+**Depends on:** None
+
+### Dois cliques rápidos em "Desconectar" podem gerar warning confuso (sem lock)
+
+**What:** A rota lê o canal, chama `provider.disconnect()`, e só depois faz `UPDATE` — sem checar status antigo nem lock. Duas requisições concorrentes (duas abas, dois cliques rápidos) podem fazer o segundo `disconnect()` bater num "instance not found" da Evolution, mesmo o primeiro já tendo funcionado.
+
+**Why:** Achado pelo adversarial review (subagent Claude) do `/ship`, 2026-08-31. Mitigado parcialmente por `isPending` desabilitando o botão na mesma aba, mas não entre abas/dispositivos.
+**Pros:** Fecharia de vez uma janela de UX ruim (não é exploração, é confusão).
+**Cons:** Baixa frequência real (exige duas abas/dispositivos no mesmo canal ao mesmo tempo); idempotência de verdade exigiria lock ou checagem de status antes de chamar o provider.
+**Context:** `app/api/messaging/channels/[id]/disconnect/route.ts`.
+**Effort:** S
+**Priority:** P4
 **Depends on:** None
 
 ## Infrastructure

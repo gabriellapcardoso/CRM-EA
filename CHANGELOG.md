@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): reconectar após "Desconectar" quebrava com 404 ou marcava canal são como erro — 2026-08-31
+
+Achado por `/qa` ao vivo (não simulado) enquanto verificava o fix do botão
+"Desconectar" logo abaixo — testado contra o WhatsApp real da aaagência em
+produção, com autorização, sabendo que derrubaria a sessão de verdade.
+
+Dois bugs em cadeia no fluxo de reconexão:
+
+1. `EvolutionWhatsAppProvider.getQrCode()` chamava
+   `GET /instance/connect?instanceName=X` — rota que nunca existiu no
+   servidor (404 "Cannot GET..."). Endpoint correto, confirmado na doc
+   oficial: `GET /instance/connect/{instance}` (path param), com `number`
+   como query **obrigatória**.
+2. Mesmo com o endpoint certo, sem `number` a Evolution respondia `200 {}`
+   (corpo vazio) e a instância nunca saía de `close` — apesar de ter sessão
+   Baileys válida salva do logout anterior. Com `number`, ela reconecta na
+   hora, sem QR nenhum. `qr-code/route.ts` não esperava esse caminho e
+   gravava `status='error'` num canal que tinha acabado de reconectar de
+   verdade — reproduzido ao vivo: banco disse `error`, Evolution disse
+   `open`, dessincronia real em produção, reconciliada manualmente via SQL
+   antes do fix da rota estar pronto.
+
+Fix: endpoint + `number` corrigidos em `getQrCode()`; `qr-code/route.ts`
+agora confere `provider.getStatus()` de verdade (genérico, qualquer
+provider) antes de marcar erro — confirma `connected` → grava `connected` e
+retorna `{alreadyConnected:true}` em vez de 500. `QrConnectModal` ganhou um
+estado `reconnected` que só mostra uma mensagem tranquila e deixa o polling
+que já existia (`useChannelConnectionStatus`, a cada 3s) fechar o modal
+sozinho — sem duplicar a lógica de detecção de "conectado".
+
+Isso não é uma borda rara: como o fix de "Desconectar" agora faz logout
+real, reconectar em seguida É o caminho mais comum, não exceção.
+
+Testes: `test/whatsappQrCodeRoute.test.ts`.
+
+### fix(messaging): botão "Desconectar" encerra a sessão no provider de verdade — 2026-08-31
+
+Espelho do bug do "Conectar" ([PR #4](https://github.com/gabriellapcardoso/CRM-EA/pull/4)):
+"Desconectar" só fazia `UPDATE messaging_channels SET status='disconnected'`
+direto do browser (`useToggleChannelStatusMutation`) e nunca tocava no
+provider. `EvolutionWhatsAppProvider.disconnect()` e
+`ZApiWhatsAppProvider.disconnect()` apenas escreviam um log ("session persists
+on their servers"), e `ChannelRouterService.disconnectChannel()` — o único
+caminho que chamaria o provider — era código morto, sem nenhum caller no
+projeto. Resultado: sessão continuava viva na Evolution/Z-API depois do admin
+"desconectar", com risco de mensagem indo pro número errado se outro número
+fosse conectado na mesma instância.
+
+`disconnect()` agora chama os endpoints reais (Evolution:
+`DELETE /instance/logout/{instance}`, que encerra a sessão sem apagar a
+instância; Z-API: `POST /instance/disconnect` — ambos confirmados na
+documentação oficial via Context7) e propaga erro em vez de engolir. Nova rota
+`POST /api/messaging/channels/[id]/disconnect` espelha a de QR code (origem
+permitida, sessão, `role='admin'`, canal filtrado por `organization_id`),
+chama o provider e só então grava o status.
+
+Falha no provider **não** impede marcar o canal como desconectado no CRM —
+senão canal com credencial quebrada ficaria "conectado" pra sempre. Em vez
+disso a resposta traz `providerDisconnected: false` + `warning`, e a UI mostra
+toast de aviso ("a sessão no provedor pode continuar ativa: …") em vez de
+afirmar "Canal desconectado". `ChannelsSection` e `ChannelSetupModal` roteiam
+o "Desconectar" pra nova mutation; "Conectar" segue no toggle antigo.
+
+Simetricamente, se o provider desconecta mas o `UPDATE` no banco falha, a
+resposta traz `persisted: false` — o toast avisa que a sessão foi encerrada
+mas o status no CRM pode estar desatualizado, em vez de afirmar "Canal
+desconectado" com o banco ainda mostrando o status antigo.
+
+Achado no adversarial review (subagent Claude, `/ship`): o `request()`
+privado dos dois providers sempre tentava `JSON.parse` no corpo da resposta,
+mesmo em sucesso — um `204 No Content` (comum em `DELETE`/disconnect) faria
+um logout que funcionou de verdade virar `providerDisconnected: false` por
+"erro de parse", o oposto do que este fix existe pra resolver. Corrigido nos
+dois `request()` (tratando corpo vazio como sucesso, sem tentar parsear) com
+teste de regressão. Bug pré-existente na infra compartilhada, não introduzido
+por este fix, mas exercitado pela primeira vez de forma realista pelo
+`disconnect()` (endpoints de status/envio de mensagem sempre retornaram JSON).
+
+Testes: `test/whatsappProviderDisconnect.test.ts` (endpoint/método/apikey de
+cada provider + propagação de erro + regressão do corpo vazio),
+`test/whatsappDisconnectRoute.test.ts` (todas as ramificações de auth/erro da
+rota, incluindo `persisted: false`), `lib/query/hooks/useChannelsQuery.test.ts`
+(hook `useDisconnectChannelMutation`).
+
 ### fix(messaging): botão "Conectar" do canal WhatsApp gera e exibe QR code de verdade — 2026-08-17
 
 Botão "Conectar" (canais Evolution/Z-API) só fazia `UPDATE status='connecting'`

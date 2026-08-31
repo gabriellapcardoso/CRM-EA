@@ -116,6 +116,46 @@ export async function POST(req: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('Error getting QR code:', error);
 
+    // Antes de marcar como erro, confere o status real no provider. Achado
+    // ao vivo em 2026-08-31: pedir QR logo depois de um "Desconectar" (que só
+    // faz logout soft) pode fazer o provider reconectar sozinho usando a
+    // sessão salva — sem QR nenhum. getQrCode() lança erro nesse caso
+    // ("Instance may already be connected"), e sem esta checagem a gente
+    // escreveria status='error' num canal que na verdade está conectado.
+    let alreadyConnected = false;
+    try {
+      const provider = ChannelProviderFactory.createProvider('whatsapp', channel.provider);
+      await provider.initialize({
+        channelId: channel.id,
+        channelType: 'whatsapp',
+        provider: channel.provider,
+        externalIdentifier: channel.external_identifier,
+        credentials: channel.credentials as Record<string, string>,
+      });
+      const status = await provider.getStatus();
+      alreadyConnected = status.status === 'connected';
+    } catch (statusError) {
+      console.error('Error re-checking status after QR failure:', statusError);
+    }
+
+    if (alreadyConnected) {
+      const { error: updateError } = await supabase
+        .from('messaging_channels')
+        .update({
+          status: 'connected',
+          status_message: null,
+          last_connected_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', channelId);
+
+      if (updateError) {
+        console.error('Failed to update channel status to connected:', updateError);
+      }
+
+      return json({ alreadyConnected: true });
+    }
+
     // Atualizar status do canal para error
     await supabase
       .from('messaging_channels')
