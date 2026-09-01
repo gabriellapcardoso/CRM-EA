@@ -103,10 +103,13 @@
 
 Os 10 PRs de 2026-09-01 (#10 a #19) foram para produção **sem passar por `/review`**.
 O review retroativo rodou depois, com dois revisores independentes (concorrência/
-segurança e adversarial) mais uma varredura de PII. Achados consolidados abaixo,
-deduplicados. Issue com plano de correção: #20.
+segurança e adversarial) mais uma varredura de PII.
 
-### ~~O health check de IA não detecta o incidente que motivou sua construção~~ — P0
+**Os 6 P0 foram corrigidos e verificados em produção** (issue #20, PR #22). Os
+P1/P2 restantes vivem na issue #23. Esta seção fica como registro do que foi
+achado e do que sobrou.
+
+### ~~O health check de IA não detecta o incidente que motivou sua construção~~ — RESOLVIDO (PR #22)
 
 **What:** `app/api/cron/ai-health/route.ts` chama a IA pelo mesmo `getModel()` da
 aplicação, que injeta `extraBody: { models: AI_FALLBACK_MODELS }` (PR #14). A
@@ -133,7 +136,7 @@ operação normal (só log)? Alerta demais volta ao problema do falso positivo.
 **Context:** `app/api/cron/ai-health/route.ts:60-77`, `lib/ai/config.ts:68-83`.
 **Effort:** S · **Priority:** P0
 
-### ~~O monitor falha em silêncio de três formas~~ — P0
+### ~~O monitor falha em silêncio de três formas~~ — RESOLVIDO (PR #22), com uma ressalva
 
 **What:** três caminhos em que o cron para de funcionar sendo indistinguível de
 "tudo saudável":
@@ -156,13 +159,19 @@ detectou, era 2ª falha, e não avisou.
 no arquivo escrito para consertá-la. O `evolution-health` faz certo: `if (recentAlert)
 return` vem **antes** do insert (`evolution-health/route.ts:94`).
 
-**Pros:** os três são poucas linhas e no mesmo arquivo.
-**Cons:** o heartbeat precisa de um segundo mecanismo que o observe (dead-man's
-switch), senão só empurra o problema um nível.
+**Resolvido em PR #22:** heartbeat gravado em toda execução (`cron_heartbeats`),
+vigiado por `check_cron_heartbeats()` num job pg_cron que roda DENTRO do banco —
+sobrevive à Vercel inteira cair. Erros de banco agora são lidos, contados em
+`errosBanco` e devolvidos na resposta. Cooldown passou a medir
+`details.email_enviado` em vez de linha gravada.
+
+**Ressalva que continua aberta (issue #23):** o watchdog *grava* o alerta, não
+*envia*. SQL não manda e-mail, e depender da aplicação pra avisar que a aplicação
+morreu seria circular. Fechar de verdade exige dead-man's switch externo.
 **Context:** `app/api/cron/ai-health/route.ts:140-230`.
 **Effort:** M · **Priority:** P0
 
-### ~~Migration de pg_cron quebra a produção se aplicada pelo fluxo normal~~ — P0
+### ~~Migration de pg_cron quebra a produção se aplicada pelo fluxo normal~~ — RESOLVIDO (PR #22)
 
 **What:** `supabase/migrations/20260901180000_pg_cron_health_checks.sql:33,53` gravam
 o literal `'__CRON_SECRET__'`. `cron.schedule` com nome existente **substitui** o job.
@@ -185,11 +194,10 @@ migram junto.
 
 **What:** 54 asserções verdes que não protegem o que o cabeçalho promete:
 
-- `test/cockpitLayout.test.ts:79-88` — `expect(marcados).toBeGreaterThanOrEqual(blocos)`
-  compara 12 marcações contra 8 `<CockpitBlock>`: **4 vagas de folga**. Dá pra
-  adicionar 4 blocos sem `className` e o teste segue verde — cada um cai em
-  `order: 0` e sobe pro topo da tela, que é a regressão descrita no comentário
-  logo acima da asserção.
+- ~~`test/cockpitLayout.test.ts:79-88` — 4 vagas de folga no
+  `toBeGreaterThanOrEqual`~~ — **RESOLVIDO (PR #22)**: agora conta os blocos SEM
+  classe e exige zero. Verificado injetando um bloco sem classe: o teste falha e
+  nomeia o culpado.
 - `test/cockpitAiErrorText.test.ts:49-55` — "os dois textos são diferentes" não
   compara string nenhuma: recalcula dois `includes` e afirma `true && true`.
 - `lib/ai/failover.test.ts:42-53` — dois testes com a mesma asserção. E
@@ -232,25 +240,26 @@ criar build**. Ambas as frases foram escritas no mesmo dia, por mim.
 `vercel.json` e congela a produção — a falha exata que este mesmo lote documentou.
 **Effort:** S · **Priority:** P1
 
-### Demais achados do review — P2
+### Demais achados do review — P2 (migrados para a issue #23)
 
-Agrupados por não terem impacto imediato, mas todos verificados no código:
+Seis itens desta lista caíram junto com os P0 no PR #22 e estão marcados abaixo.
+Os demais seguem abertos na **issue #23**:
 
 | # | Achado | Onde |
 |---|---|---|
 | 1 | `pg_net` sem `timeout_milliseconds` (padrão 5s) chamando rota que leva até 20s | migration `:30,:49` |
 | 2 | Janela de 20min acoplada à cadência de 15min sem garantia: mudar pro `*/30` faz o e-mail nunca sair | `route.ts:23` |
-| 3 | `alerted++` antes do envio; `resend.emails.send` não lança, devolve `{error}` — reporta entrega que não houve | `route.ts:218` |
+| ~~3~~ | ~~`alerted++` antes do envio~~ — RESOLVIDO (PR #22): só incrementa em envio confirmado | — |
 | 4 | Org com `deleted_at` continua sendo checada, gastando IA e recebendo e-mail | `route.ts:125` |
-| 5 | Check usa `generateText` de texto puro; as 17 chamadas reais usam `Output.object`/`tools` — reserva sem `structured_outputs` passaria verde | `route.ts:60` |
+| ~~5~~ | ~~Check usa texto puro~~ — RESOLVIDO (PR #22): usa `Output.object` | — |
 | 6 | `ai_conversation_log.model_used` grava o modelo **pedido**, não o que respondeu | `tasks/deals/analyze/route.ts:61` |
 | 7 | Stepper com `max-height` e sem `scrollIntoView` no estágio atual: deal no estágio 18 abre sem mostrar onde está | `globals.css:1315` |
-| 8 | `security_alerts` sem índice em `(organization_id, alert_type, created_at)` | schema |
+| ~~8~~ | ~~Sem índice em `security_alerts`~~ — RESOLVIDO (PR #22) | — |
 | 9 | `security_alerts` não tem nenhum consumidor de leitura no produto — é write-only | — |
-| 10 | `checked: 0` reportado como sucesso, sem log | `route.ts:125-134` |
-| 11 | `usage === undefined` tratado como zero pode reintroduzir o falso positivo | `route.ts:73` |
+| ~~10~~ | ~~`checked: 0` como sucesso silencioso~~ — RESOLVIDO (PR #22) | — |
+| ~~11~~ | ~~`usage === undefined` tratado como zero~~ — RESOLVIDO (PR #22) | — |
 | 12 | Race TOCTOU entre execuções sobrepostas (exposição baixa na cadência atual) | `route.ts:151-199` |
-| 13 | `getOrgAIConfig(supabase as never, ...)` desliga checagem de tipo numa fronteira real | `route.ts:51` |
+| ~~13~~ | ~~`as never` desligava a checagem de tipo~~ — RESOLVIDO (PR #22) | — |
 | 14 | `CRON_SECRET` em texto puro dentro de `cron.job`, legível por quem tem service role | banco |
 | 15 | Check gasta crédito da org 96x/dia sem opt-out, cap ou contabilização | — |
 | 16 | Título e select truncados sem `title=` — deals de nome parecido ficam indistinguíveis | `globals.css:1200` |
