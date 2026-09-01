@@ -99,6 +99,171 @@
 **Priority:** P4
 **Depends on:** None
 
+## Observabilidade — achados do review retroativo de 2026-09-01
+
+Os 10 PRs de 2026-09-01 (#10 a #19) foram para produção **sem passar por `/review`**.
+O review retroativo rodou depois, com dois revisores independentes (concorrência/
+segurança e adversarial) mais uma varredura de PII. Achados consolidados abaixo,
+deduplicados. Issue com plano de correção: #20.
+
+### ~~O health check de IA não detecta o incidente que motivou sua construção~~ — P0
+
+**What:** `app/api/cron/ai-health/route.ts` chama a IA pelo mesmo `getModel()` da
+aplicação, que injeta `extraBody: { models: AI_FALLBACK_MODELS }` (PR #14). A
+OpenRouter cai para a reserva **dentro da mesma requisição** e devolve 200. O check
+vê 200 e reporta saudável.
+
+**Provado em produção em 2026-09-01**, forçando `ai_model` para
+`google/gemini-2.0-flash-001` (o modelo removido que causou o incidente):
+
+```
+{"checked":1,"degraded":0,"alerted":0}
+```
+
+**Why:** o cenário exato que motivou a issue #16 hoje passa como "IA saudável". A
+org segue rodando num modelo que ninguém escolheu, com custo e comportamento
+diferentes, e nada avisa. O failover virou anestesia: o detector foi construído em
+cima da coisa que esconde o sintoma que ele deveria detectar.
+
+**Pros:** a OpenRouter devolve o modelo que efetivamente respondeu. Comparar com
+`config.model` e gravar `info` + e-mail de baixa urgência quando divergirem fecha
+a lacuna com poucas linhas.
+**Cons:** exige decidir o contrato — "rodar na reserva" é degradação (alerta) ou
+operação normal (só log)? Alerta demais volta ao problema do falso positivo.
+**Context:** `app/api/cron/ai-health/route.ts:60-77`, `lib/ai/config.ts:68-83`.
+**Effort:** S · **Priority:** P0
+
+### ~~O monitor falha em silêncio de três formas~~ — P0
+
+**What:** três caminhos em que o cron para de funcionar sendo indistinguível de
+"tudo saudável":
+
+1. **Sem heartbeat.** Sucesso não grava nada (`route.ts:144`) e `net.http_get` na
+   migration descarta a resposta. Cron desagendado, 401 por rotação de segredo,
+   deploy fora do ar: zero linhas, zero e-mails — igualzinho a IA saudável.
+2. **Insert não verificado** (`route.ts:188`). Se gravar falhar, a consulta da
+   janela nunca acha falha anterior, toda execução vira "1ª falha" e o e-mail
+   **nunca** sai. `Promise.allSettled` engole a exceção.
+3. **Cooldown auto-alimentado** (`route.ts:175-202`). Cada execução grava um
+   `critical`, e a consulta de cooldown procura exatamente `critical` nas últimas
+   4h — a janela nunca expira. Um e-mail por incidente e nunca mais, inclusive
+   para um incidente novo que comece 30 min depois.
+
+**Observado em produção** às 22:45 de 2026-09-01: `{"degraded":1,"alerted":0}` —
+detectou, era 2ª falha, e não avisou.
+
+**Why:** é a mesma classe do `alert_email` NULL que ficou 30 dias mudo, reintroduzida
+no arquivo escrito para consertá-la. O `evolution-health` faz certo: `if (recentAlert)
+return` vem **antes** do insert (`evolution-health/route.ts:94`).
+
+**Pros:** os três são poucas linhas e no mesmo arquivo.
+**Cons:** o heartbeat precisa de um segundo mecanismo que o observe (dead-man's
+switch), senão só empurra o problema um nível.
+**Context:** `app/api/cron/ai-health/route.ts:140-230`.
+**Effort:** M · **Priority:** P0
+
+### ~~Migration de pg_cron quebra a produção se aplicada pelo fluxo normal~~ — P0
+
+**What:** `supabase/migrations/20260901180000_pg_cron_health_checks.sql:33,53` gravam
+o literal `'__CRON_SECRET__'`. `cron.schedule` com nome existente **substitui** o job.
+Um `supabase db push`/`db reset`, ou qualquer agente seguindo o fluxo de migrations,
+reagenda os dois health checks com token inválido → 401 a cada 15 min, para sempre,
+sem sinal nenhum (ver item do heartbeat acima).
+
+Mesmo defeito em `20260715173000_pg_cron_stage_evaluations.sql`, onde o estrago é
+maior: a fila de avaliação de estágios para de drenar.
+
+**Why:** a migration está no repositório **público** e parece aplicável. Quem aplicar
+quebra três crons e não descobre.
+**Pros:** `RAISE EXCEPTION` quando o placeholder não foi substituído falha alto em vez
+de agendar lixo. Melhor ainda: ler do Supabase Vault (`vault.decrypted_secrets`).
+**Cons:** Vault muda o padrão das migrations existentes; exige decidir se as antigas
+migram junto.
+**Effort:** S · **Priority:** P0
+
+### Testes novos com falsa sensação de segurança — P1
+
+**What:** 54 asserções verdes que não protegem o que o cabeçalho promete:
+
+- `test/cockpitLayout.test.ts:79-88` — `expect(marcados).toBeGreaterThanOrEqual(blocos)`
+  compara 12 marcações contra 8 `<CockpitBlock>`: **4 vagas de folga**. Dá pra
+  adicionar 4 blocos sem `className` e o teste segue verde — cada um cai em
+  `order: 0` e sobe pro topo da tela, que é a regressão descrita no comentário
+  logo acima da asserção.
+- `test/cockpitAiErrorText.test.ts:49-55` — "os dois textos são diferentes" não
+  compara string nenhuma: recalcula dois `includes` e afirma `true && true`.
+- `lib/ai/failover.test.ts:42-53` — dois testes com a mesma asserção. E
+  `createOpenRouter` está mockado, então a **forma do contrato nunca é validada**:
+  se o SDK renomear `extraBody`, as 8 asserções seguem verdes e a IA roda num
+  modelo que ninguém escolheu.
+- `test/aiHealthCron.test.ts` — o cabeçalho promete guardar "org sem ai_enabled não
+  entra na consulta" e "janela de 20min"; não há asserção sobre nenhum dos dois. Sem
+  teste para insert falhando, `checked: 0`, ou falha do Resend.
+- `rule()` helper em `cockpitLayout.test.ts:28-33` só enxerga a primeira regra com o
+  seletor no início da linha: uma segunda `.cockpit__body { min-width }` mais abaixo,
+  ou dentro de `@media`, passa batido.
+
+**Why:** teste que não pode falhar é pior que teste ausente — dá licença pra não olhar.
+**Effort:** M · **Priority:** P1
+
+### Cockpit exibe dados inventados durante queda da IA — P1
+
+**What:** `features/inbox/hooks/useAIDealAnalysis.ts:53` devolve
+`probabilityScore: deal.probability || 50` no catch, e o cockpit deriva a saúde disso
+(`DealCockpitClient.tsx:758`). Com a IA 100% fora do ar, o bloco "risco do deal"
+mostra **"médio · saúde 50%"** como se fosse análise. O PR #17 corrigiu só o texto do
+`reason`; o número, que é o que se olha primeiro, continua fabricado. O `|| 50` também
+transforma probabilidade real de 0 em 50.
+
+Relacionado: `DealCockpitClient.tsx:781` mostra "IA fora do ar" para **qualquer**
+rejeição, incluindo 403 `AI_FEATURE_DISABLED` (org desligou de propósito), 400 e 401
+de sessão expirada — reporta queda inexistente e queima a credibilidade do aviso.
+
+**Effort:** S · **Priority:** P1
+
+### Contradição documental entre CLAUDE.md e AGENTS.md sobre cadência de cron — P1
+
+**What:** `CLAUDE.md` afirma *"Cadência de cron vive **só** no `vercel.json`"*.
+`AGENTS.md` e `20260901180000_pg_cron_health_checks.sql` dizem o oposto: cadência vive
+no pg_cron, e mexer no `vercel.json` faz a Vercel **rejeitar o deployment inteiro sem
+criar build**. Ambas as frases foram escritas no mesmo dia, por mim.
+
+**Why:** `CLAUDE.md` tem precedência de projeto. O próximo agente lê, edita o
+`vercel.json` e congela a produção — a falha exata que este mesmo lote documentou.
+**Effort:** S · **Priority:** P1
+
+### Demais achados do review — P2
+
+Agrupados por não terem impacto imediato, mas todos verificados no código:
+
+| # | Achado | Onde |
+|---|---|---|
+| 1 | `pg_net` sem `timeout_milliseconds` (padrão 5s) chamando rota que leva até 20s | migration `:30,:49` |
+| 2 | Janela de 20min acoplada à cadência de 15min sem garantia: mudar pro `*/30` faz o e-mail nunca sair | `route.ts:23` |
+| 3 | `alerted++` antes do envio; `resend.emails.send` não lança, devolve `{error}` — reporta entrega que não houve | `route.ts:218` |
+| 4 | Org com `deleted_at` continua sendo checada, gastando IA e recebendo e-mail | `route.ts:125` |
+| 5 | Check usa `generateText` de texto puro; as 17 chamadas reais usam `Output.object`/`tools` — reserva sem `structured_outputs` passaria verde | `route.ts:60` |
+| 6 | `ai_conversation_log.model_used` grava o modelo **pedido**, não o que respondeu | `tasks/deals/analyze/route.ts:61` |
+| 7 | Stepper com `max-height` e sem `scrollIntoView` no estágio atual: deal no estágio 18 abre sem mostrar onde está | `globals.css:1315` |
+| 8 | `security_alerts` sem índice em `(organization_id, alert_type, created_at)` | schema |
+| 9 | `security_alerts` não tem nenhum consumidor de leitura no produto — é write-only | — |
+| 10 | `checked: 0` reportado como sucesso, sem log | `route.ts:125-134` |
+| 11 | `usage === undefined` tratado como zero pode reintroduzir o falso positivo | `route.ts:73` |
+| 12 | Race TOCTOU entre execuções sobrepostas (exposição baixa na cadência atual) | `route.ts:151-199` |
+| 13 | `getOrgAIConfig(supabase as never, ...)` desliga checagem de tipo numa fronteira real | `route.ts:51` |
+| 14 | `CRON_SECRET` em texto puro dentro de `cron.job`, legível por quem tem service role | banco |
+| 15 | Check gasta crédito da org 96x/dia sem opt-out, cap ou contabilização | — |
+| 16 | Título e select truncados sem `title=` — deals de nome parecido ficam indistinguíveis | `globals.css:1200` |
+| 17 | Caminho de RAG (`ai_google_key`, API nativa do Google) não é coberto pelo check | `defaults.ts:58` |
+| 18 | Lista de reserva tem 2 fabricantes mas só 1 alternativa real fora da DeepSeek | `defaults.ts:51` |
+| 19 | `Promise.allSettled` sem limite de concorrência contra `maxDuration=60` | `route.ts:140` |
+| 20 | Comparação do `CRON_SECRET` não é constant-time (risco prático desprezível) | `route.ts:117` |
+| 21 | Texto de erro do provider vai pro banco e e-mail sem redação | `route.ts:81` |
+
+**Varredura de PII:** limpa. Todos os matches no diff são fixtures de teste
+(`sk-or-v1-fake-para-teste`, `destino@exemplo.test`, uuid falso) ou o remetente
+institucional `alertas@aaagencia.com.br`. Nenhum segredo real vazou.
+
 ## Layout
 
 ### Painel do discador não fecha com Escape e não é anunciado como diálogo
