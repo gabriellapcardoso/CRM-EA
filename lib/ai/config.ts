@@ -44,9 +44,26 @@ export const getModel = (provider: AIProvider, apiKey: string, modelId: string) 
     // OpenRouter podem ter organization_settings.ai_provider = 'google' (valor antigo
     // ainda no banco) — indexar por esse valor stale retornaria undefined e quebraria
     // openrouter.chat(undefined) em runtime. Só existe 1 provider real hoje.
-    const resolvedModel = modelId && OPENROUTER_MODEL_ID_PATTERN.test(modelId)
-        ? modelId
-        : AI_DEFAULT_MODELS.openrouter;
+    const modelIdValido = !!modelId && OPENROUTER_MODEL_ID_PATTERN.test(modelId);
+    const resolvedModel = modelIdValido ? modelId : AI_DEFAULT_MODELS.openrouter;
+
+    // O fallback é rede de segurança, não caminho normal — e por não avisar nada ele
+    // escondeu um problema real por meses: a org tinha `ai_model='gemini-2.5-flash'`
+    // (formato nativo do Google, sem a barra que a OpenRouter exige), sobra da
+    // migration pro OpenRouter que nunca foi aplicada aos dados. Todo request caía
+    // silenciosamente no default, ignorando a configuração escolhida na tela de
+    // settings. Só apareceu em 2026-09-01, quando a OpenRouter removeu o modelo que
+    // era o default e a IA inteira do CRM passou a dar 404.
+    //
+    // Barulho aqui é o ponto: config ignorada tem que doer na hora, não na hora em
+    // que o default morre.
+    if (modelId && !modelIdValido) {
+        console.warn(
+            `[AI] ai_model "${modelId}" não tem o formato "provider/model" da OpenRouter — ` +
+            `IGNORADO, usando "${AI_DEFAULT_MODELS.openrouter}". ` +
+            `Corrija organization_settings.ai_model: a configuração da org não está sendo respeitada.`
+        );
+    }
 
     const openrouter = createOpenRouter({ apiKey });
     return openrouter.chat(resolvedModel);

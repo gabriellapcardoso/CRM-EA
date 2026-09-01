@@ -33,6 +33,12 @@
 - **Guard**: `test/softDeleteFilters.test.ts`
 - **Case-by-case exception**: webhook/idempotency lookups may legitimately need to see deleted rows — check the flow before adding the filter there (see `TODOS.md`, AI/MCP layer item)
 
+## AI Config Rules
+- **`ai_model` must be OpenRouter's `provider/model` format.** A bare id (`gemini-2.5-flash`) is silently discarded by `getModel` and falls back to the default — the org ran for months on the default while settings said otherwise. `getModel` now warns loudly on that path; never remove that warning. Guard: `lib/ai/config.test.ts`
+- **Config fallbacks must be noisy.** Dropping a value someone deliberately chose in a settings screen is an event, not a default. Silent fallback is only acceptable for *absent* config (empty field, new org), never for config that is present and invalid
+- **Model ids are third-party resources that vanish.** `google/gemini-2.0-flash-001` was removed from OpenRouter's catalog with no visible deprecation; the 404 is `isRetryable: false`. Prefer dated ids over moving aliases where stability matters, and see `TODOS.md` for OpenRouter's native `models: [...]` failover, which is the structural fix
+- **Changing the format of a value that lives in the DB is a data migration too.** The OpenRouter migration swapped provider and id format in code but never migrated the rows — new code silently read old data
+
 ## Cockpit / CSS Layout Rules
 - **`display: contents` is a LAYOUT rule, not a DOM rule**: the cockpit's 3 panels use it so their 12 blocks become flex items of `.cockpit__body`. The panels are still the direct DOM children — a `>` selector reaches the panels (which have no box), not the blocks. Use descendant selectors there. Guard: `test/cockpitLayout.test.ts`
 - **Section order lives in CSS, not JSX**: `.cockpit__sec--deal|contato|decidir|historico|assistente|ref` set `order: 1..6`. A block without one of those classes falls to `order: 0` and silently jumps to the top of the screen. `deal` and `contato` are separate orders on purpose — blocks sharing an `order` fall back to DOM order, which has contact first, the reverse of what the screen needs

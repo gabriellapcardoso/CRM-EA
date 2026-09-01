@@ -101,6 +101,30 @@
 
 ## Layout
 
+### Painel do discador não fecha com Escape e não é anunciado como diálogo
+
+**What:** o painel de registro de ligação (botão "ligar" no cockpit) é `fixed inset-0 ... z-[9999]`, cobre a tela inteira, e **não tem `role="dialog"`, `aria-modal` nem `aria-label`**. `Escape` não fecha — a única saída é o botão "Descartar". Achado pelo `/qa` em 2026-09-01 testando os 4 botões de canal em produção.
+
+**Why:** leitor de tela não anuncia como diálogo e não confina o foco, então a pessoa continua tabulando pelo conteúdo atrás do overlay sem perceber que está num modal. E `Escape` é o gesto universal de fechar: quando não funciona num painel fullscreen, a sensação é de travamento. Os modais de WhatsApp e e-mail no mesmo bloco fecham com `Escape` normalmente, então é inconsistente dentro da própria tela.
+
+**Pros:** conserto pequeno e isolado — adicionar os atributos ARIA e um handler de `keydown`. Alinha o discador com os outros dois modais do mesmo bloco.
+**Cons:** fechar por `Escape` num painel que registra uma ligação em andamento pode descartar dados que a pessoa digitou (duração, resultado). O conserto precisa decidir se `Escape` descarta ou pede confirmação — não é só adicionar o listener.
+**Context:** o painel tem os botões Atendeu / Não atendeu / Caixa postal / Ocupado / Descartar / Copiar número / Abrir no discador / Salvar Log. Buscar por `md:left-[var(--app-sidebar-width` em `features/deals/`.
+**Effort:** S
+**Priority:** P2
+
+### Botão "e-mail" abre o compositor mesmo sem e-mail cadastrado
+
+**What:** no cockpit, clicar em "e-mail" para um contato sem endereço abre o modal "Preparar email" com o texto "Sem email cadastrado" no lugar do destinatário. O compositor abre inteiro para algo que não tem como ser enviado. Achado pelo `/qa` em 2026-09-01.
+
+**Why:** custa um clique e uma leitura para descobrir que não dá. O caminho útil seria levar direto a cadastrar o e-mail do contato, que é o que a pessoa precisa fazer de qualquer forma.
+
+**Pros:** ou desabilitar o botão com um `title` explicando, ou trocar o destino para o cadastro do contato. Ambos são pequenos.
+**Cons:** desabilitar esconde a funcionalidade de quem ia cadastrar o e-mail em seguida; e pode haver fluxo em que o e-mail é preenchido dentro do próprio compositor (verificar antes de mexer). Escolher entre as duas saídas é decisão de produto.
+**Context:** bloco "contato principal" do cockpit, `features/deals/cockpit/DealCockpitClient.tsx` (botões `.channel-actions__btn`).
+**Effort:** S
+**Priority:** P3
+
 ### `.inbox` ainda tem o `min-width: 1180px` que saiu do cockpit
 
 **What:** `app/globals.css:1073` mantém `min-width: 1180px` no Inbox. O cockpit perdeu o dele em 2026-08-31 e virou coluna única; o Inbox ficou sozinho com o número. Continua rolando pro lado em qualquer notebook de 1280px com a barra lateral aberta (1044px úteis) — é literalmente o bug que `DESAFIOS.md` registrou em 14/08 com o card "aprovações IA" 102px fora da tela.

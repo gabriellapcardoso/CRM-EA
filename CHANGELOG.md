@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ai): toda a camada de IA estava fora do ar — modelo removido do catálogo — 2026-09-01
+
+Achado pelo `/qa` na tela do cockpit: o console mostrava `Erro ao executar
+tarefa de IA` e a saúde do deal travada em 10%. O log da Vercel deu a causa:
+
+```
+AI_APICallError: No endpoints found for google/gemini-2.0-flash-001 (404)
+```
+
+A OpenRouter removeu esse modelo do catálogo. Ele era o default do código
+(`lib/ai/defaults.ts`), e **17 arquivos** dependiam dele: agente do WhatsApp,
+análise de deal, briefing diário, script de vendas, respostas a objeções,
+rascunho de e-mail, estratégia de board, extração e o cron de avaliação de
+estágios. Tudo respondendo 500.
+
+**Eram dois problemas empilhados, e o segundo é o que interessa.**
+
+A org tinha `ai_model = 'gemini-2.5-flash'` e `ai_provider = 'google'` no banco
+— formato nativo do Google, sobra da migração pra OpenRouter que nunca foi
+aplicada aos dados. `getModel` valida o id contra `provider/model` e, quando
+não bate, cai no default. Em silêncio. Então o CRM rodou **meses** ignorando a
+configuração escolhida na tela de settings, e ninguém tinha como saber: a IA
+respondia normalmente, só que sempre com o default.
+
+O modelo quebrado foi só o que finalmente tornou isso visível.
+
+Correções:
+- Default do código → `deepseek/deepseek-v4-flash` (existe no catálogo, suporta
+  `tools` e `structured_outputs`, que o agente e as tarefas exigem)
+- `organization_settings` da org → mesmo modelo, `ai_provider = 'openrouter'`
+- **`getModel` agora avisa alto quando descarta um `ai_model`**, nomeando o
+  valor rejeitado. Config ignorada tem que doer na hora, não na hora em que o
+  default morre.
+
+Verificado ao vivo em produção: `POST /api/ai/tasks/deals/analyze` voltou a
+200, a tela voltou a sugerir próxima ação ("Agendar reunião de qualificação") e
+a saúde do deal saiu de 10% para 30%.
+
+Guarda: `lib/ai/config.test.ts` (8 asserções, incluindo o `'gemini-2.5-flash'`
+literal que causou o problema e a checagem de que o default nunca volta a ser o
+modelo removido).
+
 ### refactor(cockpit): tela de governança vira coluna única com uma rolagem — 2026-08-31
 
 A tela do cockpit do deal era um grid de 3 painéis (`288px 1fr 320px`) com
