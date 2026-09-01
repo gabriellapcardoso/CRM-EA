@@ -770,9 +770,17 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
       };
     }
 
+    // "Sem sugestão" e "sem serviço" são coisas diferentes e antes mostravam o
+    // mesmo texto. Em 2026-09-01 a IA ficou fora do ar (modelo removido do
+    // catálogo da OpenRouter) e a tela dizia calmamente que não havia sugestão —
+    // a operadora agiu achando que o deal não tinha nada a sugerir, quando na
+    // verdade não havia IA nenhuma. O erro já chegava aqui em `aiAnalysis.error`
+    // e era descartado. Ver issue #16.
     return {
       action: 'Analisar deal manualmente',
-      reason: 'Sem sugestão da IA no momento',
+      reason: aiAnalysis?.error
+        ? 'IA fora do ar — sugestão indisponível'
+        : 'Sem sugestão da IA no momento',
       urgency: 'low' as const,
       actionType: 'TASK' as const,
       isAI: false,

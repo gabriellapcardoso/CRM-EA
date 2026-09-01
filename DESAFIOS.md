@@ -672,6 +672,26 @@ Resultado: durante meses **toda** chamada de IA ignorou a configuração escolhi
 
 **Corolário sobre migração**: a migração pra OpenRouter (2026-08-15) trocou provider e formato de id no código, mas não escreveu migration pros dados. Ao trocar o formato de um valor que vive no banco, migrar as linhas existentes faz parte da mudança — senão o código novo lê dado velho e o comportamento diverge em silêncio de org pra org.
 
+## Alerta que grava no banco mas não entrega ficou 30 dias mudo sem ninguém notar (2026-09-01)
+
+`evolution-health` detecta canal WhatsApp caído, grava em `security_alerts` e manda e-mail via Resend. Funcionava — detectou e gravou 4 quedas em 30 dias. Nenhum e-mail saiu: `organization_settings.alert_email` estava NULL, e o código faz `if (settings?.alert_email && ...)`, seguindo em silêncio quando está vazio.
+
+O comentário do próprio arquivo (`route.ts:22`) diz *"não basta logar em tabela que ninguém olha às 2h da sexta"*. Era exatamente o que estava acontecendo, escrito por quem escreveu o código, dentro do arquivo que fazia isso.
+
+**A falha não é o `if`** — pular o envio sem destinatário é razoável. A falha é ele ser silencioso: um alerta que não consegue alertar é uma falha operacional, não um caminho normal. E o único sinal de que existia era a ausência de e-mails, que ninguém percebe, porque ausência não chega em lugar nenhum.
+
+**Como isso não repete**: todo canal de entrega de alerta precisa de teste de fumaça no dia em que é configurado (mandar um alerta real, conferir que chegou), e a falta de configuração do destino tem que gritar em `console.error` no momento em que o alerta seria enviado — foi o que o `ai-health` passou a fazer. Regra geral: quando o código detecta um problema e não consegue entregar o aviso, isso vira um segundo problema, não um `return` mudo.
+
+**Corolário sobre alerta que ninguém testa**: quatro alertas gravados são quatro oportunidades de perceber, todas perdidas porque nada olha a tabela. Se o mecanismo de alerta não tem alarme próprio, ele é só um log com nome bonito.
+
+## Comentário de código afirmando cadência que o agendador não pratica (2026-09-01)
+
+`evolution-health/route.ts:21` dizia "Roda a cada 30min (ver vercel.json)". O `vercel.json` agendava `0 9 * * *` — uma vez por dia, 9h. O comentário até apontava o arquivo certo, o que dá a impressão de ter sido verificado.
+
+Consequências reais: um canal caindo às 10h ficava ~23h sem alerta, e o cooldown de 4h contra spam logo abaixo (`route.ts:56`) protegia contra um problema que não existia naquela cadência — 4h de cooldown numa checagem diária nunca dispara.
+
+**Como isso não repete**: quando um comentário afirma cadência, timeout ou limite que vive em outro arquivo, ou o valor sai do código (importado da mesma fonte) ou o comentário aponta o arquivo sem repetir o número. Número duplicado em prosa não tem quem o verifique e desatualiza na primeira mudança. Aqui: cadência dos crons vive só no `vercel.json`.
+
 ## Item de backlog previu o incidente, ficou em P3, e a falha chegou antes da prioridade (2026-09-01)
 
 `TODOS.md` tinha desde 2026-08-14 o item "Configurar fallback nativo de modelo da OpenRouter (`models: [...]`)", com o Why escrito assim: *"dá resiliência a falha de modelo específico (rate limit, outage pontual)"*. Estava em **P3, effort S** — ou seja, identificado corretamente, dimensionado corretamente como trabalho pequeno, e adiado. Dezoito dias depois a falha aconteceu e derrubou 17 arquivos, incluindo o agente que negocia no WhatsApp.

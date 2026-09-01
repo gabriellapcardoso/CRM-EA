@@ -18,9 +18,19 @@ function json<T>(body: T, status = 200): Response {
  * T4-EXECUCAO.md item 4). QR expirado ≠ VPS caída: sem isso, a sessão pode
  * cair silenciosamente e leads viram "Perdido" por falta de resposta.
  *
- * Roda a cada 30min (ver vercel.json). Grava em security_alerts (auditoria)
+ * Roda a cada 15min (ver vercel.json). Grava em security_alerts (auditoria)
  * E manda e-mail de verdade — não basta logar em tabela que ninguém olha às
  * 2h da sexta. E-mail não depende do canal WhatsApp que pode estar fora do ar.
+ *
+ * Este comentário dizia "a cada 30min" enquanto o vercel.json agendava
+ * `0 9 * * *` — uma vez por dia. Um canal que caísse às 10h ficava 23h sem
+ * alerta, e o cooldown de 4h abaixo não fazia sentido nenhum nessa cadência.
+ * Alinhado em 2026-09-01 junto do health check de IA (issue #16).
+ *
+ * Aviso que vale pros dois crons: sem `organization_settings.alert_email`
+ * preenchido, o bloco de e-mail lá embaixo é pulado em silêncio e isto vira
+ * exatamente a "tabela que ninguém olha" que o parágrafo acima condena. Foi o
+ * que aconteceu por 30 dias: 4 alertas gravados, zero e-mails enviados.
  *
  * Protegido por CRON_SECRET, mesmo padrão de template-sync.
  */

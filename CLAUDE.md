@@ -131,6 +131,10 @@ const model = getModel(config.provider, config.apiKey, config.model)
 
 **Fallback de config tem que ser barulhento.** Descartar valor que alguém escolheu numa tela é evento, não default. Fallback mudo só vale pra config *ausente* (campo vazio, org nova), nunca pra config presente e inválida.
 
+**Alerta que não entrega tem que gritar**: `evolution-health` pulava o e-mail em silêncio quando `organization_settings.alert_email` estava vazio — 4 quedas de canal WhatsApp detectadas, gravadas e nunca reportadas, em 30 dias. Falta de destino configurado agora loga `console.error` no ponto em que o alerta sairia (`app/api/cron/ai-health/route.ts`). Cadência de cron vive **só** no `vercel.json`; comentário não repete o número (o antigo dizia 30min sobre um agendamento diário).
+
+**Health check passa pelo caminho da própria aplicação** (`getOrgAIConfig` + `getModel`), nunca um ping ao fornecedor: em 2026-09-01 o fornecedor estava de pé e a config da org é que estava quebrada — um ping teria reportado tudo saudável. Duas janelas distintas em `ai-health`: 20min decide se é a 2ª falha consecutiva, 4h decide se manda e-mail. Grava sempre, e-mail limitado.
+
 **Failover de modelo** (`AI_FALLBACK_MODELS` em `lib/ai/defaults.ts`): vai no `extraBody` do factory dentro de `getModel`, usando o parâmetro nativo `models` da OpenRouter — assim as 17 chamadas ganham rede de uma vez, em vez de `providerOptions` repetido em cada uma. A lista cobre dois fabricantes de propósito (dois modelos do mesmo fornecedor caem juntos), e todo item precisa de `tools` + `structured_outputs`. Guarda: `lib/ai/failover.test.ts`. Não confundir com `lib/ai/agent/provider-failover.ts`, que faz failover entre *providers* e nunca rodou (só existe a OpenRouter).
 
 **Trocar o formato de um valor que vive no banco é migration também** — a migração pra OpenRouter trocou o formato no código e não migrou as linhas, então o código novo passou a ler dado velho em silêncio.

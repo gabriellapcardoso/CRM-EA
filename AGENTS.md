@@ -33,6 +33,13 @@
 - **Guard**: `test/softDeleteFilters.test.ts`
 - **Case-by-case exception**: webhook/idempotency lookups may legitimately need to see deleted rows — check the flow before adding the filter there (see `TODOS.md`, AI/MCP layer item)
 
+## Alerting Rules
+- **A silent `return` when an alert can't be delivered is a second bug, not a normal path.** `evolution-health` skipped the email whenever `organization_settings.alert_email` was empty, and did it quietly — 4 WhatsApp outages detected, logged, and never reported, over 30 days. Missing delivery config must `console.error` at the moment the alert would have been sent
+- **Smoke-test the delivery channel the day it is configured.** Send one real alert and confirm it arrives. A monitoring system nobody has ever seen fire is indistinguishable from a broken one
+- **Cron cadence lives only in `vercel.json`.** A comment claiming "runs every 30min" sat above a `0 9 * * *` schedule; nothing verifies prose. Point at the file, never restate the number
+- **Two windows in `ai-health`, easy to conflate:** the 20min window decides whether this failure is the 2nd consecutive one; the 4h cooldown decides whether to send email. Record always, email rate-limited — an overnight outage would otherwise send 90+ emails and bury the real alert
+- **Health checks go through the app's own code path** (`getOrgAIConfig` + `getModel`), never a bare ping to the vendor. On 2026-09-01 the vendor was up and the org's config was broken; a ping would have reported healthy
+
 ## AI Config Rules
 - **`ai_model` must be OpenRouter's `provider/model` format.** A bare id (`gemini-2.5-flash`) is silently discarded by `getModel` and falls back to the default — the org ran for months on the default while settings said otherwise. `getModel` now warns loudly on that path; never remove that warning. Guard: `lib/ai/config.test.ts`
 - **Config fallbacks must be noisy.** Dropping a value someone deliberately chose in a settings screen is an event, not a default. Silent fallback is only acceptable for *absent* config (empty field, new org), never for config that is present and invalid

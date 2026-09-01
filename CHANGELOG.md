@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(ops): health check da IA a cada 15 min, com alerta que realmente chega — 2026-09-01
+
+Fecha a issue #16. Depois de #13 (modelo restaurado) e #14 (failover nativo), o
+que continuava aberto era a detecção: o failover cobre "um modelo sumiu", mas
+não cobre chave revogada, crédito zerado, nem os três modelos da lista falharem
+juntos. Nesses casos o CRM voltaria a ficar mudo até alguém olhar.
+
+**O achado que veio junto e vale mais que o pedido.**
+`organization_settings.alert_email` estava **NULL**. O canal WhatsApp caiu 4
+vezes nos últimos 30 dias, o `evolution-health` detectou e gravou as 4, e
+**nenhum e-mail saiu** — `route.ts:100` faz `if (settings?.alert_email && ...)`
+e segue calado quando está vazio. O mecanismo de alerta existia, funcionava, e
+não avisava ninguém. O comentário do próprio arquivo já dizia que isso não podia
+acontecer: *"não basta logar em tabela que ninguém olha às 2h da sexta"*.
+
+Segundo achado: o comentário dizia "roda a cada 30min" enquanto o `vercel.json`
+agendava `0 9 * * *`, uma vez por dia. Um canal caindo às 10h ficava ~23h sem
+alerta, e o cooldown de 4h contra spam não fazia sentido nessa cadência.
+
+**O que entrou:**
+
+- `alert_email` preenchido (no banco, fora do repo — é público)
+- `app/api/cron/ai-health/route.ts`, a cada 15 min. Faz uma chamada sintética
+  curta pela mesma `getOrgAIConfig` + `getModel` da aplicação, então exercita
+  chave, modelo, formato do id e o failover de ponta a ponta. Um ping ao
+  endpoint da OpenRouter teria passado no incidente, porque o serviço externo
+  estava de pé e quem estava quebrado era a config da org
+- Alerta só na **segunda falha consecutiva**: a 1ª grava `severity='info'` sem
+  e-mail (falha isolada é soluço de rede), a 2ª grava `critical` e envia.
+  Estado no banco, porque cada execução do cron é um processo novo. Sucesso não
+  grava nada — 96 execuções diárias saudáveis custam zero linhas
+- Cockpit distingue "Sem sugestão da IA no momento" de "IA fora do ar — sugestão
+  indisponível". O erro já chegava em `aiAnalysis.error` e era descartado; foi
+  esse texto ambíguo que escondeu o incidente da operadora
+- `evolution-health` alinhado a 15 min, e o comentário passou a descrever a
+  realidade
+
+**Duas janelas distintas, deliberadamente:** a de 20 min decide se esta falha é
+a 2ª consecutiva (20 e não 15 pra tolerar atraso de agendamento); o cooldown de
+4h decide se manda e-mail. Sem o cooldown, uma IA fora do ar durante a noite
+renderia 90+ e-mails e o alerta real se perderia no ruído. O registro sempre
+acontece; só o e-mail é limitado.
+
+Custo: ~2.880 checagens/mês com prompt curto ≈ US$ 0,06/mês.
+
+Guardas: `test/aiHealthCron.test.ts` (14) e `test/cockpitAiErrorText.test.ts`
+(5).
+
 ### feat(ai): failover nativo de modelo da OpenRouter — 2026-09-01
 
 Fecha a classe de falha que derrubou a IA hoje, não só o caso.
