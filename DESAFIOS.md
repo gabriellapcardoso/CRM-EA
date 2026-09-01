@@ -660,6 +660,26 @@ Em ambos os casos, o dado no banco está certo, a mutation funcionou, mas a UI m
 
 **Como isso não repete**: quando a resposta da própria mutation já contém (ou dá pra deduzir) o dado que mudou, atualizar a lista local direto a partir dela (`queryClient.setQueryData` no TanStack Query, ou `setState` direto em componentes com state local) em vez de depender de um segundo round-trip de rede. Esse é o padrão que `DEALS_VIEW_KEY` já usava neste projeto antes dessas correções — vale generalizar pra qualquer mutation nova, não só reagir quando o bug aparecer de novo em outra tela.
 
+## Fallback silencioso escondeu config errada por meses, e só apareceu quando o próprio default morreu (2026-09-01)
+
+`getModel` (`lib/ai/config.ts`) valida `organization_settings.ai_model` contra o formato `provider/model` da OpenRouter e, quando não bate, cai no default. Sem log, sem aviso, sem nada. A org tinha `ai_model = 'gemini-2.5-flash'` (formato nativo do Google, sem barra) e `ai_provider = 'google'` — sobra da migração pra OpenRouter que trocou o código mas nunca migrou os dados.
+
+Resultado: durante meses **toda** chamada de IA ignorou a configuração escolhida na tela de settings e usou o default. A IA respondia normalmente, então nada indicava problema. Só apareceu em 2026-09-01, quando a OpenRouter removeu `google/gemini-2.0-flash-001` do catálogo e o default virou 404 — derrubando 17 arquivos de uma vez, do agente do WhatsApp ao cron de avaliação de estágios.
+
+**A ironia é o ponto**: o fallback existia pra impedir uma falha, e o que ele fez foi acumular a falha até ela estourar toda junta, num momento em que a causa (config stale) não tinha relação nenhuma com o sintoma (modelo 404).
+
+**Como isso não repete**: fallback de configuração precisa ser barulhento. Quando o código descarta um valor que alguém escolheu conscientemente numa tela, isso é um evento — logar com o valor rejeitado nomeado. Fallback mudo só é aceitável para ausência de config (campo vazio, org nova), nunca para config presente e inválida: a primeira é o comportamento esperado, a segunda é um bug que alguém precisa consertar. Guarda em `lib/ai/config.test.ts`.
+
+**Corolário sobre migração**: a migração pra OpenRouter (2026-08-15) trocou provider e formato de id no código, mas não escreveu migration pros dados. Ao trocar o formato de um valor que vive no banco, migrar as linhas existentes faz parte da mudança — senão o código novo lê dado velho e o comportamento diverge em silêncio de org pra org.
+
+## Modelo de IA sumindo do catálogo do roteador é falha operacional esperada, não acidente (2026-09-01)
+
+`google/gemini-2.0-flash-001` simplesmente deixou de existir na OpenRouter, sem depreciação visível pra quem consome. A resposta é 404 `No endpoints found`, e `isRetryable: false` — nenhum retry salva.
+
+O catálogo da OpenRouter tem 417 modelos e muda toda semana. Depender de um id fixo de modelo é depender de um recurso de terceiro que pode evaporar sem aviso, e hoje isso derruba a esteira comercial inteira: o agente que negocia no WhatsApp para junto.
+
+**Como isso não repete**: preferir ids de modelo datados/pinados (`deepseek-v4-flash-0731`) a aliases móveis quando a estabilidade importa mais que ganhar melhorias sozinho — foi justamente um alias que quebrou aqui. E existe pendência em `TODOS.md` pra configurar o fallback nativo da OpenRouter (`models: [...]`), que aceita uma lista e cai pro próximo quando um some: é o conserto estrutural, este aqui foi o pontual.
+
 ## `display: contents` é regra de layout, não de DOM — seletor `> *` não alcança os filhos promovidos (2026-08-31)
 
 Ao transformar o cockpit de 3 painéis em coluna única, os containers viraram `display: contents` pra que os 12 blocos internos subissem a itens flex do avô e pudessem ser reordenados com `order`. O layout funcionou de primeira. O que não funcionou foi o CSS que pintava os blocos: `.cockpit__body > * { max-width: 900px }` e `.cockpit__body > .cockpit__block { background: ... }` não casavam com nada visível.

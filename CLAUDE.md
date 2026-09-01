@@ -127,6 +127,12 @@ const config = await getOrgAIConfig(orgId) // config.apiKey = ai_openrouter_key;
 const model = getModel(config.provider, config.apiKey, config.model)
 ```
 
+**`ai_model` precisa do formato `provider/model` da OpenRouter** (`deepseek/deepseek-v4-flash`), não do id nativo do provider (`gemini-2.5-flash`). Id sem barra é **descartado** por `getModel` e cai no default — a org rodou meses no default enquanto a tela de settings mostrava outro modelo, e isso só apareceu quando a OpenRouter removeu o modelo default do catálogo e a IA inteira deu 404 (17 arquivos: agente, tarefas, briefing, cron). `getModel` hoje loga alto quando descarta; não remover esse aviso. Guarda: `lib/ai/config.test.ts`.
+
+**Fallback de config tem que ser barulhento.** Descartar valor que alguém escolheu numa tela é evento, não default. Fallback mudo só vale pra config *ausente* (campo vazio, org nova), nunca pra config presente e inválida.
+
+**Trocar o formato de um valor que vive no banco é migration também** — a migração pra OpenRouter trocou o formato no código e não migrou as linhas, então o código novo passou a ler dado velho em silêncio.
+
 **Realtime**: invalidação targeted em `lib/realtime/useRealtimeSync.ts` — nunca invalidar globalmente. UPDATE/DELETE usam debounce; INSERT não.
 
 **Sanitize**: usar `sanitizePostgrestValue()` e `sanitizeUrl()` de `lib/utils/sanitize.ts`
