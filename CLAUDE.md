@@ -131,6 +131,8 @@ const model = getModel(config.provider, config.apiKey, config.model)
 
 **Fallback de config tem que ser barulhento.** Descartar valor que alguém escolheu numa tela é evento, não default. Fallback mudo só vale pra config *ausente* (campo vazio, org nova), nunca pra config presente e inválida.
 
+**Failover de modelo** (`AI_FALLBACK_MODELS` em `lib/ai/defaults.ts`): vai no `extraBody` do factory dentro de `getModel`, usando o parâmetro nativo `models` da OpenRouter — assim as 17 chamadas ganham rede de uma vez, em vez de `providerOptions` repetido em cada uma. A lista cobre dois fabricantes de propósito (dois modelos do mesmo fornecedor caem juntos), e todo item precisa de `tools` + `structured_outputs`. Guarda: `lib/ai/failover.test.ts`. Não confundir com `lib/ai/agent/provider-failover.ts`, que faz failover entre *providers* e nunca rodou (só existe a OpenRouter).
+
 **Trocar o formato de um valor que vive no banco é migration também** — a migração pra OpenRouter trocou o formato no código e não migrou as linhas, então o código novo passou a ler dado velho em silêncio.
 
 **Realtime**: invalidação targeted em `lib/realtime/useRealtimeSync.ts` — nunca invalidar globalmente. UPDATE/DELETE usam debounce; INSERT não.
