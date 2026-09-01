@@ -29,9 +29,10 @@ Medido em produção antes de mexer, não suposto:
 
 - Os 3 painéis viram `display: contents` e os 12 blocos sobem para filhos
   diretos de um flex column. A sequência passa a viver em classes de CSS
-  (`.cockpit__sec--*`), na ordem da governança: decidir (próxima ação, risco,
-  próximos passos) → agir (contato + canais) → entender (linha do tempo, notas)
-  → assistente (agente IA) → consultar (dados, sinais, etiquetas, contexto).
+  (`.cockpit__sec--*`), na ordem da governança: identificar (dados do deal,
+  contato + canais) → decidir (próxima ação, risco, próximos passos) → entender
+  (linha do tempo, notas) → assistente (agente IA) → consultar (sinais,
+  etiquetas, contexto).
   Nenhum bloco foi movido no JSX; a ordem inteira é `order`.
 - `min-width: 1180px` removido. Era herança literal do handoff HTML do redesign
   (`d924a86`), não cálculo — o piso real das colunas era 1028px.

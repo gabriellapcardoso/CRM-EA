@@ -1242,15 +1242,20 @@ body {
 .cockpit__body .card-hitl,
 .cockpit__body .panel { width: 100%; max-width: 900px; margin-inline: auto; }
 
-/* Ordem da governança: decidir → agir → entender → consultar.
+/* Ordem da governança: identificar → decidir → entender → consultar.
  * Os blocos ficam onde estão no JSX (esquerda/centro/direita do layout antigo);
  * só a ordem visual muda. `order` só funciona porque os containers são
- * `display: contents` e todos os blocos são irmãos diretos deste flex. */
-.cockpit__sec--decidir { order: 1; }   /* próxima ação, risco, próximos passos */
-.cockpit__sec--agir { order: 2; }      /* contato + botões de canal */
-.cockpit__sec--historico { order: 3; } /* linha do tempo, escrever nota, registrar */
-.cockpit__sec--assistente { order: 4; }/* agente IA (chat/notas/scripts/arquivos) */
-.cockpit__sec--ref { order: 5; }       /* dados do deal, sinais, etiquetas, contexto */
+ * `display: contents` e todos os blocos são irmãos diretos deste flex.
+ *
+ * `--deal` e `--contato` são separados em vez de um grupo só porque blocos com
+ * o mesmo `order` caem na ordem do DOM, e ali o contato vem antes (JSX :1611 vs
+ * :1752) — o inverso do que a tela pede. */
+.cockpit__sec--deal { order: 1; }       /* dados do deal */
+.cockpit__sec--contato { order: 2; }    /* contato principal + botões de canal */
+.cockpit__sec--decidir { order: 3; }    /* próxima ação, risco, próximos passos */
+.cockpit__sec--historico { order: 4; }  /* linha do tempo, escrever nota, registrar */
+.cockpit__sec--assistente { order: 5; } /* agente IA (chat/notas/scripts/arquivos) */
+.cockpit__sec--ref { order: 6; }        /* sinais, etiquetas, contexto */
 
 /* Os blocos que vinham dos painéis laterais não tinham cara de card: o fundo e
  * a borda eram do `<aside>`, que agora não existe mais. Sem isto eles flutuam

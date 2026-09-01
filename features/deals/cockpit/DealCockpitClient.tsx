@@ -1614,7 +1614,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             bloco (ver app/globals.css), não da posição aqui no JSX. */}
         {/* ------- contêiner 1 (era a coluna esquerda) ------- */}
         <aside className="cockpit__aside">
-          <CockpitBlock title="contato principal" className="cockpit__sec--agir">
+          <CockpitBlock title="contato principal" className="cockpit__sec--contato">
             <div className="contact-head">
               <span className="avatar avatar--purple avatar--md" aria-hidden="true">
                 {getInitials(contact?.name ?? deal.title)}
@@ -1755,7 +1755,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             </dl>
           </CockpitBlock>
 
-          <CockpitBlock title="dados do deal" className="cockpit__sec--ref">
+          <CockpitBlock title="dados do deal" className="cockpit__sec--deal">
             <dl className="data-list">
               <div className="data-list__row">
                 <dt>empresa</dt>
