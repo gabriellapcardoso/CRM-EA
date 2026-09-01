@@ -229,16 +229,22 @@ de sessão expirada — reporta queda inexistente e queima a credibilidade do av
 
 **Effort:** S · **Priority:** P1
 
-### Contradição documental entre CLAUDE.md e AGENTS.md sobre cadência de cron — P1
+### ~~Contradição documental entre CLAUDE.md e AGENTS.md sobre cadência de cron~~ — RESOLVIDO (2026-09-01)
 
-**What:** `CLAUDE.md` afirma *"Cadência de cron vive **só** no `vercel.json`"*.
-`AGENTS.md` e `20260901180000_pg_cron_health_checks.sql` dizem o oposto: cadência vive
+**What:** `CLAUDE.md` afirmava *"Cadência de cron vive **só** no `vercel.json`"*.
+`AGENTS.md` e `20260901180000_pg_cron_health_checks.sql` diziam o oposto: cadência vive
 no pg_cron, e mexer no `vercel.json` faz a Vercel **rejeitar o deployment inteiro sem
 criar build**. Ambas as frases foram escritas no mesmo dia, por mim.
 
 **Why:** `CLAUDE.md` tem precedência de projeto. O próximo agente lê, edita o
 `vercel.json` e congela a produção — a falha exata que este mesmo lote documentou.
-**Effort:** S · **Priority:** P1
+
+**Resolvido:** a frase falsa saiu, e o `CLAUDE.md` ganhou o bloco que explica o limite
+do plano Hobby e manda ler as migrations de pg_cron antes de tocar no `vercel.json`.
+Como prosa já falhou em impedir isso duas vezes, a regra virou teste:
+`test/vercelCronLimit.test.ts` quebra num 3º cron, em qualquer agendamento sub-diário
+e no retorno da frase falsa. Verificado injetando as três regressões — 3 testes
+vermelhos, depois verde de novo.
 
 ### Demais achados do review — P2 (migrados para a issue #23)
 
