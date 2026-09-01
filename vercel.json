@@ -8,8 +8,6 @@
     "app/api/[transport]/route.ts": { "maxDuration": 120 }
   },
   "crons": [
-    { "path": "/api/cron/template-sync", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/evolution-health", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/ai-health", "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/template-sync", "schedule": "0 6 * * *" }
   ]
 }
