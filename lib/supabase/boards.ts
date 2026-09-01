@@ -664,7 +664,8 @@ export const boardsService = {
       const { count, error } = await supabase
         .from('deals')
         .select('*', { count: 'exact', head: true })
-        .eq('board_id', boardId);
+        .eq('board_id', boardId)
+        .is('deleted_at', null);
 
       if (error) return { canDelete: false, dealCount: 0, error };
 
@@ -697,11 +698,12 @@ export const boardsService = {
 
       const firstStageId = stages[0].id;
 
-      // Move todos os deals
+      // Move todos os deals (só os ativos — não ressuscita deal soft-deletado)
       const { error } = await supabase
         .from('deals')
         .update({ board_id: toBoardId, stage_id: firstStageId })
-        .eq('board_id', fromBoardId);
+        .eq('board_id', fromBoardId)
+        .is('deleted_at', null);
 
       return { error };
     } catch (e) {
@@ -860,7 +862,8 @@ export const boardsService = {
       const { count, error: countError } = await supabase
         .from('deals')
         .select('*', { count: 'exact', head: true })
-        .eq('stage_id', stageId);
+        .eq('stage_id', stageId)
+        .is('deleted_at', null);
 
       if (countError) {
         return { error: countError };
