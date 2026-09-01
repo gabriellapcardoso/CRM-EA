@@ -139,6 +139,8 @@ const model = getModel(config.provider, config.apiKey, config.model)
 
 **Schema Supabase**: tabela `board_stages` (não `stages`), coluna `"order"` (não `position`)
 
+**Sidebar e `--app-sidebar-width`**: a largura da barra lateral vive na CSS var `--app-sidebar-width`, setada só pelo `Layout` via `getSidebarWidth(mode, sidebarHidden)` (função pura exportada, testada em `test/sidebarWidth.test.ts`). **~30 modais posicionam o overlay com `md:left-[var(--app-sidebar-width)]`** — mexer nessa var sem manter a função como fonte única desloca todos eles de uma vez. Estados: `sidebarHidden` é a preferência explícita do usuário (persistida em `localStorage` como `crm_sidebar_hidden`, lida só após o mount pra não dar mismatch de hidratação); `sidebarCollapsed` é automático/efêmero e hoje **não é lido por ninguém** (ver `TODOS.md`). Não juntar os dois: o automático desfaria a escolha da pessoa.
+
 ### AI — Fluxo de Dados
 
 Dois caminhos distintos:

@@ -1,5 +1,43 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Dev server servindo build velho faz bug corrigido "voltar" (2026-08-31)
+
+**O quê:** ao testar a barra lateral ocultável em `localhost`, o dashboard
+voltou a mostrar R$ 5.600 de deals já excluídos — bug que tinha sido
+corrigido e verificado em produção horas antes. Também sumiu do topbar um
+botão que eu tinha acabado de adicionar e visto funcionando.
+**Reação errada que quase tomei:** achar que alguém restaurou os deals no
+banco, ou que meu fix tinha regredido.
+**Causa real:** o dev server estava rodando desde antes das correções
+(`preview_start` devolveu `reused: true`) e servia bundle antigo. O banco
+estava certo o tempo todo — confirmado por SQL: os dois deals seguiam com
+`deleted_at` preenchido.
+**Como separar rápido:** conferir o DADO na fonte (SQL direto) antes de
+suspeitar do código. Se o banco está certo e a tela não, o problema está
+entre os dois — cache de build, service worker, ou bundle velho.
+**Correção:** `preview_stop` + `rm -rf .next` + `preview_start`.
+**Sinal de que é build velho, não regressão:** código NOVO que você acabou
+de escrever some da tela junto com o comportamento antigo voltando. Uma
+regressão de dados não faria um botão novo desaparecer.
+
+## Disco cheio (ENOSPC) se disfarça de erro de aplicação (2026-08-31)
+
+**O quê:** a página de Contatos passou a devolver "Internal Server Error" no
+dev. Nos logs, antes do erro real, apareciam vários `panicked at
+turbopack_ctx.rs` e `PoisonError` do Turbopack — tudo com cara de bug do
+Next.js. A causa era `ENOSPC: no space left on device`: 2,1 GB livres de
+228 GB.
+**O que denunciou:** o próprio agente parou de conseguir rodar comandos
+(`ENOSPC` ao escrever o arquivo de saída do shell).
+**Regra prática:** ao ver panic de toolchain (Rust/Turbopack/esbuild) em
+cascata, checar `df -h` ANTES de investigar o stack trace. Ferramenta de
+build costuma reportar disco cheio como corrupção interna.
+**Onde o espaço estava:** WhatsApp Desktop com 52 GB de mídia
+(`~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared`) — só
+limpável pelo app. Cuidado com `du -sh ~/Library/*`: não pega diretórios
+ocultos, e o total do pai não bate com a soma dos filhos; usar
+`du -h -d 1` pra achar o real culpado.
+
 ## VPS suspensa e religada: Evolution volta quebrada em 3 camadas, não 1 (2026-08-31)
 
 **O quê:** VPS Hostinger venceu e foi religada. Pagar

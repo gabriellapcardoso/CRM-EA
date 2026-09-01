@@ -33,6 +33,13 @@
 - **Guard**: `test/softDeleteFilters.test.ts`
 - **Case-by-case exception**: webhook/idempotency lookups may legitimately need to see deleted rows — check the flow before adding the filter there (see `TODOS.md`, AI/MCP layer item)
 
+## Layout / Sidebar Rules
+- **`--app-sidebar-width` has ~30 consumers**: modals position their overlay with `md:left-[var(--app-sidebar-width)]`. Getting it wrong shifts every modal at once
+- **Single source of truth**: only `Layout` writes that var, and only through `getSidebarWidth(mode, sidebarHidden)` — a pure exported function, covered by `test/sidebarWidth.test.ts`. Don't inline the width logic anywhere else
+- **Two independent sidebar states, on purpose**: `sidebarHidden` is the user's explicit preference (persisted in `localStorage` as `crm_sidebar_hidden`); `sidebarCollapsed` is automatic/ephemeral. Never merge them — the automatic one would silently undo the user's choice
+- **Read persisted UI prefs after mount**, never during first render — otherwise hydration mismatch (same pattern the pending-decisions counter already uses)
+- **Hiding is desktop-only** (≥1280px): tablet has the icon rail, mobile has the bottom nav
+
 ## Code Style
 - TypeScript 5.x strict, React 19, Tailwind CSS v4, Radix UI primitives
 - Shared components in `components/`, feature modules in `features/`
