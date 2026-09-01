@@ -141,6 +141,12 @@ const model = getModel(config.provider, config.apiKey, config.model)
 
 **Sidebar e `--app-sidebar-width`**: a largura da barra lateral vive na CSS var `--app-sidebar-width`, setada só pelo `Layout` via `getSidebarWidth(mode, sidebarHidden)` (função pura exportada, testada em `test/sidebarWidth.test.ts`). **~30 modais posicionam o overlay com `md:left-[var(--app-sidebar-width)]`** — mexer nessa var sem manter a função como fonte única desloca todos eles de uma vez. Estados: `sidebarHidden` é a preferência explícita do usuário (persistida em `localStorage` como `crm_sidebar_hidden`, lida só após o mount pra não dar mismatch de hidratação); `sidebarCollapsed` é automático/efêmero e hoje **não é lido por ninguém** (ver `TODOS.md`). Não juntar os dois: o automático desfaria a escolha da pessoa.
 
+**Cockpit do deal — coluna única (2026-08-31)**: a tela era um grid de 3 painéis com 3 rolagens e `min-width: 1180px`. Virou uma coluna com uma rolagem só. Os painéis (`.cockpit__aside`, `.cockpit__center`) são `display: contents` — **regra de layout, não de DOM**: eles continuam sendo os filhos diretos de `.cockpit__body` na árvore, então seletor `>` alcança os painéis (sem caixa), não os blocos. Usar descendente. A ordem das seções vive nas classes `.cockpit__sec--decidir|agir|historico|assistente|ref` (`order: 1..5`); bloco sem classe cai em `order: 0` e vai pro topo da tela sem avisar. Guarda: `test/cockpitLayout.test.ts`.
+
+**Layout não é testável em happy-dom** (sem engine de layout: `getBoundingClientRect()` devolve zero, `scrollWidth === clientWidth` sempre). Teste de "não estoura" renderizando componente é falso-positivo. Afirmar invariantes do CSS como texto e medir no browser.
+
+**Largura interna é caso de container query, não media query**: a sidebar (236px) e o painel de IA (`w-96`, `Layout.tsx:366`) encolhem a área útil sem mexer no viewport, então `@media` não dispara.
+
 ### AI — Fluxo de Dados
 
 Dois caminhos distintos:

@@ -660,6 +660,42 @@ Em ambos os casos, o dado no banco está certo, a mutation funcionou, mas a UI m
 
 **Como isso não repete**: quando a resposta da própria mutation já contém (ou dá pra deduzir) o dado que mudou, atualizar a lista local direto a partir dela (`queryClient.setQueryData` no TanStack Query, ou `setState` direto em componentes com state local) em vez de depender de um segundo round-trip de rede. Esse é o padrão que `DEALS_VIEW_KEY` já usava neste projeto antes dessas correções — vale generalizar pra qualquer mutation nova, não só reagir quando o bug aparecer de novo em outra tela.
 
+## `display: contents` é regra de layout, não de DOM — seletor `> *` não alcança os filhos promovidos (2026-08-31)
+
+Ao transformar o cockpit de 3 painéis em coluna única, os containers viraram `display: contents` pra que os 12 blocos internos subissem a itens flex do avô e pudessem ser reordenados com `order`. O layout funcionou de primeira. O que não funcionou foi o CSS que pintava os blocos: `.cockpit__body > * { max-width: 900px }` e `.cockpit__body > .cockpit__block { background: ... }` não casavam com nada visível.
+
+Motivo: `display: contents` remove a **caixa** do elemento, não o elemento da **árvore**. Os 3 containers continuam sendo os filhos diretos de `.cockpit__body` no DOM; quem virou item flex foram os netos. Então `> *` seleciona os containers — que não têm caixa e não pintam nada — e os blocos ficam sem estilo nenhum.
+
+**Como foi achado**: medindo no browser, não lendo o código. `document.querySelectorAll('.cockpit__body > *')` devolveu 3 elementos com os rótulos "contato principal", "próxima ação" e "risco do deal" — os primeiros labels de cada container. Se a checagem tivesse sido visual ("parece certo"), o bug passaria: a ordem estava certa, só a pintura estava ausente.
+
+**Como isso não repete**: ao usar `display: contents` pra achatar hierarquia, trocar todo seletor de filho direto (`>`) por descendente no mesmo diff. Regra de bolso: `display: contents` muda quem participa do layout, e `>` fala de quem participa da árvore — os dois deixam de coincidir no instante em que a propriedade entra. Guarda em `test/cockpitLayout.test.ts` (afirma que `.cockpit__body > *` não existe no CSS).
+
+## `min-width` copiado do handoff vira restrição de produto sem ninguém decidir (2026-08-31)
+
+`.cockpit__body` e `.inbox` carregavam `min-width: 1180px` desde o commit do redesign (`d924a86`). Duas sessões de QA (06/08 e 14/08) trataram o número como decisão deliberada de densidade e não mexeram nele. A soma real das colunas era 1028px no cockpit e 1104px no inbox — 1180 não corresponde a nenhuma das duas. Era a largura de trabalho do arquivo HTML do handoff, copiada literal pra duas classes diferentes.
+
+O custo: quatro meses de scroll horizontal em toda tela de notebook, com o `REDESIGN-CRM.md` documentando o comportamento como intencional ("essas telas rolam horizontalmente em vez de espremer, exatamente como especificado"), o que fez cada revisão seguinte parar na porta.
+
+**Como isso não repete**: ao herdar CSS de handoff/mockup, conferir se cada `min-width`/`max-width` fixo bate com a soma dos filhos. Quando não bate, é número de conveniência do arquivo de origem, não requisito — anotar isso no CSS na hora da importação, enquanto ainda se sabe. Um número mágico sem justificativa escrita vira, por omissão, uma decisão que ninguém tomou e ninguém se sente autorizado a reverter.
+
+## `min-width: auto` implícito de flex item faz `flex: 1` não encolher (2026-08-31)
+
+Os 4 botões de canal do cockpit mediam 327px numa coluna de 288px e cortavam na borda, mesmo tendo `flex: 1` (= `flex: 1 1 0%`, que deveria permitir encolher até zero). O culpado é o `min-width: auto` implícito que todo item flex tem: ele trava o encolhimento no `min-content` do próprio conteúdo — no caso, o rótulo "enviar proposta" com o badge de canal.
+
+Corolário que também vale registrar: `flex-wrap` **não** conserta isso de forma previsível. A quebra é decidida pelo tamanho hipotético já clampado pelo min-content, então uma grade 2×2 sai por acidente aritmético e reagrupa sozinha quando um rótulo muda em runtime (aqui, "enviar proposta" vira "enviando..."). A saída foi `display: grid` com `auto-fit`, que é determinístico.
+
+**Como isso não repete**: sempre que um item flex com `flex: 1` estourar o pai, o primeiro suspeito é `min-width: auto` — adicionar `min-width: 0` explícito. E quando o objetivo é uma grade estável de N colunas, usar grid, não `flex-wrap`.
+
+## Media query não enxerga painel irmão que encolhe o container (2026-08-31)
+
+O painel de IA do CRM é um `<aside class="w-96">` (384px) irmão flex do `<main>` em `Layout.tsx:366`. Quando ele abre, a área útil do conteúdo cai de 1203px para 820px — **sem o viewport mudar**. Qualquer `@media (max-width: N)` continua avaliando 1440px e não dispara.
+
+Foi medido durante o fix do cockpit: com breakpoint de media query, a coluna central ficava em 256px com o painel aberto; com `@container` no mesmo limiar, ia a 520px. (A solução final acabou não precisando de nenhum dos dois, porque a tela virou coluna única — mas a armadilha vale pras outras telas.)
+
+Verificado de quebra: `container-type: inline-size` **não** deslocou o toast `.banner--realtime`, que é `position: absolute` — medido antes e depois, continua ancorado em `.screen` nas mesmas coordenadas.
+
+**Como isso não repete**: neste app, responsividade de conteúdo interno é caso de container query, não media query — o viewport quase nunca é a medida certa, porque sidebar (236px) e painel de IA (384px) mudam a área útil sem mexer nele.
+
 ## Inbox/cockpit `.inbox { min-width: 1180px }` corta conteúdo em telas de 1280px sem indicar que dá pra rolar (2026-08-14)
 
 QA confirmou ao vivo (viewport 1280×800, resolução comum de notebook) que o card "aprovações IA" na visão geral do Inbox fica 102px fora da área visível — corta na borda direita da tela, sem barra de rolagem visível, sem gradiente ou qualquer pista de que há mais conteúdo. `.inbox` (`app/globals.css:1060`) tem `min-width: 1180px`; com a sidebar de 236px, sobra só 1044px de área útil em telas de 1280px — 136px a menos do que o layout exige.
@@ -667,6 +703,8 @@ QA confirmou ao vivo (viewport 1280×800, resolução comum de notebook) que o c
 **O dado não está perdido**: `main` (o container que envolve `.inbox`) já tem `overflow-x: auto`, então dá pra ver o card rolando a tela horizontalmente (confirmado: `document.querySelector('main').scrollLeft = 200` revela o card completo). O problema é 100% de descoberta — nada na UI sugere que existe conteúdo pra rolar.
 
 **Por que não foi corrigido nesta sessão**: essa mesma constraint de `min-width: 1180px` já tinha sido registrada numa sessão de QA anterior (06/08) como compartilhada entre Inbox e cockpit — provavelmente decisão de design pra telas densas de dado. Mudar isso sem confirmar com a fundadora se telas de 1280px são um caso real de uso (vs. só o notebook do QA) arrisca quebrar o espaçamento calculado a dedo em duas telas ao mesmo tempo.
+
+**RESOLVIDO PELA METADE em 2026-08-31**: a fundadora reclamou da tela do cockpit espontaneamente ("tem que rolar para o lado... não dá para ver informação correta"), o que era exatamente a confirmação que faltava. O `min-width` saiu do cockpit e a tela virou coluna única. **`.inbox` continua com o `min-width: 1180px`** e com o mesmo problema — ver `TODOS.md`. A suspeita de "decisão de design pra telas densas" também caiu: o número não corresponde à soma das colunas de nenhuma das duas telas (ver o item de `min-width` de handoff acima).
 
 **Como isso não repete**: antes de tratar como bug de layout, testar em viewport de 1280×800 primeiro (menor notebook comum) e verificar se existe overflow horizontal escondido via `element.scrollWidth > element.clientWidth` antes de assumir "conteúdo sumiu". Se a decisão for manter o `min-width`, considerar adicionar uma pista visual de scroll (sombra/gradiente na borda ou scrollbar sempre visível) — mudança de baixo risco que não mexe no layout em si.
 

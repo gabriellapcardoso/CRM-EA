@@ -33,6 +33,14 @@
 - **Guard**: `test/softDeleteFilters.test.ts`
 - **Case-by-case exception**: webhook/idempotency lookups may legitimately need to see deleted rows — check the flow before adding the filter there (see `TODOS.md`, AI/MCP layer item)
 
+## Cockpit / CSS Layout Rules
+- **`display: contents` is a LAYOUT rule, not a DOM rule**: the cockpit's 3 panels use it so their 12 blocks become flex items of `.cockpit__body`. The panels are still the direct DOM children — a `>` selector reaches the panels (which have no box), not the blocks. Use descendant selectors there. Guard: `test/cockpitLayout.test.ts`
+- **Section order lives in CSS, not JSX**: `.cockpit__sec--decidir|agir|historico|assistente|ref` set `order: 1..5`. A block without one of those classes falls to `order: 0` and silently jumps to the top of the screen, above the decision
+- **Never trust a fixed `min-width`/`max-width` inherited from the HTML handoff**: check it against the sum of the children. `min-width: 1180px` sat on `.cockpit__body` and `.inbox` for four months as "design decision" — the real floors were 1028px and 1104px. It was the handoff file's working width, copied verbatim. `.inbox` still carries it (see `TODOS.md`)
+- **A flex item with `flex: 1` that overflows its parent is `min-width: auto`**, the implicit floor at the content's `min-content`. Add `min-width: 0`. And for a stable N-column grid, use `display: grid`, never `flex-wrap` — wrap decides breaks from each label's min-content, so the grid regroups on its own when a label changes at runtime
+- **Container query, not media query, for inner width**: the sidebar (236px) and the AI panel (`w-96`, 384px, `Layout.tsx:366`) shrink the content area without touching the viewport, so `@media` never fires. Measured: 256px vs 520px for the same column
+- **Layout can't be tested in happy-dom** (no layout engine: `getBoundingClientRect()` returns zeros, `scrollWidth === clientWidth` always). Assert CSS-as-text invariants instead, and verify the real thing by measuring in the browser
+
 ## Layout / Sidebar Rules
 - **`--app-sidebar-width` has ~30 consumers**: modals position their overlay with `md:left-[var(--app-sidebar-width)]`. Getting it wrong shifts every modal at once
 - **Single source of truth**: only `Layout` writes that var, and only through `getSidebarWidth(mode, sidebarHidden)` — a pure exported function, covered by `test/sidebarWidth.test.ts`. Don't inline the width logic anywhere else
