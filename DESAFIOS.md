@@ -60,6 +60,82 @@ um redeploy do serviço, que reverteu `endpoint-mode` pra `vip` de novo —
 Qualquer clique em "Implantar" no Easypanel, não só reboot da VPS, é gatilho
 suficiente pra reverter o `dnsrr`.
 
+## Chave de API de produção era a chave de EXEMPLO da documentação oficial (2026-08-31)
+
+**O quê:** a `AUTHENTICATION_API_KEY` do servidor Evolution em produção era,
+literalmente, a chave de exemplo publicada na documentação oficial da
+Evolution API — a mesma que aparece em todos os tutoriais, READMEs e nos
+próprios snippets que o Context7 devolve ao consultar a doc. Como o servidor
+está exposto na internet, qualquer pessoa que já leu a documentação tinha
+acesso de admin: enviar mensagem como o número da aaagência, ler conversas,
+derrubar a sessão.
+**Como apareceu:** por acaso, durante um `/qa` de outro assunto. Eu precisei
+da chave pra chamar um endpoint de restart e reconheci o valor de imediato —
+não veio de auditoria de segurança nenhuma. Ninguém tinha olhado pra essa
+variável desde o setup.
+**Correção:** chave nova de 64 caracteres (`openssl rand -hex 32`),
+atualizada em 3 lugares que precisam estar em sincronia:
+1. `docker service update --env-add` (efeito imediato no serviço)
+2. `messaging_channels.credentials.apiKey` no banco do CRM (senão o app
+   perde acesso na hora)
+3. Easypanel → Environment → Salvar → **Implantar** (senão o próximo
+   redeploy pelo painel reverte pra chave antiga)
+Verificado depois: chave antiga passou a devolver `401`, chave nova `200`.
+**Regra prática:** ao subir qualquer serviço self-hosted a partir de um
+template/tutorial, tratar TODA credencial que veio junto como já
+comprometida — o valor default de doc não é "placeholder que ninguém usa",
+é uma senha pública. Vale conferir `AUTHENTICATION_API_KEY`, senha de banco
+e afins ANTES de expor o serviço na internet, não meses depois por acaso.
+**Pendência relacionada:** o setup do Evolution também tem
+`AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true`, que faz o endpoint
+`/instance/fetchInstances` devolver o token de cada instância no corpo da
+resposta. Com a chave rotacionada o risco caiu, mas vale revisar se esse
+`true` é mesmo necessário.
+
+## Soft-delete só funciona se TODA query de leitura filtrar (2026-08-31)
+
+**O quê:** `deals` tem `deleted_at` e o app inteiro trata exclusão como
+soft-delete — mas `dealsService.getAll()` (`lib/supabase/deals.ts`), que é a
+fonte ÚNICA de deals do frontend (board de Negociação, board de Pós-venda,
+dashboard, qualquer lista), nunca filtrou `deleted_at`. Deal excluído
+continuava aparecendo na tela e somando valor na coluna, inclusive depois de
+refresh forçado.
+**O agravante:** o padrão CERTO já existia no projeto — toda a API pública
+(`app/api/public/v1/deals/*`, `lib/public-api/dealsMoveStage.ts`) filtra
+`.is('deleted_at', null)` corretamente. A divergência era entre camadas:
+API pública certa, camada do frontend errada. Quem lesse só um dos lados
+concluiria que o projeto trata soft-delete direito.
+**Por que passou despercebido:** bug latente. Só aparece quando alguém
+exclui algo E vai conferir na tela. A exclusão "funciona" (grava
+`deleted_at`), a tela só não obedece.
+**Regra prática:** ao introduzir/manter soft-delete numa tabela, `grep` por
+TODAS as queries daquela tabela (`.from('<tabela>')`) e conferir uma a uma se
+filtram a coluna — inclusive contadores e updates em massa, não só listagens.
+Aqui, além do `getAll()`, faltava em `boardsService.canDelete()` (contava
+deal excluído como bloqueio pra apagar board), `deleteStage()` (idem pra
+estágio) e `moveDealsToBoard()` (ressuscitaria deal excluído ao mover de
+board).
+**Guarda:** `test/dealsServiceDeletedFilter.test.ts` verifica os 4 pontos.
+
+## Banco de produção mexido enquanto alguém usa o app ao vivo (2026-08-31)
+
+**O quê:** durante a limpeza de dados de teste, a contagem de contatos caiu
+de 62 pra 61 e a de deals de 19 pra 17 — registros sumiram de vez, sendo que
+eu só tinha rodado `UPDATE` (soft-delete), nunca `DELETE` nessas tabelas.
+Passei um tempo caçando trigger, cascade e bug na minha própria SQL.
+**Causa real:** a fundadora estava usando o CRM ao vivo no mesmo momento —
+fez merges de contato e excluiu um registro manualmente pela interface.
+Confirmado por `contact_merge_log` (2 merges novos, timestamps no meio da
+minha operação, um deles pela conta dela) e depois confirmado por ela.
+**Regra prática:** antes de caçar bug fantasma em operação de banco de
+produção, checar se há atividade humana concorrente — tabelas de log/auditoria
+(`contact_merge_log`, `audit_logs`) e `updated_at` recente denunciam. E, ao
+relatar divergência de contagem, dizer explicitamente "não consigo explicar
+X" em vez de assumir que a própria operação causou; foi perguntar que
+resolveu, não investigar mais fundo.
+**Melhor ainda:** avisar antes de começar operação em massa em produção, pra
+combinar de ninguém mexer enquanto roda.
+
 ## Método de serviço sem caller nenhum = botão que mente (2026-08-31)
 
 **O quê:** o TODO dizia "`EvolutionWhatsAppProvider.disconnect()` só loga,

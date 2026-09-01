@@ -99,7 +99,61 @@
 **Priority:** P4
 **Depends on:** None
 
+## Data & Soft-delete
+
+### Auditar `deleted_at` nas outras tabelas com soft-delete (contacts, crm_companies, activities)
+
+**What:** O bug de `deals` (queries do frontend ignoravam `deleted_at`, corrigido em [PR #7](https://github.com/gabriellapcardoso/CRM-EA/pull/7)) foi caçado e corrigido só na tabela `deals`. As outras tabelas com a mesma coluna — `contacts`, `crm_companies`, `activities`, `messaging_channels` — não foram auditadas. Rodar `grep -rn "from('contacts')"` (e equivalentes) e conferir query a query se filtram `.is('deleted_at', null)`.
+
+**Why:** Exatamente o mesmo bug pode estar vivo em Contatos, Empresas e Atividades — a limpeza de 2026-08-31 soft-deletou 47 contatos, 3 empresas e 2 atividades, então se alguma tela desses módulos não filtrar, ela mostra registro excluído igual o board mostrava. Não verifiquei visualmente essas telas depois da limpeza.
+
+**Pros:** Fecha a classe inteira de bug em vez de um caso; barato (é grep + leitura).
+**Cons:** Nenhum relevante — só trabalho de auditoria. O risco é achar mais lugares e ter que corrigir.
+**Context:** Ver `DESAFIOS.md`, "Soft-delete só funciona se TODA query de leitura filtrar". Padrão de referência correto: `app/api/public/v1/deals/*`. Guarda existente: `test/dealsServiceDeletedFilter.test.ts`.
+**Effort:** S (auditoria) + S-M (correções, se houver)
+**Priority:** P1
+**Depends on:** None
+
 ## Infrastructure
+
+### Revisar `AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true` no Evolution
+
+**What:** O serviço Evolution está com `AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true`, o que faz `GET /instance/fetchInstances` devolver o token de cada instância no corpo da resposta. Avaliar se algum consumidor depende disso; se não, virar `false`.
+
+**Why:** Achado durante a rotação da API key (2026-08-31). Com a chave de admin rotacionada o risco caiu bastante (só quem tem a chave nova chama o endpoint), mas é superfície extra de exposição de credencial sem necessidade comprovada.
+
+**Pros:** Menos credencial trafegando em resposta de API.
+**Cons:** Se algum fluxo do CRM lê o token da instância a partir desse endpoint, desligar quebra — precisa conferir antes de mudar.
+**Context:** Env var no painel Easypanel (projeto `evolution`, serviço `evolution-api`). Lembrar que salvar exige "Implantar" e que todo deploy pelo painel reverte o `endpoint-mode` pra `vip` (ver `DESAFIOS.md`).
+**Effort:** S
+**Priority:** P2
+**Depends on:** None
+
+### `dnsrr` é contorno; IPVS do Swarm segue quebrado na VPS
+
+**What:** Todo redeploy de serviço pelo Easypanel (e todo reboot da VPS) reverte `endpoint-mode` pra `vip` e derruba os domínios com 502, exigindo reaplicar `docker service update --force --endpoint-mode dnsrr <serviço>` manualmente. A correção de raiz é `systemctl restart docker`, que reconstrói o IPVS.
+
+**Why:** Já aconteceu 2x em 2026-08-31 (reboot pós-pagamento da VPS e redeploy da rotação de chave). Enquanto não for corrigido na raiz, qualquer deploy futuro pelo painel derruba Evolution/n8n/gerador até alguém perceber e reaplicar.
+
+**Pros:** Elimina uma pegadinha recorrente que derruba produção silenciosamente.
+**Cons:** `systemctl restart docker` reinicia TODOS os containers da VPS (n8n, bancos, grafana, Evolution) — precisa de janela combinada. Foi bloqueado por permissão quando tentei; exige execução manual com a fundadora ciente.
+**Context:** `DESAFIOS.md`, seção "VPS suspensa e religada". Diagnóstico rápido: `docker service inspect <serviço> --format '{{.Spec.EndpointSpec.Mode}}'`.
+**Effort:** S (o comando) — o custo é a janela de indisponibilidade
+**Priority:** P2
+**Depends on:** Janela combinada, fora de horário de atendimento
+
+### Telefone real ainda visível no histórico do git
+
+**What:** `+55…` (número pessoal da fundadora) foi redigido do `CHANGELOG.md` atual em `e66aca4`, mas continua visível em commits anteriores via `git log`/GitHub, em repositório público. Remover exige reescrever histórico (`git filter-repo`/BFG) + force-push.
+
+**Why:** Decisão consciente de 2026-08-31: a fundadora optou por só limpar o arquivo atual, sem reescrever histórico. Registrado aqui pra não parecer esquecimento.
+
+**Pros:** Removeria PII de repo público de vez.
+**Cons:** Reescrever histórico quebra clones e qualquer PR aberto baseado nos commits antigos; exige avisar colaboradores. Só fazer com decisão explícita.
+**Context:** Mesmo padrão do commit `0b7f80d` (que removeu o número do `TODOS.md`).
+**Effort:** M (com cuidado)
+**Priority:** P3
+**Depends on:** Decisão explícita da fundadora
 
 ### `lib/supabase.ts` sombreia `lib/supabase/index.ts` — barrel morto, nunca alcançado por nenhum import
 

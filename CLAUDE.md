@@ -135,6 +135,8 @@ const model = getModel(config.provider, config.apiKey, config.model)
 
 **maybeSingle() vs single()**: usar `.maybeSingle()` para lookups que podem retornar 0 rows; `.single()` lança erro se não encontrar.
 
+**Soft-delete**: `deals`, `contacts`, `crm_companies`, `activities` e `messaging_channels` usam `deleted_at` — exclusão no app é UPDATE, não DELETE. **Toda query de leitura precisa de `.is('deleted_at', null)`**, incluindo contadores (`count: 'exact'`) e updates em massa, não só listagens. Sem isso o registro "excluído" continua aparecendo na tela e somando valor (bug real: board somava R$5.600 de deals já excluídos — `dealsService.getAll()` alimentava board, dashboard e todas as listas sem o filtro). Guarda: `test/dealsServiceDeletedFilter.test.ts`.
+
 **Schema Supabase**: tabela `board_stages` (não `stages`), coluna `"order"` (não `position`)
 
 ### AI — Fluxo de Dados

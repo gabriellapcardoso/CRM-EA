@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### chore(data): limpeza de dados de teste em produção — 2026-08-31
+
+Limpeza pedida pela fundadora ("tudo que for teste pode excluir"), executada
+direto no banco de produção após levantamento e confirmação item a item.
+Corte: registros anteriores a 2026-07-30.
+
+**Soft-delete** (reversível, `deleted_at`, mesmo mecanismo que o app usa):
+47 contatos, 3 negócios, 3 empresas, 2 atividades (+ cascata automática de
+atividades por contato via trigger `cascade_contact_delete`).
+
+**Delete real** (irreversível, tabelas sem coluna `deleted_at` no schema):
+42 conversas + 1282 mensagens de WhatsApp — 100% do histórico de mensageria,
+que era integralmente de teste (26-29/07, nenhuma conversa depois disso).
+Nenhum export foi feito antes; decisão explícita da fundadora.
+
+Verificações feitas ANTES de executar, e que valem repetir numa próxima:
+- confirmado que só existe 1 organização no banco (sem risco cross-tenant)
+- mapeado o `delete_rule` de cada FK que aponta pras 4 tabelas, pra saber o
+  que cascatearia (`deals.contact_id` e `contacts.client_company_id` são
+  `NO ACTION` — soft-delete não quebra nada porque é UPDATE, não DELETE)
+- cruzamento explícito de contatos ANTIGOS com negócios/empresas NOVOS: 3
+  casos encontrados e levados à fundadora um a um, não decididos sozinho.
+  Um deles ("Clarisse", nome de pessoa real + negócio e empresa de 05/08)
+  foi excluído do corte por decisão dela.
+
+### fix(boards): board e dashboard mostravam/contavam deals já excluídos — 2026-08-31
+
+Consequência direta da limpeza acima, e o motivo dela parecer não ter
+funcionado: dois deals de teste soft-deletados continuaram aparecendo no
+board Pós-venda somando R$ 5.600 na coluna "Cliente Ativo", mesmo após
+refresh forçado — confirmado por screenshot da fundadora, não suposição.
+
+`dealsService.getAll()` (`lib/supabase/deals.ts`) — a fonte ÚNICA de deals
+usada por `useDealsByBoard`/`dealsViewQueryFn`, ou seja, board de Negociação,
+board de Pós-venda, dashboard e qualquer lista de deals do frontend — nunca
+filtrou `deleted_at`. O `select` client-side (`makeSelectByBoard`) só filtra
+por `boardId`. Resultado: deal excluído continuava visível e somando valor em
+todo o app. Bug antigo, latente desde sempre; só ficou óbvio quando alguém
+excluiu algo e foi conferir.
+
+Mesmo padrão faltava em `boardsService` (`lib/supabase/boards.ts`):
+- `canDelete()` — contava deal já excluído como bloqueio pra apagar um board
+- `deleteStage()` — mesma coisa pra apagar um estágio
+- `moveDealsToBoard()` — moveria (ressuscitaria) deal excluído pro board novo
+
+Fix: `.is('deleted_at', null)` nos 4 pontos. O padrão correto já existia em
+toda a API pública (`app/api/public/v1/deals/*`,
+`lib/public-api/dealsMoveStage.ts`) — só a camada consumida pelo frontend
+estava sem, o que explica o bug ter passado despercebido.
+
+Testes: `test/dealsServiceDeletedFilter.test.ts` (4 guardas, uma por ponto
+corrigido). Verificado ao vivo em produção após deploy: coluna "Cliente
+Ativo" passou de R$ 5.600 / 2 cards para R$ 0 / "nenhum deal aqui".
+PR: [#7](https://github.com/gabriellapcardoso/CRM-EA/pull/7).
+
 ### fix(messaging): reconectar após "Desconectar" quebrava com 404 ou marcava canal são como erro — 2026-08-31
 
 Achado por `/qa` ao vivo (não simulado) enquanto verificava o fix do botão
