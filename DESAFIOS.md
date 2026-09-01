@@ -700,7 +700,17 @@ O comentário do próprio arquivo (`route.ts:22`) diz *"não basta logar em tabe
 
 Consequências reais: um canal caindo às 10h ficava ~23h sem alerta, e o cooldown de 4h contra spam logo abaixo (`route.ts:56`) protegia contra um problema que não existia naquela cadência — 4h de cooldown numa checagem diária nunca dispara.
 
-**Como isso não repete**: quando um comentário afirma cadência, timeout ou limite que vive em outro arquivo, ou o valor sai do código (importado da mesma fonte) ou o comentário aponta o arquivo sem repetir o número. Número duplicado em prosa não tem quem o verifique e desatualiza na primeira mudança. Aqui: cadência dos crons vive só no `vercel.json`.
+**Como isso não repete**: quando um comentário afirma cadência, timeout ou limite que vive em outro arquivo, ou o valor sai do código (importado da mesma fonte) ou o comentário aponta o arquivo sem repetir o número. Número duplicado em prosa não tem quem o verifique e desatualiza na primeira mudança. Aqui: cadência vive no agendamento — que pra estes crons é a migration de pg_cron, não o `vercel.json`.
+
+## Dois arquivos de regra escritos no mesmo dia se contradiziam, e o de maior precedência estava errado (2026-09-01)
+
+No mesmo lote em que documentei o incidente do `vercel.json`, escrevi no `CLAUDE.md`: *"Cadência de cron vive **só** no `vercel.json`"*. O `AGENTS.md`, a migration e o próprio parágrafo do `DESAFIOS.md` sobre o incidente diziam o oposto — cadência sub-diária vive no pg_cron, e mexer no `vercel.json` derruba o deployment inteiro. A frase falsa ainda apareceu numa terceira cópia, no fecho da lição anterior deste arquivo.
+
+Por que a frase falsa nasceu: a lição verdadeira era sobre **comentário de código não repetir número**, e ao comprimi-la numa linha eu troquei "o número vive no agendamento" por "o número vive no `vercel.json`" — que era verdade pro caso que eu estava olhando (`evolution-health`, na época agendado lá) e virou mentira duas horas depois, quando ele saiu pro pg_cron no mesmo dia.
+
+O que torna isto pior que uma imprecisão comum: `CLAUDE.md` tem **precedência de projeto** sobre `AGENTS.md`. Um leitor que confira as duas fontes e encontre divergência segue a de maior precedência — ou seja, a errada — e a ação que ela induz (editar o `vercel.json`) é exatamente a que congela a produção sem sinal nenhum. A documentação não estava só desatualizada: ela apontava a arma pro pé.
+
+**Como isso não repete**: (1) ao documentar um incidente, a regra tem que descrever o **estado final**, não o estado em que o incidente começou — este texto foi escrito enquanto a migração pro pg_cron acontecia, e congelou o "antes"; (2) regra que já falhou duas vezes em prosa vira **teste**, e foi o que aconteceu: `test/vercelCronLimit.test.ts` quebra num 3º cron do `vercel.json`, em qualquer agendamento sub-diário, e no retorno da própria frase falsa ao `CLAUDE.md`; (3) ao corrigir uma afirmação errada em documentação, `grep` pela frase no repositório inteiro antes de dar por encerrado — esta tinha três cópias, e a busca pela versão em negrito só achava uma.
 
 ## Item de backlog previu o incidente, ficou em P3, e a falha chegou antes da prioridade (2026-09-01)
 

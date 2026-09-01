@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(docs): CLAUDE.md mandava editar o `vercel.json`, que é o que congela a produção — 2026-09-01
+
+Item 3 da issue #23. O `CLAUDE.md` afirmava *"Cadência de cron vive **só** no
+`vercel.json`"*. O `AGENTS.md`, a migration de pg_cron e o próprio `DESAFIOS.md`
+diziam o oposto: cadência sub-diária vive no pg_cron, e um 3º cron no
+`vercel.json` faz a Vercel **rejeitar o deployment inteiro sem criar build** —
+sem falha, sem e-mail, produção congelada no commit anterior.
+
+Como o `CLAUDE.md` tem precedência de projeto, quem conferisse as duas fontes
+seguiria a errada, e a ação que ela induz é justamente a que derruba o deploy.
+A frase falsa tinha 3 cópias no repositório.
+
+**O que entrou:**
+
+- `CLAUDE.md`: frase falsa removida; bloco novo explicando o limite do plano
+  Hobby (2 crons, só diário), o que está hoje em cada lugar, e a ordem de ler
+  as migrations de pg_cron antes de tocar no `vercel.json`
+- `DESAFIOS.md`: terceira cópia da frase corrigida + lição sobre documentar o
+  estado final de um incidente, e não o estado em que ele começou
+- `AGENTS.md`: aponta a guarda nova
+- `test/vercelCronLimit.test.ts`: prosa já falhou duas vezes, então a regra
+  virou teste — quebra num 3º cron, em qualquer agendamento sub-diário, e no
+  retorno da frase falsa ao `CLAUDE.md`. Verificado injetando as 3 regressões
+
 ### feat(ops): health check da IA a cada 15 min, com alerta que realmente chega — 2026-09-01
 
 Fecha a issue #16. Depois de #13 (modelo restaurado) e #14 (failover nativo), o
