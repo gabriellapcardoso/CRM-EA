@@ -245,9 +245,19 @@ describe('alert_email vazio', () => {
 })
 
 describe('o que conta como falha', () => {
-  it('resposta vazia do modelo conta como falha', async () => {
-    // 200 com corpo vazio é, pro agente, indistinguível de estar fora do ar.
-    generateTextMock = vi.fn(async () => ({ text: '   ' }))
+  it('texto vazio COM tokens gerados NÃO é falha (modelo de raciocínio)', async () => {
+    // Bug real, pego no teste ao vivo: com maxOutputTokens baixo o DeepSeek v4
+    // gastava o orçamento no raciocínio e devolvia texto vazio, e o check
+    // acusava "IA fora do ar" com a IA saudável. Falso positivo em monitor
+    // ensina a ignorar o alerta — é pior que não ter monitor.
+    generateTextMock = vi.fn(async () => ({ text: '   ', usage: { totalTokens: 40 } }))
+    await GET(req())
+    expect(insertSpy).not.toHaveBeenCalled()
+  })
+
+  it('sem texto E sem tokens conta como falha', async () => {
+    // Aí sim não houve resposta nenhuma.
+    generateTextMock = vi.fn(async () => ({ text: '', usage: { totalTokens: 0 } }))
     await GET(req())
     expect(insertSpy).toHaveBeenCalled()
   })
