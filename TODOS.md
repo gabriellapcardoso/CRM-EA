@@ -99,6 +99,21 @@
 **Priority:** P4
 **Depends on:** None
 
+## Layout
+
+### `sidebarCollapsed` do `UIStore` é escrito pelo Inbox mas ninguém lê
+
+**What:** `InboxFocusView.tsx:298` chama `setSidebarCollapsed(showContext)` ao abrir/fechar o painel de contexto, mas **nenhum componente lê `sidebarCollapsed`** — o `Layout` nunca consumiu esse estado. É código morto: o Inbox acha que colapsa a barra lateral e não colapsa nada.
+
+**Why:** Achado ao implementar a barra ocultável (2026-08-31). Mesmo padrão do bug do botão "Desconectar" (método com assinatura correta, zero callers — ver `DESAFIOS.md`). Ou o Inbox deveria mesmo colapsar a barra ao abrir contexto (e a intenção original se perdeu), ou a chamada é resíduo e deve sair.
+
+**Pros:** Ou entrega um comportamento que alguém quis (mais espaço no Inbox ao abrir contexto), ou remove código que engana quem lê.
+**Cons:** Ligar o `sidebarCollapsed` ao layout muda comportamento do Inbox que ninguém pediu — some a barra ao abrir contexto, o que pode surpreender. Precisa de decisão de produto antes, não é só apagar ou ligar.
+**Context:** `features/inbox/components/InboxFocusView.tsx:298`, `lib/stores/index.ts`. O estado novo `sidebarHidden` (preferência do usuário) foi deixado separado de propósito e não resolve esse item.
+**Effort:** S
+**Priority:** P3
+**Depends on:** Decisão de produto (o Inbox deve colapsar a barra ou não?)
+
 ## Data & Soft-delete
 
 ### ~~Auditar `deleted_at` nas outras tabelas com soft-delete~~ — RESOLVIDO (camada de dados do app)

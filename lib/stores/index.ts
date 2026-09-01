@@ -50,6 +50,15 @@ interface UIState {
   toggleSidebar: () => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  /**
+   * Preferência explícita do usuário de ocultar a barra lateral (desktop).
+   * Diferente de `sidebarCollapsed`, que é automático/efêmero.
+   * Persistida em localStorage pelo `Layout` — o valor é lido só após o
+   * mount, pra não dar mismatch de hidratação.
+   */
+  sidebarHidden: boolean;
+  toggleSidebarHidden: () => void;
+  setSidebarHidden: (hidden: boolean) => void;
 
   // AI Assistant
   aiAssistantOpen: boolean;
@@ -99,6 +108,9 @@ export const useUIStore = create<UIState>()(
       toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
       sidebarCollapsed: false,
       setSidebarCollapsed: collapsed => set({ sidebarCollapsed: collapsed }),
+      sidebarHidden: false,
+      toggleSidebarHidden: () => set(state => ({ sidebarHidden: !state.sidebarHidden })),
+      setSidebarHidden: hidden => set({ sidebarHidden: hidden }),
 
       // AI Assistant
       aiAssistantOpen: false,
@@ -330,6 +342,8 @@ export const useModalData = () => useUIStore(state => state.modalData);
 export const useGlobalSearch = () => useUIStore(state => state.globalSearchQuery);
 /** @returns {boolean} Se a sidebar está colapsada (modo compacto) */
 export const useSidebarCollapsed = () => useUIStore(state => state.sidebarCollapsed);
+/** @returns {boolean} Se o usuário ocultou a barra lateral (preferência persistida) */
+export const useSidebarHidden = () => useUIStore(state => state.sidebarHidden);
 /** @returns {string} ID do board ativo no Kanban */
 export const useActiveBoardId = () => useUIStore(state => state.activeBoardId);
 

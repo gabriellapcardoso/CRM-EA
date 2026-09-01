@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(layout): barra lateral pode ser ocultada (desktop) — 2026-08-31
+
+Botão no topbar (`PanelLeftClose`/`PanelLeftOpen`) e atalho **⌘B / Ctrl+B**
+escondem e trazem de volta o menu lateral. A preferência persiste em
+`localStorage` (`crm_sidebar_hidden`), lida só depois do mount pra não dar
+mismatch de hidratação — mesmo padrão que a contagem de decisões já usava.
+
+Ganho principal é no kanban e no cockpit, que passam a usar os 236px da
+barra quando ela está oculta.
+
+Detalhe que era o maior risco da mudança: ~30 modais posicionam o overlay com
+`md:left-[var(--app-sidebar-width)]`. Se a var não zerasse junto com a barra,
+todos ficariam deslocados 236px pra direita. A regra virou função pura
+exportada (`getSidebarWidth`) justamente pra ficar testável — ver
+`test/sidebarWidth.test.ts` (9 testes).
+
+Escopo: **só desktop** (≥1280px). Tablet tem o rail de ícones e mobile tem a
+bottom nav, então o botão nem aparece nesses modos.
+
+O estado novo `sidebarHidden` é intencionalmente separado do `sidebarCollapsed`
+que já existia no `UIStore`: aquele é automático/efêmero (o Inbox mexe nele ao
+abrir o painel de contexto), este é preferência explícita do usuário. Misturar
+os dois faria o Inbox desfazer a escolha da pessoa sem ela pedir.
+
+Verificado ao vivo antes do commit: ocultar/mostrar pelo botão, atalho ⌘B,
+persistência entre reloads, board ocupando a largura toda e a CSS var indo a
+`0px` quando oculta.
+
 ### fix(data): auditoria de `deleted_at` — mais 3 serviços mostravam registros excluídos — 2026-08-31
 
 Auditoria pedida depois do fix do board (entrada abaixo), pra checar se a

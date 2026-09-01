@@ -12,7 +12,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sparkles, LogOut, User, Bug } from 'lucide-react';
+import { Sparkles, LogOut, User, Bug, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useUIStore } from '@/lib/stores';
 import { prefetchRoute, RouteName } from '@/lib/prefetch';
@@ -72,8 +72,27 @@ const NavLink = ({ to, label, prefetch, badge, isActive }: NavLinkProps) => (
   </Link>
 );
 
+/** Preferência de barra lateral oculta (só desktop). Ver SIDEBAR_HIDDEN_KEY abaixo. */
+export const SIDEBAR_HIDDEN_KEY = 'crm_sidebar_hidden';
+
+/**
+ * Largura da barra lateral pra CSS var `--app-sidebar-width`.
+ *
+ * Exportada e pura de propósito: ~30 modais posicionam o overlay com
+ * `md:left-[var(--app-sidebar-width)]`, então errar aqui desloca todos eles.
+ * Ver `test/sidebarWidth.test.ts`.
+ */
+export function getSidebarWidth(
+  mode: 'mobile' | 'tablet' | 'desktop',
+  sidebarHidden: boolean
+): string {
+  if (mode === 'desktop') return sidebarHidden ? '0px' : '236px';
+  if (mode === 'tablet') return '5rem';
+  return '0px';
+}
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { aiAssistantOpen, setAIAssistantOpen } = useUIStore();
+  const { aiAssistantOpen, setAIAssistantOpen, sidebarHidden, setSidebarHidden } = useUIStore();
   const { user, loading, profile, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -94,6 +113,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setDebugEnabled(isDebugMode());
   }, []);
 
+  // Preferência de sidebar oculta (localStorage) — lida após montar pra evitar
+  // mismatch de hidratação, mesmo padrão da contagem de decisões abaixo.
+  useEffect(() => {
+    try {
+      setSidebarHidden(window.localStorage.getItem(SIDEBAR_HIDDEN_KEY) === 'true');
+    } catch {
+      // localStorage indisponível (modo privado//storage bloqueado): segue com o default (visível).
+    }
+  }, [setSidebarHidden]);
+
+  const toggleSidebarHidden = React.useCallback(() => {
+    const next = !sidebarHidden;
+    setSidebarHidden(next);
+    try {
+      window.localStorage.setItem(SIDEBAR_HIDDEN_KEY, String(next));
+    } catch {
+      // Sem persistência, a preferência vale só nesta sessão — não quebra o toggle.
+    }
+  }, [sidebarHidden, setSidebarHidden]);
+
+  // Atalho de teclado: Cmd/Ctrl + B (padrão de mercado pra barra lateral).
+  useEffect(() => {
+    if (!isDesktop) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebarHidden();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isDesktop, toggleSidebarHidden]);
+
   // Contagem de decisões pendentes (localStorage) — lida após montar pra evitar mismatch de hidratação.
   useEffect(() => {
     const refresh = () => setPendingDecisions(decisionQueueService.getPendingDecisions().length);
@@ -109,10 +161,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const width = isDesktop ? '236px' : isTablet ? '5rem' : '0px';
-    document.documentElement.style.setProperty('--app-sidebar-width', width);
+    // Sidebar oculta zera a var — senão os ~30 modais que usam
+    // `md:left-[var(--app-sidebar-width)]` ficariam deslocados 236px.
+    document.documentElement.style.setProperty('--app-sidebar-width', getSidebarWidth(mode, sidebarHidden));
     return () => document.documentElement.style.setProperty('--app-sidebar-width', '0px');
-  }, [isDesktop, isTablet]);
+  }, [mode, sidebarHidden]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -151,7 +204,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {isTablet ? <NavigationRail /> : null}
 
-      {isDesktop && (
+      {isDesktop && !sidebarHidden && (
         <aside className="sidebar" aria-label="Menu principal">
           <div className="sidebar__brand" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Image className="logo" src="/brand/logo-aaagencia-white.png" alt="aaagência" width={108} height={26} unoptimized />
@@ -236,6 +289,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       <div className="main">
         <header className="topbar">
+          {isDesktop && (
+            <button
+              type="button"
+              onClick={toggleSidebarHidden}
+              className="btn btn--ghost"
+              aria-pressed={sidebarHidden}
+              aria-label={sidebarHidden ? 'Mostrar menu lateral' : 'Ocultar menu lateral'}
+              title={`${sidebarHidden ? 'Mostrar' : 'Ocultar'} menu lateral (⌘B)`}
+            >
+              {sidebarHidden ? (
+                <PanelLeftOpen size={16} aria-hidden="true" />
+              ) : (
+                <PanelLeftClose size={16} aria-hidden="true" />
+              )}
+            </button>
+          )}
+
           <div className="topbar__title">
             <h1 className="topbar__heading">{heading}</h1>
             {sub && <p className="topbar__sub">{sub}</p>}
