@@ -346,6 +346,7 @@ export const dealsService = {
         .from('boards')
         .select('id, organization_id')
         .eq('id', boardId)
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (boardCheckError || !boardExists) {

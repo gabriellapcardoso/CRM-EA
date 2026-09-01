@@ -101,17 +101,21 @@
 
 ## Data & Soft-delete
 
-### Auditar `deleted_at` nas outras tabelas com soft-delete (contacts, crm_companies, activities)
+### ~~Auditar `deleted_at` nas outras tabelas com soft-delete~~ — RESOLVIDO (camada de dados do app)
 
-**What:** O bug de `deals` (queries do frontend ignoravam `deleted_at`, corrigido em [PR #7](https://github.com/gabriellapcardoso/CRM-EA/pull/7)) foi caçado e corrigido só na tabela `deals`. As outras tabelas com a mesma coluna — `contacts`, `crm_companies`, `activities`, `messaging_channels` — não foram auditadas. Rodar `grep -rn "from('contacts')"` (e equivalentes) e conferir query a query se filtram `.is('deleted_at', null)`.
+**Status:** RESOLVIDO 2026-08-31 para a camada `lib/supabase/*` (a que alimenta as telas). Auditadas as 221 queries das 7 tabelas com `deleted_at`. Achados e corrigidos 6 pontos, 2 deles com impacto visível na hora (3 atividades e 3 empresas excluídas aparecendo nas telas de Atividades e Empresas). `contactsService`, `messaging_channels` e `business_units` já estavam corretos. Guarda: `test/softDeleteFilters.test.ts` (8 testes). Ver CHANGELOG para a lista completa.
 
-**Why:** Exatamente o mesmo bug pode estar vivo em Contatos, Empresas e Atividades — a limpeza de 2026-08-31 soft-deletou 47 contatos, 3 empresas e 2 atividades, então se alguma tela desses módulos não filtrar, ela mostra registro excluído igual o board mostrava. Não verifiquei visualmente essas telas depois da limpeza.
+### Camada de IA/MCP e Edge Functions ignoram `deleted_at` em contacts/activities
 
-**Pros:** Fecha a classe inteira de bug em vez de um caso; barato (é grep + leitura).
-**Cons:** Nenhum relevante — só trabalho de auditoria. O risco é achar mais lugares e ter que corrigir.
-**Context:** Ver `DESAFIOS.md`, "Soft-delete só funciona se TODA query de leitura filtrar". Padrão de referência correto: `app/api/public/v1/deals/*`. Guarda existente: `test/dealsServiceDeletedFilter.test.ts`.
-**Effort:** S (auditoria) + S-M (correções, se houver)
-**Priority:** P1
+**What:** A auditoria de 2026-08-31 cobriu `lib/supabase/*` (o que alimenta as telas) mas deixou de fora ~30 queries em `lib/ai/tools.ts`, `lib/mcp/tools/*`, `lib/ai/agent/*` e `supabase/functions/*` que leem `contacts`/`activities` sem `.is('deleted_at', null)`.
+
+**Why:** Amostragem confirmou pelo menos um caso real: `lib/ai/tools.ts:773` procura contato por nome (`ilike`) sem excluir deletados — a IA reusaria um contato excluído em vez de criar um novo, efetivamente ressuscitando o registro. `lib/ai/agent/context-builder.ts:76` monta o contexto do agente a partir de contato que pode estar excluído.
+
+**Pros:** Fecha o mesmo bug na superfície que o agente de IA enxerga — hoje a IA pode agir sobre dado que o usuário considera apagado.
+**Cons:** Diferente da camada de telas, aqui **nem toda ocorrência é bug**: webhook que faz lookup por `external_id` pra garantir idempotência talvez precise enxergar o registro excluído; log de auditoria idem. Exige entender fluxo por fluxo antes de sair adicionando filtro — corrigir errado quebra idempotência de webhook, que é pior que o bug original.
+**Context:** Lista completa reproduzível com o grep descrito no CHANGELOG (entrada "auditoria de `deleted_at`"). Padrão de referência: `lib/supabase/contacts.ts`.
+**Effort:** M (a análise é o custo, não a edição)
+**Priority:** P2
 **Depends on:** None
 
 ## Infrastructure

@@ -115,7 +115,7 @@ Aqui, além do `getAll()`, faltava em `boardsService.canDelete()` (contava
 deal excluído como bloqueio pra apagar board), `deleteStage()` (idem pra
 estágio) e `moveDealsToBoard()` (ressuscitaria deal excluído ao mover de
 board).
-**Guarda:** `test/dealsServiceDeletedFilter.test.ts` verifica os 4 pontos.
+**Guarda:** `test/softDeleteFilters.test.ts` verifica os 4 pontos.
 
 ## Banco de produção mexido enquanto alguém usa o app ao vivo (2026-08-31)
 

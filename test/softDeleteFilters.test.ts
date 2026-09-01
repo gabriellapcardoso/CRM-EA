@@ -1,6 +1,6 @@
 /**
- * Regressão: board (Negociação/Pós-venda) e utilitários de board mostravam/
- * contavam deals soft-deletados (deleted_at preenchido).
+ * Regressão: telas do CRM mostravam/contavam registros soft-deletados
+ * (`deleted_at` preenchido).
  *
  * Achado ao vivo em 2026-08-31: dois deals de teste ("teste ww — Proposta",
  * "Proposta Teste") foram soft-deletados via SQL, mas continuaram aparecendo
@@ -9,6 +9,16 @@
  * por `useDealsByBoard`/`dealsViewQueryFn` em todo o app — nunca filtrava
  * `deleted_at`. O mesmo padrão faltava em `boardsService.canDelete()`,
  * `deleteStage()` e `moveDealsToBoard()`.
+ *
+ * A auditoria seguinte (mesma data, pedida depois do primeiro fix) achou a
+ * MESMA classe de bug em mais 3 serviços, 2 deles com impacto visível na
+ * hora: `activitiesService.getAll()` (3 atividades excluídas aparecendo na
+ * tela de Atividades) e `companiesService.getAll()` (3 empresas excluídas
+ * na tela de Empresas). `boardsService.getAll()` estava com o mesmo defeito,
+ * latente só porque nenhum board tinha sido excluído ainda.
+ *
+ * `contactsService` já filtrava corretamente em todas as leituras — por isso
+ * a tela de Contatos não mostrou os 49 contatos excluídos na limpeza.
  *
  * Guardas de regressão: cada chamada precisa incluir `.is('deleted_at', null)`
  * na query real enviada ao Supabase.
@@ -103,6 +113,90 @@ describe('boardsService — filtro de deleted_at nas operações sobre deals', (
     await boardsService.moveDealsToBoard('board-from', 'board-to')
 
     expect(hasCall(dealsBuilder._calls, 'is', 'deleted_at', null)).toBe(true)
+
+    vi.doUnmock('@/lib/supabase/client')
+    vi.resetModules()
+  })
+})
+
+describe('activitiesService.getAll — filtro de deleted_at', () => {
+  it('inclui .is(deleted_at, null) na query que alimenta a tela de Atividades', async () => {
+    const builder = chainable()
+    const fromMock = vi.fn(() => builder)
+
+    vi.doMock('@/lib/supabase/client', () => ({ supabase: { from: fromMock } }))
+
+    const { activitiesService } = await import('@/lib/supabase/activities')
+    await activitiesService.getAll()
+
+    expect(fromMock).toHaveBeenCalledWith('activities')
+    expect(hasCall(builder._calls, 'is', 'deleted_at', null)).toBe(true)
+
+    vi.doUnmock('@/lib/supabase/client')
+    vi.resetModules()
+  })
+})
+
+describe('companiesService — filtro de deleted_at', () => {
+  it('getAll() inclui .is(deleted_at, null) na tela de Empresas', async () => {
+    const builder = chainable()
+    const fromMock = vi.fn(() => builder)
+
+    vi.doMock('@/lib/supabase/client', () => ({ supabase: { from: fromMock } }))
+
+    const { companiesService } = await import('@/lib/supabase/contacts')
+    await companiesService.getAll()
+
+    expect(fromMock).toHaveBeenCalledWith('crm_companies')
+    expect(hasCall(builder._calls, 'is', 'deleted_at', null)).toBe(true)
+
+    vi.doUnmock('@/lib/supabase/client')
+    vi.resetModules()
+  })
+
+  it('getByIds() não devolve empresa excluída vinculada a contato', async () => {
+    const builder = chainable()
+    builder.in = vi.fn(() => Promise.resolve({ data: [], error: null }))
+    const fromMock = vi.fn(() => builder)
+
+    vi.doMock('@/lib/supabase/client', () => ({ supabase: { from: fromMock } }))
+
+    const { companiesService } = await import('@/lib/supabase/contacts')
+    await companiesService.getByIds(['company-1'])
+
+    expect(hasCall(builder._calls, 'is', 'deleted_at', null)).toBe(true)
+
+    vi.doUnmock('@/lib/supabase/client')
+    vi.resetModules()
+  })
+})
+
+describe('boardsService.getAll — filtro de deleted_at', () => {
+  it('não lista board excluído na tela de Funis', async () => {
+    const boardsBuilder = chainable()
+    boardsBuilder.order = vi.fn(() => boardsBuilder)
+    // segunda chamada de .order() resolve a promise (padrão do getAll)
+    let orderCalls = 0
+    boardsBuilder.order = vi.fn((...args: unknown[]) => {
+      boardsBuilder._calls.push({ method: 'order', args })
+      orderCalls += 1
+      return orderCalls >= 2 ? Promise.resolve({ data: [], error: null }) : boardsBuilder
+    })
+
+    const stagesBuilder = chainable()
+    stagesBuilder.order = vi.fn(() => Promise.resolve({ data: [], error: null }))
+
+    const fromMock = vi.fn((table: string) =>
+      table === 'boards' ? boardsBuilder : stagesBuilder
+    )
+
+    vi.doMock('@/lib/supabase/client', () => ({ supabase: { from: fromMock } }))
+
+    const { boardsService } = await import('@/lib/supabase/boards')
+    await boardsService.getAll()
+
+    expect(fromMock).toHaveBeenCalledWith('boards')
+    expect(hasCall(boardsBuilder._calls, 'is', 'deleted_at', null)).toBe(true)
 
     vi.doUnmock('@/lib/supabase/client')
     vi.resetModules()

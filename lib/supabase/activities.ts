@@ -168,6 +168,7 @@ export const activitiesService = {
           deals:deal_id (title),
           owner:owner_id (first_name, last_name, nickname, name, email, avatar_url, avatar)
         `)
+        .is('deleted_at', null)
         .order('date', { ascending: false })
         .limit(1000); // Safety limit for non-paginated access
 
