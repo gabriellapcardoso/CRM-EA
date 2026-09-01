@@ -76,15 +76,34 @@ describe('ordem das seções — identificar, decidir, entender, consultar', () 
     },
   )
 
-  it('todo bloco do cockpit declara a sua seção', () => {
+  it('nenhum CockpitBlock fica sem classe de seção', () => {
     // `order` só funciona porque os containers são `display: contents` e os
     // blocos são irmãos diretos do flex. Um bloco sem classe cai em `order: 0`
     // e vai parar ANTES da decisão, no topo da tela, silenciosamente.
-    const blocos = cockpitTsx.match(/<CockpitBlock\b/g) ?? []
-    const marcados = cockpitTsx.match(/className="cockpit__sec--/g) ?? []
-    expect(blocos.length).toBeGreaterThan(0)
-    // 8 CockpitBlock + card-hitl + timeline + 2 Panel = 12 seções marcadas
-    expect(marcados.length).toBeGreaterThanOrEqual(blocos.length)
+    //
+    // A versão anterior deste teste comparava 12 marcações contra 8 blocos com
+    // `toBeGreaterThanOrEqual` — quatro vagas de folga. Dava pra adicionar
+    // quatro blocos sem classe e o teste seguia verde, permitindo exatamente a
+    // regressão que o parágrafo acima descreve. Achado no review retroativo
+    // (issue #20).
+    //
+    // Agora conta os que NÃO têm: tem que ser zero.
+    const semClasse = [...cockpitTsx.matchAll(/<CockpitBlock\b([\s\S]{0,220}?)>/g)].filter(
+      (m) => !m[1].includes('cockpit__sec--'),
+    )
+    expect(semClasse.map((m) => m[0].slice(0, 80))).toEqual([])
+  })
+
+  it('as demais seções do corpo também são marcadas', () => {
+    // card-hitl, a timeline e os dois Panel não são CockpitBlock e cairiam em
+    // order: 0 do mesmo jeito.
+    for (const marcador of ['card-hitl cockpit__sec--', 'panel--flush cockpit__sec--']) {
+      expect(cockpitTsx).toContain(marcador)
+    }
+    const panels = [...cockpitTsx.matchAll(/<Panel\b([\s\S]{0,160}?)>/g)].filter(
+      (m) => !m[1].includes('cockpit__sec--'),
+    )
+    expect(panels.map((m) => m[0].slice(0, 60))).toEqual([])
   })
 })
 

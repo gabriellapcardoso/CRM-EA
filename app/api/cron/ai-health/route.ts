@@ -1,4 +1,6 @@
-import { generateText } from 'ai';
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { getOrgAIConfig } from '@/lib/ai/agent/agent.service';
@@ -31,8 +33,14 @@ const EMAIL_COOLDOWN_HOURS = 4;
 
 const ALERT_TYPE = 'ai_health_degraded';
 
-/** Resultado da checagem sintética de uma organização. */
-type CheckResult = { ok: true } | { ok: false; motivo: string };
+/**
+ * Resultado da checagem. `degradado` distingue "a aplicação caiu" de "a
+ * aplicação está de pé no modelo errado" — os dois precisam de aviso, com
+ * urgências diferentes.
+ */
+type CheckResult =
+  | { ok: true }
+  | { ok: false; motivo: string; degradado?: boolean };
 
 /**
  * Faz UMA chamada real de IA pelo mesmo caminho que a aplicação usa.
@@ -44,35 +52,59 @@ type CheckResult = { ok: true } | { ok: false; motivo: string };
  * quebrada — o serviço externo estava de pé.
  */
 async function checarIA(
-  supabase: ReturnType<typeof createStaticAdminClient>,
+  supabase: SupabaseClient,
   organizationId: string,
 ): Promise<CheckResult> {
   try {
-    const config = await getOrgAIConfig(supabase as never, organizationId);
+    const config = await getOrgAIConfig(supabase, organizationId);
     if (!config) return { ok: false, motivo: 'getOrgAIConfig devolveu null (sem settings ou sem chave)' };
 
     const model = getModel(config.provider, config.apiKey, config.model);
 
-    // 64 tokens, não 5. Com 5 o DeepSeek v4 consumia o orçamento inteiro no
-    // raciocínio interno e devolvia texto vazio — o check acusava "IA fora do
-    // ar" com a IA perfeitamente saudável. Falso positivo em monitor é pior que
-    // monitor nenhum: ensina a ignorar o alerta. Pego no teste ao vivo.
+    // `Output.object`, não texto puro: as 17 chamadas reais da aplicação usam
+    // `Output.object({ schema })` e o agente usa tools. Um modelo de reserva que
+    // responde texto mas não suporta `structured_outputs` quebraria todas as
+    // tasks com o check reportando verde — falso negativo exatamente durante o
+    // incidente. Exercitar o caminho real é o ponto do check existir.
+    //
+    // 64 tokens, não 5: com 5 o DeepSeek v4 consumia o orçamento inteiro no
+    // raciocínio interno e devolvia vazio, e o check acusava falha com a IA
+    // saudável.
     const result = await generateText({
       model,
-      prompt: 'Responda apenas: ok',
+      prompt: 'Responda com ok: true.',
       maxOutputTokens: 64,
+      output: Output.object({ schema: z.object({ ok: z.boolean() }) }),
       abortSignal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
     });
 
-    // Texto vazio COM tokens gerados é modelo de raciocínio gastando o orçamento
-    // internamente, não serviço fora do ar — a via funcionou. Só conta como
-    // falha quando nada foi gerado, aí sim não houve resposta nenhuma.
-    // O TEOR nunca é checado: o modelo pode responder o que quiser desde que
-    // responda, senão variação normal de modelo viraria alerta falso.
-    const semTexto = !result.text || result.text.trim() === '';
-    const semTokens = (result.usage?.totalTokens ?? 0) === 0;
-    if (semTexto && semTokens) {
-      return { ok: false, motivo: 'modelo não gerou nem texto nem tokens' };
+    // Modelo que RESPONDEU vs modelo PEDIDO. Sem esta comparação o check é cego
+    // justamente para o incidente que o motivou: em 2026-09-01 a OpenRouter
+    // removeu do catálogo o modelo configurado, o failover do PR #14 resgatou a
+    // chamada dentro da mesma requisição, e o check reportou
+    // `{"degraded":0}` — provado em produção. O failover é anestesia: mantém a
+    // aplicação de pé E esconde que a configuração da org está morta.
+    const modeloRespondeu = result.response?.modelId;
+    const emFallback =
+      typeof modeloRespondeu === 'string' &&
+      modeloRespondeu.length > 0 &&
+      modeloRespondeu !== config.model;
+
+    if (emFallback) {
+      return {
+        ok: false,
+        degradado: true,
+        motivo: `modelo configurado "${config.model}" não atendeu; a OpenRouter caiu para "${modeloRespondeu}". A aplicação segue de pé pelo failover, mas a configuração da org precisa ser corrigida.`,
+      };
+    }
+
+    // Sem `output` nenhum e sem tokens = não houve resposta. Com um dos dois, a
+    // via funcionou. `usage` ausente é "não sei", não zero.
+    const semSaida = result.output === undefined || result.output === null;
+    const usageConhecido = result.usage?.totalTokens !== undefined;
+    const semTokens = usageConhecido && (result.usage?.totalTokens ?? 0) === 0;
+    if (semSaida && (semTokens || !usageConhecido)) {
+      return { ok: false, motivo: 'modelo não gerou saída estruturada nem tokens' };
     }
 
     return { ok: true };
@@ -122,20 +154,22 @@ export async function GET(req: Request) {
 
   // Só orgs que ligaram a IA e têm chave. Org sem isso não é falha — é ausência
   // de configuração, e alertar sobre ela seria ruído puro.
-  const { data: orgs, error: orgsError } = await supabase
+  const { data: orgs, error: erroBusca } = await supabase
     .from('organization_settings')
     .select('organization_id, alert_email')
     .eq('ai_enabled', true)
     .not('ai_openrouter_key', 'is', null);
 
-  if (orgsError) {
-    console.error('[Cron:ai-health] Failed to fetch org settings:', orgsError);
+  if (erroBusca) {
+    console.error('[Cron:ai-health] Failed to fetch org settings:', erroBusca);
     return json({ error: 'Failed to fetch org settings' }, 500);
   }
 
   let checked = 0;
   let degraded = 0;
   let alerted = 0;
+  /** Erros de banco engolidos viravam alerta que nunca escala. Agora são contados e devolvidos. */
+  let errosBanco = 0;
 
   await Promise.allSettled(
     (orgs ?? []).map(async (org) => {
@@ -148,7 +182,7 @@ export async function GET(req: Request) {
 
       // Já houve falha na janela? Então esta é a 2ª consecutiva.
       const janelaDesde = new Date(agora.getTime() - CONSECUTIVE_WINDOW_MS).toISOString();
-      const { data: falhaAnterior } = await supabase
+      const { data: falhaAnterior, error: erroJanela } = await supabase
         .from('security_alerts')
         .select('id')
         .eq('organization_id', org.organization_id)
@@ -157,35 +191,90 @@ export async function GET(req: Request) {
         .limit(1)
         .maybeSingle();
 
-      const segundaFalha = Boolean(falhaAnterior);
-      const severity = segundaFalha ? 'critical' : 'info';
-      const title = segundaFalha
-        ? 'IA fora do ar (2 falhas seguidas)'
-        : 'IA falhou uma checagem';
-      const description = segundaFalha
-        ? `Duas checagens seguidas falharam. O agente de WhatsApp, a análise de deal e o cron de estágios estão sem IA. Último erro: ${resultado.motivo}`
-        : `Uma checagem falhou. Ainda não é alerta — se a próxima também falhar, o e-mail sai. Erro: ${resultado.motivo}`;
+      // Erro de leitura NÃO pode virar "primeira falha": se a consulta falhar,
+      // toda execução se acharia a primeira, o alerta nunca escalaria e o e-mail
+      // nunca sairia — falha silenciosa exatamente no componente que existe pra
+      // acabar com falhas silenciosas.
+      if (erroJanela) {
+        console.error(
+          `[Cron:ai-health] ERRO ao consultar a janela de falhas da org ${org.organization_id} — o alerta pode não escalar:`,
+          erroJanela,
+        );
+        errosBanco++;
+      }
 
-      // Cooldown consultado ANTES do insert, senão o próprio registro que
-      // estamos gravando apareceria como "e-mail recente" e silenciaria o
-      // primeiro alerta — o único que importa.
+      const segundaFalha = Boolean(falhaAnterior);
+      const degradado = resultado.degradado === true;
+      const severity = segundaFalha ? 'critical' : 'info';
+      const title = degradado
+        ? 'IA rodando no modelo de reserva'
+        : segundaFalha
+          ? 'IA fora do ar (2 falhas seguidas)'
+          : 'IA falhou uma checagem';
+      const description = degradado
+        ? resultado.motivo
+        : segundaFalha
+          ? `Duas checagens seguidas falharam. O agente de WhatsApp, a análise de deal e o cron de estágios estão sem IA. Último erro: ${resultado.motivo}`
+          : `Uma checagem falhou. Ainda não é alerta — se a próxima também falhar, o e-mail sai. Erro: ${resultado.motivo}`;
+
+      // O cooldown mede E-MAIL ENVIADO, não linha gravada. A versão anterior
+      // procurava `severity='critical'` e gravava um `critical` a cada execução:
+      // a janela de 4h se auto-alimentava e nunca expirava, então saía UM e-mail
+      // por incidente e nunca mais — inclusive para um incidente novo meia hora
+      // depois. Observado em produção em 2026-09-01 (`degraded:1, alerted:0`).
       const cooldownDesde = new Date(
         agora.getTime() - EMAIL_COOLDOWN_HOURS * 60 * 60 * 1000,
       ).toISOString();
-      const { data: emailRecente } = segundaFalha
+      const { data: emailRecente, error: erroCooldown } = segundaFalha
         ? await supabase
             .from('security_alerts')
             .select('id')
             .eq('organization_id', org.organization_id)
             .eq('alert_type', ALERT_TYPE)
-            .eq('severity', 'critical')
+            .contains('details', { email_enviado: true })
             .gte('created_at', cooldownDesde)
             .limit(1)
             .maybeSingle()
-        : { data: null };
+        : { data: null, error: null };
 
-      // Grava SEMPRE (auditoria). Só o e-mail é limitado pelo cooldown.
-      await supabase.from('security_alerts').insert({
+      if (erroCooldown) {
+        // Na dúvida, avisar: e-mail repetido incomoda, alerta perdido custa caro.
+        console.error(`[Cron:ai-health] ERRO ao consultar o cooldown da org ${org.organization_id}:`, erroCooldown);
+        errosBanco++;
+      }
+
+      const vaiMandarEmail =
+        segundaFalha && !emailRecente && Boolean(org.alert_email) && Boolean(process.env.RESEND_API_KEY);
+
+      let emailEnviado = false;
+      if (vaiMandarEmail) {
+        // `resend.emails.send` NÃO lança em erro de API: devolve `{ error }`.
+        // Domínio não verificado, rate limit e destinatário inválido passavam
+        // pelo try/catch e eram contados como entrega.
+        try {
+          const resend = new Resend(process.env.RESEND_API_KEY as string);
+          const { error: erroEmail } = await resend.emails.send({
+            from: process.env.ALERT_EMAIL_FROM ?? 'alertas@aaagencia.com.br',
+            to: org.alert_email as string,
+            subject: `[CRM] ${title}`,
+            text: degradado
+              ? `${description}\n\nO CRM continua funcionando — a OpenRouter está atendendo por um modelo de reserva. Corrija o modelo em Configurações → IA para voltar ao escolhido.`
+              : `${description}\n\nO que está parado: agente de WhatsApp, análise de deal, briefing, script de vendas e o cron de avaliação de estágios.\n\nOnde olhar: Configurações → IA (modelo e chave da OpenRouter). Se o modelo tiver saído do catálogo, troque por um id datado.`,
+          });
+          if (erroEmail) {
+            console.error('[Cron:ai-health] Resend recusou o envio:', erroEmail);
+          } else {
+            emailEnviado = true;
+            alerted++;
+          }
+        } catch (err) {
+          console.error('[Cron:ai-health] Failed to send alert email:', err);
+        }
+      }
+
+      // Grava SEMPRE (auditoria), com o resultado REAL do envio — é esse campo
+      // que o cooldown lê na próxima execução.
+      const { error: erroInsert } = await supabase.from('security_alerts').insert({
         organization_id: org.organization_id,
         alert_type: ALERT_TYPE,
         severity,
@@ -194,42 +283,63 @@ export async function GET(req: Request) {
         details: {
           motivo: resultado.motivo,
           segunda_falha: segundaFalha,
+          degradado,
+          email_enviado: emailEnviado,
           checked_at: agora.toISOString(),
         },
       });
 
-      if (!segundaFalha) return; // 1ª falha é observação, não alerta: nada de e-mail
-      if (emailRecente) return; // já avisou nas últimas 4h, não repete
+      if (erroInsert) {
+        // Sem o registro, a próxima execução se acha a primeira e o alerta nunca
+        // escala. Precisa doer alto.
+        console.error(
+          `[Cron:ai-health] ERRO ao gravar o alerta da org ${org.organization_id} — a próxima execução vai se achar a primeira falha:`,
+          erroInsert,
+        );
+        errosBanco++;
+      }
 
-      if (!org.alert_email) {
-        // Não é detalhe: o alerta de canal WhatsApp ficou 30 dias gravando em
-        // tabela e não avisando ninguém exatamente por isto. Loga alto.
+      // Sem destino ou sem chave, o alerta não chega em ninguém. É o buraco de 30
+      // dias do canal WhatsApp; precisa doer alto no log.
+      if (segundaFalha && !emailRecente && !org.alert_email) {
         console.error(
           `[Cron:ai-health] IA FORA DO AR na org ${org.organization_id} e alert_email está VAZIO — ninguém será avisado. Preencha organization_settings.alert_email.`,
         );
-        return;
       }
-
-      if (!process.env.RESEND_API_KEY) {
+      if (segundaFalha && !emailRecente && org.alert_email && !process.env.RESEND_API_KEY) {
         console.error('[Cron:ai-health] IA fora do ar mas RESEND_API_KEY não está configurada — e-mail não enviado.');
-        return;
-      }
-
-      alerted++;
-      try {
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
-          from: process.env.ALERT_EMAIL_FROM ?? 'alertas@aaagencia.com.br',
-          to: org.alert_email,
-          subject: `[CRM] ${title}`,
-          text: `${description}\n\nO que está parado: agente de WhatsApp, análise de deal, briefing, script de vendas e o cron de avaliação de estágios.\n\nOnde olhar: Configurações → IA (modelo e chave da OpenRouter). Se o modelo tiver saído do catálogo, troque por um id datado.`,
-        });
-      } catch (err) {
-        console.error('[Cron:ai-health] Failed to send alert email:', err);
       }
     }),
   );
 
-  console.log(`[Cron:ai-health] Done — checked: ${checked}, degraded: ${degraded}, alerted: ${alerted}`);
-  return json({ checked, degraded, alerted });
+  // Heartbeat: gravado em TODA execução, inclusive quando está tudo saudável.
+  // Sem ele, "cron desagendado", "401 por rotação de segredo" e "deploy fora do
+  // ar" produzem exatamente o mesmo estado observável que "IA saudável" —
+  // nenhuma linha, nenhum e-mail. Quem observa a idade deste heartbeat é o
+  // watchdog em pg_cron, que roda DENTRO do banco e por isso sobrevive à
+  // aplicação inteira cair.
+  const { error: erroHeartbeat } = await supabase.from('cron_heartbeats').upsert(
+    {
+      job_name: 'ai-health',
+      last_run_at: new Date().toISOString(),
+      last_status: errosBanco > 0 ? 'degraded' : 'ok',
+      details: { checked, degraded, alerted, erros_banco: errosBanco },
+    },
+    { onConflict: 'job_name' },
+  );
+  if (erroHeartbeat) {
+    console.error('[Cron:ai-health] ERRO ao gravar heartbeat — o watchdog vai alertar:', erroHeartbeat);
+  }
+
+  // `checked: 0` com 200 é no-op silencioso: coluna renomeada, ai_enabled
+  // desligado ou chave migrada de lugar deixariam o monitor sem nada pra checar
+  // e parecendo saudável.
+  if (checked === 0) {
+    console.error('[Cron:ai-health] NENHUMA org foi checada — a query não casou nada. O monitor está inerte.');
+  }
+
+  console.log(
+    `[Cron:ai-health] Done — checked: ${checked}, degraded: ${degraded}, alerted: ${alerted}, errosBanco: ${errosBanco}`,
+  );
+  return json({ checked, degraded, alerted, errosBanco });
 }

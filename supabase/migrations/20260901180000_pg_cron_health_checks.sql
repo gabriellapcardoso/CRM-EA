@@ -23,6 +23,15 @@
 -- quebrar o ambiente de desenvolvimento.
 DO $$
 BEGIN
+  -- Falha ALTO se o placeholder não foi substituído. Sem isto, um
+  -- `supabase db push` ou `db reset` reagenda os jobs com token literal
+  -- inválido (cron.schedule com nome existente SUBSTITUI), e eles passam a
+  -- responder 401 a cada 15 min, para sempre, sem sinal nenhum — o modo de
+  -- falha silenciosa que esta migration existe para eliminar. Issue #20.
+  IF position('__CRON_SECRET__' in $cron_guard$__CRON_SECRET__$cron_guard$) > 0 THEN
+    RAISE EXCEPTION 'CRON_SECRET não substituído. Esta migration não pode ser aplicada pelo fluxo normal: substitua __CRON_SECRET__ pelo valor real (o mesmo da env var da Vercel) antes de executar. Ver TODOS.md.';
+  END IF;
+
   PERFORM cron.schedule(
     'ai-health-check',
     '*/15 * * * *',
@@ -42,6 +51,15 @@ END $$;
 
 DO $$
 BEGIN
+  -- Falha ALTO se o placeholder não foi substituído. Sem isto, um
+  -- `supabase db push` ou `db reset` reagenda os jobs com token literal
+  -- inválido (cron.schedule com nome existente SUBSTITUI), e eles passam a
+  -- responder 401 a cada 15 min, para sempre, sem sinal nenhum — o modo de
+  -- falha silenciosa que esta migration existe para eliminar. Issue #20.
+  IF position('__CRON_SECRET__' in $cron_guard$__CRON_SECRET__$cron_guard$) > 0 THEN
+    RAISE EXCEPTION 'CRON_SECRET não substituído. Esta migration não pode ser aplicada pelo fluxo normal: substitua __CRON_SECRET__ pelo valor real (o mesmo da env var da Vercel) antes de executar. Ver TODOS.md.';
+  END IF;
+
   PERFORM cron.schedule(
     'evolution-health-check',
     '*/15 * * * *',

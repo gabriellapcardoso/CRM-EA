@@ -38,6 +38,7 @@ let orgsResult: { data: unknown; error: unknown }
 let janelaResult: { data: unknown }
 let cooldownResult: { data: unknown }
 let insertSpy: ReturnType<typeof vi.fn>
+let heartbeatSpy: ReturnType<typeof vi.fn>
 let sendEmailSpy: ReturnType<typeof vi.fn>
 let generateTextMock: ReturnType<typeof vi.fn>
 let getOrgAIConfigMock: ReturnType<typeof vi.fn>
@@ -46,6 +47,10 @@ let lastAlertFilters: Record<string, unknown>
 
 vi.mock('ai', () => ({
   generateText: (...args: unknown[]) => generateTextMock(...args),
+  // `Output` precisa existir: sem ele `Output.object()` lança TypeError, o
+  // catch de checarIA transforma isso em "falha", e todo teste de caminho
+  // saudável passa a acusar degradação — falha no mock virando falso vermelho.
+  Output: { object: (cfg: unknown) => cfg },
 }))
 
 vi.mock('resend', () => ({
@@ -77,6 +82,9 @@ function buildSupabase() {
         }
         return qb
       }
+      if (tabela === 'cron_heartbeats') {
+        return { upsert: (row: unknown) => heartbeatSpy(row) }
+      }
       // security_alerts — filtros por query, não globais: cada `.from()` é uma
       // consulta nova e precisa ser respondida conforme os próprios filtros.
       const filtros: Record<string, unknown> = {}
@@ -92,9 +100,15 @@ function buildSupabase() {
           lastAlertFilters[col] = val
           return qb
         }),
+        contains: vi.fn((col: string, val: unknown) => {
+          filtros[col] = val
+          lastAlertFilters[col] = val
+          return qb
+        }),
         limit: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn(async () =>
-          filtros.severity ? cooldownResult : janelaResult,
+          // O cooldown agora filtra por `details.email_enviado`, não por severity.
+          filtros.details ? cooldownResult : janelaResult,
         ),
         insert: (row: unknown) => insertSpy(row),
       }
@@ -125,8 +139,13 @@ beforeEach(() => {
   cooldownResult = { data: null }
   lastAlertFilters = {}
   insertSpy = vi.fn(async () => ({ error: null }))
+  heartbeatSpy = vi.fn(async () => ({ error: null }))
   sendEmailSpy = vi.fn(async () => ({ data: {}, error: null }))
-  generateTextMock = vi.fn(async () => ({ text: 'ok' }))
+  generateTextMock = vi.fn(async () => ({
+    output: { ok: true },
+    usage: { totalTokens: 12 },
+    response: { modelId: 'x/y' }, // igual ao model do getOrgAIConfigMock: sem fallback
+  }))
   getOrgAIConfigMock = vi.fn(async () => ({ provider: 'openrouter', apiKey: 'sk-or-fake', model: 'x/y' }))
 })
 
@@ -199,10 +218,11 @@ describe('segunda falha consecutiva', () => {
   })
 
   it('consulta o cooldown de 4h por severity=critical', async () => {
-    // Se consultasse sem filtrar severity, o `info` da 1ª falha contaria como
-    // "e-mail recente" e silenciaria justamente o primeiro alerta de verdade.
+    // A versão anterior filtrava `severity='critical'` e gravava um `critical`
+    // a cada execução: a janela de 4h se auto-alimentava e nunca expirava, então
+    // saía UM e-mail por incidente e nunca mais. Observado em produção.
     await GET(req())
-    expect(lastAlertFilters.severity).toBe('critical')
+    expect(lastAlertFilters.details).toEqual({ email_enviado: true })
   })
 
   it('não manda e-mail quando já houve um critical no cooldown', async () => {
@@ -245,19 +265,19 @@ describe('alert_email vazio', () => {
 })
 
 describe('o que conta como falha', () => {
-  it('texto vazio COM tokens gerados NÃO é falha (modelo de raciocínio)', async () => {
+  it('saída presente com tokens NÃO é falha (modelo de raciocínio)', async () => {
     // Bug real, pego no teste ao vivo: com maxOutputTokens baixo o DeepSeek v4
     // gastava o orçamento no raciocínio e devolvia texto vazio, e o check
     // acusava "IA fora do ar" com a IA saudável. Falso positivo em monitor
     // ensina a ignorar o alerta — é pior que não ter monitor.
-    generateTextMock = vi.fn(async () => ({ text: '   ', usage: { totalTokens: 40 } }))
+    generateTextMock = vi.fn(async () => ({ output: { ok: true }, usage: { totalTokens: 40 }, response: { modelId: 'x/y' } }))
     await GET(req())
     expect(insertSpy).not.toHaveBeenCalled()
   })
 
-  it('sem texto E sem tokens conta como falha', async () => {
+  it('sem saída E sem tokens conta como falha', async () => {
     // Aí sim não houve resposta nenhuma.
-    generateTextMock = vi.fn(async () => ({ text: '', usage: { totalTokens: 0 } }))
+    generateTextMock = vi.fn(async () => ({ output: undefined, usage: { totalTokens: 0 }, response: { modelId: 'x/y' } }))
     await GET(req())
     expect(insertSpy).toHaveBeenCalled()
   })
@@ -268,10 +288,125 @@ describe('o que conta como falha', () => {
     expect(linhaGravada()).toMatchObject({ severity: 'info' })
   })
 
-  it('teor diferente de "ok" NÃO conta como falha', async () => {
+  it('teor da resposta NÃO conta como falha', async () => {
     // Checar o conteúdo transformaria variação normal de modelo em alerta falso.
-    generateTextMock = vi.fn(async () => ({ text: 'Certo!' }))
+    generateTextMock = vi.fn(async () => ({ output: { ok: false }, usage: { totalTokens: 9 }, response: { modelId: 'x/y' } }))
     await GET(req())
     expect(insertSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('failover silencioso — o P0 que motivou a issue #20', () => {
+  beforeEach(() => {
+    // A OpenRouter atendeu, mas com OUTRO modelo: o configurado sumiu do
+    // catálogo e a lista de reserva resgatou a chamada.
+    generateTextMock = vi.fn(async () => ({
+      output: { ok: true },
+      usage: { totalTokens: 12 },
+      response: { modelId: 'deepseek/deepseek-v4-flash' },
+    }))
+    getOrgAIConfigMock = vi.fn(async () => ({
+      provider: 'openrouter',
+      apiKey: 'sk-or-fake',
+      model: 'google/gemini-2.0-flash-001', // o modelo removido do catálogo
+    }))
+  })
+
+  it('detecta que a resposta veio de um modelo diferente do configurado', async () => {
+    // Antes desta guarda o check devolvia `degraded: 0` neste cenário — provado
+    // em produção em 2026-09-01. O failover mantinha a aplicação de pé E
+    // escondia que a configuração da org estava morta, então o monitor era cego
+    // justamente para o incidente que motivou sua construção.
+    const res = await GET(req())
+    expect(await res.json()).toMatchObject({ degraded: 1 })
+    expect(insertSpy).toHaveBeenCalled()
+  })
+
+  it('nomeia os dois modelos no registro, senão não dá pra agir', async () => {
+    await GET(req())
+    const motivo = String((linhaGravada().details as Record<string, unknown>).motivo)
+    expect(motivo).toContain('google/gemini-2.0-flash-001')
+    expect(motivo).toContain('deepseek/deepseek-v4-flash')
+  })
+
+  it('marca como degradado, não como queda: a aplicação continua de pé', async () => {
+    await GET(req())
+    expect((linhaGravada().details as Record<string, unknown>).degradado).toBe(true)
+    expect(String(linhaGravada().title)).toMatch(/reserva/i)
+  })
+})
+
+describe('cooldown mede e-mail enviado, não linha gravada', () => {
+  beforeEach(() => {
+    generateTextMock = vi.fn(async () => {
+      throw new Error('402 insufficient credits')
+    })
+    janelaResult = { data: { id: 'falha-anterior' } }
+    cooldownResult = { data: null }
+  })
+
+  it('grava email_enviado=true quando o e-mail sai', async () => {
+    // É este campo que a próxima execução consulta. A versão anterior procurava
+    // `severity='critical'` e gravava um `critical` a cada execução: a janela de
+    // 4h se auto-alimentava e nunca expirava, então saía UM e-mail por incidente
+    // e nunca mais.
+    await GET(req())
+    expect((linhaGravada().details as Record<string, unknown>).email_enviado).toBe(true)
+  })
+
+  it('grava email_enviado=false quando o Resend recusa', async () => {
+    // `resend.emails.send` não lança: devolve `{ error }`. Antes isso era
+    // contado como entrega.
+    sendEmailSpy = vi.fn(async () => ({ data: null, error: { message: 'domain not verified' } }))
+    const res = await GET(req())
+    expect((linhaGravada().details as Record<string, unknown>).email_enviado).toBe(false)
+    expect(await res.json()).toMatchObject({ alerted: 0 })
+  })
+
+  it('grava email_enviado=false quando não há destinatário', async () => {
+    orgsResult = { data: [{ organization_id: ORG_ID, alert_email: null }], error: null }
+    await GET(req())
+    expect((linhaGravada().details as Record<string, unknown>).email_enviado).toBe(false)
+  })
+})
+
+describe('erros de banco não podem virar silêncio', () => {
+  beforeEach(() => {
+    generateTextMock = vi.fn(async () => {
+      throw new Error('falhou')
+    })
+  })
+
+  it('erro ao gravar o alerta é contado e devolvido, não engolido', async () => {
+    // Sem o registro, a execução seguinte se acha a primeira falha e o e-mail
+    // nunca sai. Era invisível: a rota respondia 200 igualzinho.
+    insertSpy = vi.fn(async () => ({ error: { message: 'insert failed' } }))
+    const erroSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = await GET(req())
+    expect(await res.json()).toMatchObject({ errosBanco: 1 })
+    expect(erroSpy.mock.calls.map((c) => c.join(' ')).join('\n')).toMatch(/primeira falha/i)
+    erroSpy.mockRestore()
+  })
+})
+
+describe('heartbeat', () => {
+  it('grava em toda execução, inclusive quando está tudo saudável', async () => {
+    // Sem heartbeat, "cron desagendado" e "IA saudável" produzem o mesmo estado
+    // observável: nenhuma linha, nenhum e-mail. Quem observa a idade dele é o
+    // watchdog em pg_cron, que roda dentro do banco.
+    await GET(req())
+    expect(heartbeatSpy).toHaveBeenCalledTimes(1)
+    expect(heartbeatSpy.mock.calls[0][0]).toMatchObject({ job_name: 'ai-health', last_status: 'ok' })
+  })
+
+  it('reporta status degradado quando houve erro de banco', async () => {
+    generateTextMock = vi.fn(async () => {
+      throw new Error('falhou')
+    })
+    insertSpy = vi.fn(async () => ({ error: { message: 'boom' } }))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await GET(req())
+    expect(heartbeatSpy.mock.calls[0][0]).toMatchObject({ last_status: 'degraded' })
+    vi.restoreAllMocks()
   })
 })
