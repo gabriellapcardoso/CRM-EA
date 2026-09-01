@@ -684,8 +684,18 @@ body {
 .screen {
   flex: 1; min-height: 0; overflow: auto; position: relative;
   /* Pistas de scroll horizontal (CSS puro, sem JS): sombra some sozinha quando
-   * não há mais o que rolar em cada lado. Cobre .inbox/.thread/.cockpit__body,
-   * que forçam min-width maior que telas de notebook comuns (ver DESAFIOS.md). */
+   * não há mais o que rolar em cada lado. Cobre .inbox/.thread/.table-list, que
+   * forçam min-width maior que telas de notebook comuns (ver DESAFIOS.md).
+   *
+   * .cockpit__body NÃO está mais nessa lista: perdeu o min-width em 2026-08-31
+   * e passou a caber em qualquer largura (ver o bloco cockpit.css). Não
+   * reintroduzir o min-width lá achando que esta sombra o protege.
+   *
+   * Atenção pra quem for mexer: em .inbox e .thread esta sombra provavelmente
+   * nunca apareceu de verdade. Ela é background do .screen, e o conteúdo
+   * daquelas telas é opaco de ponta a ponta (--surface-card/--surface-subtle),
+   * então fica por baixo. Só rende em telas com .screen__inner transparente.
+   * Ver TODOS.md antes de confiar nela como afordância. */
   background:
     linear-gradient(to right, var(--surface-page) 30%, transparent) 0 0,
     linear-gradient(to left, var(--surface-page) 30%, transparent) 100% 0,
@@ -1185,29 +1195,115 @@ body {
 
 /* ---- cockpit.css ---- */
 .cockpit { display: flex; flex-direction: column; height: 100%; }
-.cockpit__head { background: var(--surface-card); border-bottom: 1px solid var(--border-subtle); padding: var(--space-3) var(--space-6) 0; }
-.cockpit__head-top { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
-.cockpit__title { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 22px; letter-spacing: -.03em; color: var(--text-strong); }
+.cockpit__head { background: var(--surface-card); border-bottom: 1px solid var(--border-subtle); padding: var(--space-2) var(--space-6) 0; }
+/* `.cockpit__head-top` quebrava em 2 linhas (84px) porque os filhos somavam
+ * 1194px + 96px de gaps em 1155px disponíveis. Apertar o gap e dar um teto ao
+ * título devolve a linha única (36px) — sozinho isso recupera 48px de altura,
+ * mais do que o wrap do stepper custa. O título truncado continua inteiro no
+ * `<h2>` pro leitor de tela; nada é removido da tela. */
+.cockpit__head-top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.cockpit__title { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 22px; line-height: 1.15; letter-spacing: -.03em; color: var(--text-strong); min-width: 0; flex: 0 1 auto; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cockpit__value { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 20px; letter-spacing: -.03em; color: var(--text-strong); }
-.cockpit__body { flex: 1; min-height: 0; display: grid; grid-template-columns: 288px 1fr 320px; min-width: 1180px; }
-.cockpit__aside { border-right: 1px solid var(--border-subtle); background: var(--surface-card); overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
-.cockpit__aside--right { border-right: 0; border-left: 1px solid var(--border-subtle); }
-.cockpit__center { overflow-y: auto; padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); background: var(--surface-subtle); min-width: 420px; }
+/* Escopado ao header: `.cockpit__value` também é usada pelo modal de detalhe do
+ * deal (DealDetailModal.tsx:500), que não tem aperto de altura nenhum. */
+.cockpit__head-top .cockpit__value { line-height: 1.15; }
+/* Coluna única, uma rolagem só (decisão da fundadora, 2026-08-31).
+ *
+ * Antes: grid de 3 colunas (`288px 1fr 320px`) com `min-width: 1180px` e
+ * `overflow-y: auto` em cada painel. Dois problemas de uma vez:
+ *
+ * 1. Rolava pro lado. O 1180 era herança do handoff HTML do redesign
+ *    (d924a86), não cálculo — o piso real das colunas era 288+420+320 = 1028px.
+ *    Os 152px sobrando forçavam scroll horizontal sempre que a largura útil
+ *    ficava abaixo disso: em 1280px com a sidebar aberta, e SEMPRE que o painel
+ *    de IA (384px) abria.
+ * 2. Três rolagens independentes em 405px de altura. Cada painel escondia o
+ *    próprio conteúdo, e no macOS a barra é overlay: some em repouso, então a
+ *    informação parecia não existir em vez de estar abaixo.
+ *
+ * Agora os 3 painéis viram `display: contents` — as caixas somem e os 12 blocos
+ * sobem para filhos diretos deste flex. A sequência deixa de depender da ordem
+ * do JSX e passa a viver nas classes `.cockpit__sec--*` abaixo, o que permitiu
+ * reordenar a tela inteira sem mover uma linha de markup.
+ *
+ * `<aside>` perder o landmark de complementary com `display: contents` é o
+ * comportamento certo aqui: não são mais barras laterais, são seções da página. */
+.cockpit__body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-4); overflow-y: auto; scrollbar-gutter: stable; padding: var(--space-4) var(--space-5) var(--space-11); background: var(--surface-subtle); }
+.cockpit__aside, .cockpit__center { display: contents; }
+
+/* Largura de leitura. Sem teto, os blocos esticariam para 1400px+ num monitor
+ * grande e a linha de texto ficaria longa demais pra varrer com o olho.
+ *
+ * Seletor descendente, não `> *`: `display: contents` é regra de LAYOUT, não de
+ * DOM. Os três containers continuam sendo os filhos diretos de `.cockpit__body`
+ * na árvore — quem virou item flex foram os blocos dentro deles. Um `> *` aqui
+ * casaria com os containers (que não têm caixa nenhuma) e não pintaria nada. */
+.cockpit__body .cockpit__block,
+.cockpit__body .card-hitl,
+.cockpit__body .panel { width: 100%; max-width: 900px; margin-inline: auto; }
+
+/* Ordem da governança: decidir → agir → entender → consultar.
+ * Os blocos ficam onde estão no JSX (esquerda/centro/direita do layout antigo);
+ * só a ordem visual muda. `order` só funciona porque os containers são
+ * `display: contents` e todos os blocos são irmãos diretos deste flex. */
+.cockpit__sec--decidir { order: 1; }   /* próxima ação, risco, próximos passos */
+.cockpit__sec--agir { order: 2; }      /* contato + botões de canal */
+.cockpit__sec--historico { order: 3; } /* linha do tempo, escrever nota, registrar */
+.cockpit__sec--assistente { order: 4; }/* agente IA (chat/notas/scripts/arquivos) */
+.cockpit__sec--ref { order: 5; }       /* dados do deal, sinais, etiquetas, contexto */
+
+/* Os blocos que vinham dos painéis laterais não tinham cara de card: o fundo e
+ * a borda eram do `<aside>`, que agora não existe mais. Sem isto eles flutuam
+ * soltos sobre o fundo da página. Mesmos tokens do `.panel`, nada novo. */
+.cockpit__body .cockpit__block { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-4); gap: var(--space-3); }
+/* Neutraliza o separador de irmãos herdado do layout de painel (linha do
+ * `.cockpit__block + .cockpit__block` acima): agora cada bloco é um card com
+ * borda própria, e a linha extra apareceria dentro dele. A regra original fica
+ * de pé pro BriefingCard, que ainda empilha blocos dentro de um painel só. */
+.cockpit__body .cockpit__block + .cockpit__block { border-top: 0; padding-top: var(--space-4); }
 .cockpit__block { display: flex; flex-direction: column; gap: 9px; }
 .cockpit__block + .cockpit__block { border-top: 1px solid var(--ink-100); padding-top: var(--space-3); }
 .contact-head { display: flex; align-items: center; gap: var(--space-3); }
 .contact-head__name { font-weight: var(--weight-bold); font-size: 13.5px; color: var(--text-strong); }
 .contact-head__role { font-size: 12px; color: var(--text-muted); }
-.channel-actions { display: flex; gap: 6px; }
-.channel-actions__btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: 9px; padding: 7px; font-size: 12px; font-weight: var(--weight-semibold); color: var(--ink-700); }
+/* Grade que se adapta, em vez de 4 botões numa linha só. Os 4 (WhatsApp,
+ * e-mail, ligar, enviar proposta) mediam 327px numa coluna de 288px e cortavam
+ * na borda — é o corte que aparecia no print. `flex: 1` sozinho não resolvia: o
+ * `min-width: auto` implícito de flex item trava o encolhimento no conteúdo do
+ * rótulo maior.
+ * Grid, e não `flex-wrap`: com wrap a quebra depende do min-content de cada
+ * rótulo, então a grade sairia por acidente aritmético e reagruparia sozinha
+ * quando "enviar proposta" vira "enviando..." em runtime (DealCockpitClient
+ * :1698). Grid é determinístico e ainda iguala as alturas.
+ *
+ * `auto-fit` em vez de duas colunas fixas: o bloco agora vive num card de até
+ * 900px, onde 2 colunas dariam botões de 430px. Assim são 4 em linha quando há
+ * espaço e 2x2 quando não há, sem breakpoint. O `min(150px, 100%)` evita que a
+ * própria track estoure num container mais estreito que 150px.
+ * Nenhum botão sai, nenhum rótulo vira ícone. */
+.channel-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 6px; }
+.channel-actions__btn { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: 9px; padding: 7px 6px; font-size: 12px; font-weight: var(--weight-semibold); color: var(--ink-700); }
 .risk { display: flex; align-items: center; gap: 9px; }
 .risk__level { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 24px; letter-spacing: -.03em; }
 .risk--medio .risk__level { color: var(--warning); }
 .risk--alto .risk__level { color: var(--danger); }
 .risk--baixo .risk__level { color: var(--success); }
 .risk__text { font-size: 12px; color: var(--text-muted); flex: 1; }
-.stepper { display: flex; gap: 3px; margin-top: var(--space-3); overflow-x: auto; padding: 0 2px var(--space-3); }
-.stepper__step { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-button); font-size: var(--text-meta); white-space: nowrap; background: var(--ink-100); color: var(--text-muted); font-weight: var(--weight-medium); }
+/* 15 estágios mediam 1636px em 1391px de largura: "Pagamento recebido" só
+ * aparecia rolando pro lado. Wrap em 2 linhas mostra o processo inteiro de uma
+ * vez — numa tela de governança "quanto falta" é dado de decisão, não enfeite.
+ * Ordem, numeração, cores e o clique que move o deal ficam intactos; o `<li>`
+ * usa `display: contents`, então o botão é o flex item direto e o wrap pega sem
+ * mexer no JSX nem no `aria-current="step"`.
+ *
+ * `max-height` não é enfeite: a quantidade de estágios é dinâmica
+ * (`selectedBoard.stages`, por board e por organização), não fixa em 15. Sem o
+ * teto, um board de 20 estágios renderia 3-4 linhas e comeria ~110px da altura
+ * útil das colunas — o wrap trabalharia contra o próprio objetivo de recuperar
+ * altura. Com o teto, o pior caso continua em 2 linhas e o resto rola ali
+ * dentro, sem contaminar o resto da tela. */
+.stepper { display: flex; flex-wrap: wrap; gap: 3px; row-gap: 4px; margin-top: var(--space-2); padding: 0 2px var(--space-2); max-height: 66px; overflow-y: auto; }
+.stepper__step { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: var(--radius-button); font-size: var(--text-meta); white-space: nowrap; background: var(--ink-100); color: var(--text-muted); font-weight: var(--weight-medium); }
 .stepper__step--done { background: var(--purple-200); color: var(--purple-800); }
 .stepper__step--current { background: var(--surface-brand); color: #fff; font-weight: var(--weight-bold); }
 .stepper__n { opacity: .6; font-variant-numeric: tabular-nums; }

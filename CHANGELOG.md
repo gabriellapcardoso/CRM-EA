@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(cockpit): tela de governança vira coluna única com uma rolagem — 2026-08-31
+
+A tela do cockpit do deal era um grid de 3 painéis (`288px 1fr 320px`) com
+`min-width: 1180px` e uma barra de rolagem própria em cada painel. Em uso real
+(1440×609, sidebar aberta) isso significava rolar pro lado pra ver metade da
+informação, botões cortados na borda e conteúdo espremido em 405px de altura.
+
+Medido em produção antes de mexer, não suposto:
+
+| | antes | depois |
+|---|---|---|
+| `.cockpit__aside` | 287px de caixa, 327px de conteúdo (cortava) | não corta |
+| `.stepper` (15 estágios) | 1155px de caixa, 1636px de conteúdo | cabe em 2 linhas |
+| `.cockpit__head` | 148px | 114px |
+| altura útil do corpo | 405px | 439px |
+| rolagens verticais | 3 independentes | 1 |
+| rolagem horizontal | sim | não |
+
+**O que mudou**
+
+- Os 3 painéis viram `display: contents` e os 12 blocos sobem para filhos
+  diretos de um flex column. A sequência passa a viver em classes de CSS
+  (`.cockpit__sec--*`), na ordem da governança: decidir (próxima ação, risco,
+  próximos passos) → agir (contato + canais) → entender (linha do tempo, notas)
+  → assistente (agente IA) → consultar (dados, sinais, etiquetas, contexto).
+  Nenhum bloco foi movido no JSX; a ordem inteira é `order`.
+- `min-width: 1180px` removido. Era herança literal do handoff HTML do redesign
+  (`d924a86`), não cálculo — o piso real das colunas era 1028px.
+- Os 4 botões de canal viram grid `auto-fit`: 4 em linha quando há espaço, 2×2
+  quando não há. Nenhum botão saiu, nenhum rótulo virou ícone.
+- O stepper quebra linha em vez de rolar pro lado, com teto de altura (a
+  quantidade de estágios é dinâmica por board — sem teto, um board de 20
+  estágios comeria ~110px do corpo).
+- Cabeçalho recuperou 34px: a linha do topo quebrava em duas porque os filhos
+  somavam 1194px + 96px de gaps em 1155px disponíveis.
+- O chat da IA tinha `height: 420` fixo numa coluna de ~461px de altura útil —
+  scroll dentro de scroll. Virou `clamp(220px, 38vh, 420px)`.
+
+**Nada de função mudou.** Nenhum handler, mutation, query, rota ou token do
+design system foi tocado. `.cockpit__value` e `.cockpit__block`, que o
+`DealDetailModal` e o `BriefingCard` também usam, ficaram intactas — os ajustes
+de altura foram escopados ao cabeçalho do cockpit.
+
+Guarda: `test/cockpitLayout.test.ts` (17 asserções). É teste de CSS-como-texto
+de propósito: happy-dom não tem engine de layout, então um teste de "não
+estoura" renderizando o componente passaria por falso-positivo. A verificação de
+que cabe de verdade foi medição no browser contra produção.
+
+Fecha o item de `DESAFIOS.md` de 2026-08-14, que tinha registrado esse mesmo
+`min-width: 1180px` e deixado sem corrigir por falta de confirmação de que
+telas de 1280px eram caso real de uso.
+
 ### feat(layout): barra lateral pode ser ocultada (desktop) — 2026-08-31
 
 Botão no topbar (`PanelLeftClose`/`PanelLeftOpen`) e atalho **⌘B / Ctrl+B**

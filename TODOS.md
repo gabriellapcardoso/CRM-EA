@@ -101,6 +101,42 @@
 
 ## Layout
 
+### `.inbox` ainda tem o `min-width: 1180px` que saiu do cockpit
+
+**What:** `app/globals.css:1073` mantém `min-width: 1180px` no Inbox. O cockpit perdeu o dele em 2026-08-31 e virou coluna única; o Inbox ficou sozinho com o número. Continua rolando pro lado em qualquer notebook de 1280px com a barra lateral aberta (1044px úteis) — é literalmente o bug que `DESAFIOS.md` registrou em 14/08 com o card "aprovações IA" 102px fora da tela.
+
+**Why:** A justificativa antiga ("decisão de design pra telas densas") caiu: 1180 não bate com a soma das colunas do Inbox (322 + 440 + 340 + bordas = 1104px) nem com a do cockpit (1028px). É largura de trabalho do handoff HTML, copiada literal pras duas classes.
+
+**Pros:** Fecha de vez o item de 14/08 e tira o último scroll horizontal do app. O caminho já está trilhado e medido no cockpit.
+**Cons:** O Inbox tem 3 painéis com papéis diferentes do cockpit (lista de conversas / thread / contexto) — a solução de coluna única provavelmente NÃO se aplica ali, uma conversa quer painéis lado a lado. Precisa de desenho próprio, não é copiar o diff do cockpit.
+**Context:** `app/globals.css:1073` (`.inbox`), `:1090` (`.thread`, `min-width: 440px`). `DESAFIOS.md`, item de 2026-08-14 e o item de `min-width` de handoff de 31/08.
+**Effort:** M
+**Priority:** P2
+
+### As sombras de scroll de `.screen` provavelmente nunca apareceram no Inbox
+
+**What:** `app/globals.css:684-697` pinta gradientes de sombra no `<main>` como afordância de scroll horizontal, e o `CHANGELOG` trata isso como a correção do problema de descoberta do Inbox. Só que as camadas usam `background-attachment: scroll` e todo o conteúdo daquelas telas é opaco de ponta a ponta (`.conv-pane`, `.thread`, `.detail-pane` com `--surface-card`/`--surface-subtle`): a sombra fica **atrás** desses fundos. Ela só rende em telas com `.screen__inner` transparente (Contatos, Atividades).
+
+**Why:** Achado por leitura de CSS durante a revisão do cockpit, não por teste. Se confirmado, o Inbox continua cortando conteúdo sem nenhum aviso visual, e a documentação diz o contrário — o que faz a próxima pessoa não procurar.
+
+**Pros:** Barato de verificar (rolar `.screen` pra direita em 1280×800 e olhar). Se der negativo, corrige uma afirmação errada em dois documentos.
+**Cons:** Se a sombra realmente não funciona, o conserto (mover a afordância pra dentro dos painéis, ou barra sempre visível) é maior que o próprio diagnóstico.
+**Context:** `app/globals.css:684`. Depende do item acima — se o `.inbox` deixar de precisar de scroll horizontal, a afordância vira desnecessária ali.
+**Effort:** S (verificar) / M (corrigir)
+**Priority:** P2
+
+### `display: contents` nos `<li>` do stepper tira a semântica de lista
+
+**What:** `DealCockpitClient.tsx:1583` põe `style={{ display: 'contents' }}` em cada `<li>` do `<ol className="stepper">`, pra que o `<button>` interno seja o item flex direto. Isso funciona pro layout, mas `display: contents` em `<li>` historicamente remove o role `listitem` da árvore de acessibilidade (ainda vale no WebKit) — o `<ol>` é anunciado como lista vazia e o `aria-current="step"` fica pendurado num botão que não pertence a lista nenhuma.
+
+**Why:** Pré-existente, não introduzido pelo redesign de 31/08 (o wrap do stepper conviveu com isso sem piorar). Mas numa tela de governança o stepper é justamente o mapa do processo: pra quem usa leitor de tela, "passo 5 de 15" é a informação principal e hoje ela não chega.
+
+**Pros:** Conserto é CSS + uma linha de JSX: tirar o `style` inline, `.stepper li { display: flex; flex: 0 0 auto; }` e mover o `flex: 0 0 auto` de `.stepper__step` pro `li`.
+**Cons:** Move a propriedade que rege a quebra de linha de um elemento pro outro — mexe exatamente no que acabou de ser estabilizado. Fazer sozinho, com medição, não junto de outra mudança.
+**Context:** `features/deals/cockpit/DealCockpitClient.tsx:1583`, `app/globals.css` (`.stepper`, `.stepper__step`).
+**Effort:** S
+**Priority:** P2
+
 ### `sidebarCollapsed` do `UIStore` é escrito pelo Inbox mas ninguém lê
 
 **What:** `InboxFocusView.tsx:298` chama `setSidebarCollapsed(showContext)` ao abrir/fechar o painel de contexto, mas **nenhum componente lê `sidebarCollapsed`** — o `Layout` nunca consumiu esse estado. É código morto: o Inbox acha que colapsa a barra lateral e não colapsa nada.

@@ -375,13 +375,17 @@ function CockpitBlock({
   title,
   right,
   children,
+  className,
 }: {
   title: string;
   right?: React.ReactNode;
   children: React.ReactNode;
+  /** Classe de ordem do empilhamento (`cockpit__sec--*`). Só layout: o cockpit
+   * virou coluna única e a sequência dos blocos vive no CSS, não no JSX. */
+  className?: string;
 }) {
   return (
-    <section className="cockpit__block">
+    <section className={className ? `cockpit__block ${className}` : 'cockpit__block'}>
       <div className="col-head__top">
         <h3 className="label" style={{ flex: 1 }}>
           {title}
@@ -1534,7 +1538,10 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
 
           <select
             className="input"
-            style={{ width: 'auto', maxWidth: 260, padding: '6px 10px' }}
+            // 260px era o segundo maior item da linha do cabeçalho e ajudava a
+            // empurrar tudo pra uma 2ª linha (48px de altura a menos pro corpo).
+            // 180px ainda mostra o nome do deal; o resto o próprio select trunca.
+            style={{ width: 'auto', maxWidth: 180, padding: '6px 10px' }}
             value={deal.id}
             onChange={(e) => setDealInUrl(e.target.value)}
             aria-label="Selecionar deal"
@@ -1602,9 +1609,12 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
       </header>
 
       <div className="cockpit__body">
-        {/* ---------------- coluna esquerda ---------------- */}
+        {/* Os três containers abaixo são `display: contents`: não desenham nada, só
+            agrupam. A ordem na tela vem das classes `cockpit__sec--*` de cada
+            bloco (ver app/globals.css), não da posição aqui no JSX. */}
+        {/* ------- contêiner 1 (era a coluna esquerda) ------- */}
         <aside className="cockpit__aside">
-          <CockpitBlock title="contato principal">
+          <CockpitBlock title="contato principal" className="cockpit__sec--agir">
             <div className="contact-head">
               <span className="avatar avatar--purple avatar--md" aria-hidden="true">
                 {getInitials(contact?.name ?? deal.title)}
@@ -1745,7 +1755,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             </dl>
           </CockpitBlock>
 
-          <CockpitBlock title="dados do deal">
+          <CockpitBlock title="dados do deal" className="cockpit__sec--ref">
             <dl className="data-list">
               <div className="data-list__row">
                 <dt>empresa</dt>
@@ -1774,7 +1784,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             </dl>
           </CockpitBlock>
 
-          <CockpitBlock title="sinais">
+          <CockpitBlock title="sinais" className="cockpit__sec--ref">
             <dl className="data-list">
               <div className="data-list__row">
                 <dt>último evento</dt>
@@ -1796,7 +1806,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           </CockpitBlock>
 
           {deal.tags?.length ? (
-            <CockpitBlock title="etiquetas">
+            <CockpitBlock title="etiquetas" className="cockpit__sec--ref">
               <p className="chip-row">
                 {deal.tags.map((t) => (
                   <span key={t} className="tag">
@@ -1808,9 +1818,9 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           ) : null}
         </aside>
 
-        {/* ---------------- centro ---------------- */}
+        {/* ------- contêiner 2 (era o centro) ------- */}
         <div className="cockpit__center">
-          <section className="card-hitl" aria-labelledby="cockpit-next-action">
+          <section className="card-hitl cockpit__sec--decidir" aria-labelledby="cockpit-next-action">
             <div className="card-hitl__head">
               <span className="dot dot--pulse" />
               <h3 className="card-hitl__title" id="cockpit-next-action">
@@ -1940,7 +1950,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             </p>
           </section>
 
-          <section className="panel panel--flush">
+          <section className="panel panel--flush cockpit__sec--historico">
             <div className="panel__head" style={{ padding: 'var(--space-4) var(--space-4) 0' }}>
               <h3 className="panel__title title-sm">linha do tempo</h3>
               <span className="spacer" />
@@ -2044,7 +2054,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             )}
           </section>
 
-          <Panel title="escrever nota">
+          <Panel className="cockpit__sec--historico" title="escrever nota">
             <textarea
               className="input input--textarea"
               value={noteDraftTimeline}
@@ -2090,6 +2100,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           </Panel>
 
           <Panel
+            className="cockpit__sec--historico"
             title="registrar o que aconteceu fora do CRM"
             bodyClassName="chip-row"
           >
@@ -2226,9 +2237,9 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           </Panel>
         </div>
 
-        {/* ---------------- coluna direita ---------------- */}
+        {/* ------- contêiner 3 (era a coluna direita) ------- */}
         <aside className="cockpit__aside cockpit__aside--right">
-          <CockpitBlock title="risco do deal">
+          <CockpitBlock title="risco do deal" className="cockpit__sec--decidir">
             <p
               className={`risk risk--${
                 health.status === 'excellent' || health.status === 'good'
@@ -2252,6 +2263,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           </CockpitBlock>
 
           <CockpitBlock
+            className="cockpit__sec--decidir"
             title="próximos passos"
             right={
               <button
@@ -2332,6 +2344,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           </CockpitBlock>
 
           <CockpitBlock
+            className="cockpit__sec--assistente"
             title="agente IA"
             right={<span className="status-chip status-chip--ia">{board.name ?? 'pipeline'}</span>}
           >
@@ -2351,9 +2364,14 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             </div>
 
             {tab === 'chat' ? (
+              // Altura fixa de 420px numa coluna que tem ~461px de altura útil
+              // garantia scroll dentro de scroll: a roda do mouse rolava o
+              // elemento errado dependendo de onde o cursor estivesse. Com clamp
+              // o chat cede altura quando a janela é baixa e volta aos 420px
+              // quando há espaço. Nenhuma prop do UIChat muda.
               <div
                 className="panel panel--flush"
-                style={{ height: 420, minHeight: 320, overflow: 'hidden' }}
+                style={{ height: 'clamp(220px, 38vh, 420px)', minHeight: 220, overflow: 'hidden' }}
               >
                 <UIChat
                   boardId={board.id}
@@ -2517,7 +2535,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             )}
           </CockpitBlock>
 
-          <CockpitBlock title="contexto">
+          <CockpitBlock title="contexto" className="cockpit__sec--ref">
             <p className="composer__row">
               <span className="meta">{crmLoading ? 'sincronizando…' : 'pronto'}</span>
               <span className="spacer" />
