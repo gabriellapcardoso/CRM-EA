@@ -92,6 +92,14 @@ async function checarIA(
  * rede, duas seguidas é padrão. Como cada execução do cron é um processo novo,
  * o estado mora no banco (ver `security_alerts` abaixo).
  *
+ * Agendado por **pg_cron**, não pelo vercel.json: o plano Vercel deste projeto
+ * é Hobby, que permite no máximo 2 cron jobs e só cadência diária — um
+ * `vercel.json` com 3 crons, ou com cadência menor que um dia, é rejeitado e o
+ * deployment sequer chega a ser criado (foi o que travou o deploy em
+ * 2026-09-01, até o vercel.json voltar a ser válido).
+ * Ver `supabase/migrations/20260901180000_pg_cron_health_checks.sql`; a
+ * cadência real mora lá e este comentário não a repete.
+ *
  * Protegido por CRON_SECRET, mesmo padrão de evolution-health e template-sync.
  * Ver issue #16.
  */

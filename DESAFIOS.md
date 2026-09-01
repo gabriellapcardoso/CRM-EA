@@ -672,6 +672,16 @@ Resultado: durante meses **toda** chamada de IA ignorou a configuração escolhi
 
 **Corolário sobre migração**: a migração pra OpenRouter (2026-08-15) trocou provider e formato de id no código, mas não escreveu migration pros dados. Ao trocar o formato de um valor que vive no banco, migrar as linhas existentes faz parte da mudança — senão o código novo lê dado velho e o comportamento diverge em silêncio de org pra org.
 
+## `vercel.json` inválido pro plano não falha o build — impede o deployment de existir (2026-09-01)
+
+Ao adicionar o health check de IA, o `vercel.json` passou a ter 3 cron jobs, dois deles `*/15 * * * *`. O plano deste projeto é **Hobby**, que permite no máximo 2 crons e só cadência diária. Resultado: o push foi pra `main`, o GitHub aceitou, e a Vercel **não criou deployment nenhum**. Produção ficou congelada no commit anterior.
+
+O modo de falha é traiçoeiro porque não se parece com falha: não há build vermelho, não há e-mail de erro, não há entrada na lista de deployments. A rota nova responde 404 em produção e tudo o mais funciona, o que parece "deploy ainda propagando". Levou ~15 minutos e três hipóteses erradas até eu comparar a lista de deployments com o `git log` e ver que o último deploy era de um commit anterior.
+
+**O pior**: a resposta já estava no repositório desde julho. `supabase/migrations/20260715173000_pg_cron_stage_evaluations.sql:3` diz textualmente *"Vercel Hobby only allows daily cron schedules, so this runs via pg_cron + pg_net instead"*. O projeto já tinha batido nesse limite, já tinha resolvido, e já tinha documentado a solução no lugar certo. Eu escrevi um spec inteiro propondo cron da Vercel a cada 15 min sem ler isso.
+
+**Como isso não repete**: antes de tocar em `vercel.json`, ler as migrations de `pg_cron` — se existem, é porque o limite do plano já foi encontrado antes. Regra de bolso mais geral: quando o projeto já tem uma solução alternativa para uma capacidade óbvia da plataforma (cron, cache, fila), a alternativa costuma existir porque a via óbvia não estava disponível; descobrir o porquê é mais barato que redescobrir o limite. E ao investigar "deploy não saiu", conferir **se o deployment existe** antes de investigar por que ele falhou — são diagnósticos diferentes.
+
 ## Alerta que grava no banco mas não entrega ficou 30 dias mudo sem ninguém notar (2026-09-01)
 
 `evolution-health` detecta canal WhatsApp caído, grava em `security_alerts` e manda e-mail via Resend. Funcionava — detectou e gravou 4 quedas em 30 dias. Nenhum e-mail saiu: `organization_settings.alert_email` estava NULL, e o código faz `if (settings?.alert_email && ...)`, seguindo em silêncio quando está vazio.
