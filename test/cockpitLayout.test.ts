@@ -63,8 +63,11 @@ describe('.cockpit__body — coluna única, uma rolagem', () => {
   })
 })
 
-describe('ordem das seções — decidir, agir, entender, consultar', () => {
-  const ordem = ['decidir', 'agir', 'historico', 'assistente', 'ref']
+describe('ordem das seções — identificar, decidir, entender, consultar', () => {
+  // `deal` e `contato` são separados de propósito: blocos com o mesmo `order`
+  // caem na ordem do DOM, e ali o contato vem antes (JSX :1611 vs :1752) — o
+  // inverso do que a tela pede.
+  const ordem = ['deal', 'contato', 'decidir', 'historico', 'assistente', 'ref']
 
   it.each(ordem.map((nome, i) => [nome, i + 1] as const))(
     '.cockpit__sec--%s tem order: %i',
