@@ -10,7 +10,7 @@
  */
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { AI_DEFAULT_MODELS, AI_DEFAULT_PROVIDER } from './defaults';
+import { AI_DEFAULT_MODELS, AI_DEFAULT_PROVIDER, AI_FALLBACK_MODELS } from './defaults';
 
 export type AIProvider = 'openrouter';
 
@@ -65,7 +65,21 @@ export const getModel = (provider: AIProvider, apiKey: string, modelId: string) 
         );
     }
 
-    const openrouter = createOpenRouter({ apiKey });
+    // `models` é o failover nativo da OpenRouter: se `resolvedModel` falhar, ela
+    // tenta os da lista em ordem DENTRO da mesma requisição, e o app recebe uma
+    // resposta normal sem nunca ver o erro. Vai em `extraBody` do factory pra
+    // valer em toda chamada de uma vez — o alternativo seria repetir
+    // `providerOptions` nas 17 chamadas espalhadas pelas rotas e serviços, e
+    // bastaria alguém esquecer uma pra ela ficar sem rede.
+    //
+    // O primário é excluído da lista: já vai no campo `model`, e repetir só
+    // gastaria uma tentativa no modelo que a OpenRouter acabou de recusar.
+    const fallbacks = AI_FALLBACK_MODELS.filter((m) => m !== resolvedModel);
+
+    const openrouter = createOpenRouter({
+        apiKey,
+        ...(fallbacks.length > 0 ? { extraBody: { models: fallbacks } } : {}),
+    });
     return openrouter.chat(resolvedModel);
 };
 
