@@ -53,19 +53,26 @@ async function checarIA(
 
     const model = getModel(config.provider, config.apiKey, config.model);
 
+    // 64 tokens, não 5. Com 5 o DeepSeek v4 consumia o orçamento inteiro no
+    // raciocínio interno e devolvia texto vazio — o check acusava "IA fora do
+    // ar" com a IA perfeitamente saudável. Falso positivo em monitor é pior que
+    // monitor nenhum: ensina a ignorar o alerta. Pego no teste ao vivo.
     const result = await generateText({
       model,
       prompt: 'Responda apenas: ok',
-      maxOutputTokens: 5,
+      maxOutputTokens: 64,
       abortSignal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
     });
 
-    // Resposta vazia conta como falha: o modelo respondeu 200 mas não produziu
-    // nada utilizável, o que pro agente é indistinguível de estar fora do ar.
-    // O TEOR não é checado de propósito — o modelo pode responder o que quiser
-    // desde que responda algo, senão variação de modelo viraria alerta falso.
-    if (!result.text || result.text.trim() === '') {
-      return { ok: false, motivo: 'resposta vazia do modelo' };
+    // Texto vazio COM tokens gerados é modelo de raciocínio gastando o orçamento
+    // internamente, não serviço fora do ar — a via funcionou. Só conta como
+    // falha quando nada foi gerado, aí sim não houve resposta nenhuma.
+    // O TEOR nunca é checado: o modelo pode responder o que quiser desde que
+    // responda, senão variação normal de modelo viraria alerta falso.
+    const semTexto = !result.text || result.text.trim() === '';
+    const semTokens = (result.usage?.totalTokens ?? 0) === 0;
+    if (semTexto && semTokens) {
+      return { ok: false, motivo: 'modelo não gerou nem texto nem tokens' };
     }
 
     return { ok: true };
