@@ -25,6 +25,14 @@
 - **If `onMutate` writes to `entity.detail(id)`**: also `cancelQueries({ queryKey: entity.detail(id) })` explicitly — `.lists()`/the predicate don't cover it, unlike `.all`, and an in-flight detail fetch can silently overwrite the optimistic write otherwise
 - **Prefer** `setQueryData` over `invalidateQueries` for instant UI updates
 
+## Soft-delete Rules (CRITICAL)
+- **8 tables use `deleted_at`**: `deals`, `contacts`, `crm_companies`, `activities`, `boards`, `business_units`, `messaging_channels`, `organizations`. Deleting in the app is an UPDATE, never a DELETE
+- **Every read query MUST filter** `.is('deleted_at', null)` — including `count: 'exact'` counters, `ilike` name lookups and bulk updates, not just list queries
+- **Skipping the filter is invisible in tests but visible to the user**: a deleted record keeps showing on screen and keeps summing into totals (real bug: board summed R$5.600 of already-deleted deals; a later audit found the same in Activities and Companies)
+- **Reference implementation**: `lib/supabase/contacts.ts` (correct in every read) and `app/api/public/v1/deals/*`
+- **Guard**: `test/softDeleteFilters.test.ts`
+- **Case-by-case exception**: webhook/idempotency lookups may legitimately need to see deleted rows — check the flow before adding the filter there (see `TODOS.md`, AI/MCP layer item)
+
 ## Code Style
 - TypeScript 5.x strict, React 19, Tailwind CSS v4, Radix UI primitives
 - Shared components in `components/`, feature modules in `features/`

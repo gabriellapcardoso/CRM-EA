@@ -41,6 +41,13 @@ Teste renomeado de `dealsServiceDeletedFilter.test.ts` para
 `softDeleteFilters.test.ts` e estendido: 8 guardas cobrindo os 4 pontos do
 fix anterior + os 4 novos.
 
+Verificado ao vivo em produção após o deploy, contando contra o banco em vez
+de confiar na tela: Atividades passou a mostrar 2 registros "Moveu para
+Ganho" (banco tem 2 ativas + 1 excluída) e a aba de Empresas passou a marcar
+`empresas · 7` (10 no banco − 3 excluídas). Contatos seguiu em `pessoas · 12`
+(61 − 49 excluídos), como já estava antes do fix.
+PR: [#8](https://github.com/gabriellapcardoso/CRM-EA/pull/8).
+
 **Fora do escopo desta rodada** (registrado em `TODOS.md`, P2): a camada de
 IA/MCP (`lib/ai/tools.ts`, `lib/mcp/tools/*`, `lib/ai/agent/*`) e as Edge
 Functions de webhook têm ~30 queries de `contacts`/`activities` sem o

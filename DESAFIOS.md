@@ -115,7 +115,38 @@ Aqui, além do `getAll()`, faltava em `boardsService.canDelete()` (contava
 deal excluído como bloqueio pra apagar board), `deleteStage()` (idem pra
 estágio) e `moveDealsToBoard()` (ressuscitaria deal excluído ao mover de
 board).
-**Guarda:** `test/softDeleteFilters.test.ts` verifica os 4 pontos.
+**Guarda:** `test/softDeleteFilters.test.ts` verifica os 8 pontos (4 do fix
+inicial + 4 achados na auditoria seguinte, ver desafio abaixo).
+
+## Corrigir o caso que aparece não é corrigir a classe do bug (2026-08-31)
+
+**O quê:** depois de corrigir o `deleted_at` faltando em `deals` (o caso que
+a fundadora viu na tela), a auditoria pedida em seguida achou a MESMA classe
+de bug em mais 3 serviços — 2 deles com registro excluído aparecendo na tela
+**naquele exato momento**: 3 atividades em Atividades e 3 empresas em
+Empresas. Ninguém tinha reclamado dessas duas telas; o bug estava lá, à
+vista, só não tinha sido olhado.
+**Por que aconteceu:** o primeiro fix atacou o sintoma reportado (board
+somando R$5.600). Como a causa era "camada de leitura do frontend não filtra
+`deleted_at`", e essa camada tem um arquivo por entidade, era previsível que
+o mesmo defeito existisse nos vizinhos — mas só foi encontrado porque a
+fundadora pediu a auditoria, não porque o fix original a incluiu.
+**Regra prática:** ao corrigir um bug que tem "classe" (mesmo padrão
+replicável em N lugares), rodar o grep da classe inteira ANTES de fechar o
+PR, mesmo que só um caso tenha sido reportado. Aqui foram 221 queries em 7
+tabelas — 20 minutos de auditoria contra 2 telas erradas em produção por
+tempo indeterminado.
+**Como fazer barato:** triagem automática primeiro (script que lista as
+ocorrências de `.from('<tabela>')` sem `deleted_at` no bloco seguinte),
+leitura manual só das candidatas. Dos 149 candidatos brutos, a esmagadora
+maioria era falso positivo (INSERT, UPDATE por id, retry de migration) — o
+script derruba o custo de "ler 221 queries" pra "ler ~30".
+**Ressalva que vale mais que o fix:** na camada de IA/MCP e nas Edge
+Functions o mesmo grep achou ~30 ocorrências, mas ali **nem toda ocorrência
+é bug** — webhook que faz lookup por `external_id` pra garantir idempotência
+provavelmente PRECISA enxergar o registro excluído. Adicionar o filtro em
+massa ali quebraria idempotência, que é pior que o bug original. Ficou como
+P2 pra análise fluxo a fluxo, e essa decisão de NÃO corrigir foi deliberada.
 
 ## Banco de produção mexido enquanto alguém usa o app ao vivo (2026-08-31)
 
