@@ -1303,11 +1303,16 @@ body {
  *
  * `max-height` não é enfeite: a quantidade de estágios é dinâmica
  * (`selectedBoard.stages`, por board e por organização), não fixa em 15. Sem o
- * teto, um board de 20 estágios renderia 3-4 linhas e comeria ~110px da altura
- * útil das colunas — o wrap trabalharia contra o próprio objetivo de recuperar
- * altura. Com o teto, o pior caso continua em 2 linhas e o resto rola ali
- * dentro, sem contaminar o resto da tela. */
-.stepper { display: flex; flex-wrap: wrap; gap: 3px; row-gap: 4px; margin-top: var(--space-2); padding: 0 2px var(--space-2); max-height: 66px; overflow-y: auto; }
+ * teto, um board de 20 estágios renderia 4+ linhas e comeria ~110px da altura
+ * útil — o wrap trabalharia contra o próprio objetivo de recuperar altura.
+ *
+ * 96px = 3 linhas, não 2. Medido no QA: com o painel de IA aberto (820px
+ * úteis) os 15 estágios ocupam 3 linhas, e um teto de 66px escondia os últimos
+ * cinco atrás de 24px de rolagem interna — com barra overlay, que no macOS
+ * some em repouso. Era o bug original de volta em escala menor. O teto de 3
+ * linhas custa 24px de altura só nesse caso apertado e ainda corta o board
+ * patológico de 20+ estágios. */
+.stepper { display: flex; flex-wrap: wrap; gap: 3px; row-gap: 4px; margin-top: var(--space-2); padding: 0 2px var(--space-2); max-height: 96px; overflow-y: auto; }
 .stepper__step { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: var(--radius-button); font-size: var(--text-meta); white-space: nowrap; background: var(--ink-100); color: var(--text-muted); font-weight: var(--weight-medium); }
 .stepper__step--done { background: var(--purple-200); color: var(--purple-800); }
 .stepper__step--current { background: var(--surface-brand); color: #fff; font-weight: var(--weight-bold); }
