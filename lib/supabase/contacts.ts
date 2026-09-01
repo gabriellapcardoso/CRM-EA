@@ -652,7 +652,8 @@ export const companiesService = {
 
       let companiesQuery = supabase
         .from('crm_companies')
-        .select('*');
+        .select('*')
+        .is('deleted_at', null);
       if (options?.signal) companiesQuery = companiesQuery.abortSignal(options.signal);
       const { data, error } = await companiesQuery.in('id', uniqueIds);
 
@@ -677,6 +678,7 @@ export const companiesService = {
       const { data, error } = await supabase
         .from('crm_companies')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(1000);
 

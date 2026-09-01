@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(data): auditoria de `deleted_at` — mais 3 serviços mostravam registros excluídos — 2026-08-31
+
+Auditoria pedida depois do fix do board (entrada abaixo), pra checar se a
+mesma classe de bug existia nas outras tabelas com soft-delete. Existia.
+
+Método: `grep` de todas as 221 queries `.from('<tabela>')` nas 7 tabelas com
+coluna `deleted_at` (`activities`, `boards`, `business_units`, `contacts`,
+`crm_companies`, `messaging_channels`, `organizations`), triagem automática
+de quais não filtravam, e leitura manual de cada candidata pra separar bug
+real de falso positivo (INSERT, UPDATE por id, retry de migration).
+
+**Com impacto visível na hora:**
+- `activitiesService.getAll()` (`lib/supabase/activities.ts`) — 3 atividades
+  excluídas apareciam na tela de Atividades
+- `companiesService.getAll()` (`lib/supabase/contacts.ts`) — 3 empresas
+  excluídas apareciam na tela de Empresas
+
+**Latentes** (mesmo defeito, sem registro excluído no banco ainda):
+- `boardsService.getAll()` — board excluído apareceria na lista de funis
+- `companiesService.getByIds()` — empresa excluída apareceria vinculada a
+  um contato
+- `boardsService.create()` — cálculo da próxima `position` contava board
+  excluído
+- `dealsService.create()` — validação "board existe?" aceitava board excluído
+
+**Sem defeito, confirmado:** `contactsService` já filtrava corretamente em
+todas as leituras (`getAll`, paginado, count) — por isso a tela de Contatos
+não mostrou nenhum dos 49 contatos excluídos na limpeza do mesmo dia. As
+listagens de `messaging_channels` e `business_units` também já filtravam.
+
+Teste renomeado de `dealsServiceDeletedFilter.test.ts` para
+`softDeleteFilters.test.ts` e estendido: 8 guardas cobrindo os 4 pontos do
+fix anterior + os 4 novos.
+
+**Fora do escopo desta rodada** (registrado em `TODOS.md`, P2): a camada de
+IA/MCP (`lib/ai/tools.ts`, `lib/mcp/tools/*`, `lib/ai/agent/*`) e as Edge
+Functions de webhook têm ~30 queries de `contacts`/`activities` sem o
+filtro. Amostragem confirmou pelo menos um caso real —
+`lib/ai/tools.ts:773` procura contato por nome sem excluir os deletados, o
+que faria a IA reusar (ressuscitar) um contato excluído em vez de criar um
+novo. Não corrigido aqui porque cada fluxo precisa ser entendido antes: em
+alguns casos ver o registro excluído pode ser intencional (auditoria,
+idempotência de webhook).
+
 ### chore(data): limpeza de dados de teste em produção — 2026-08-31
 
 Limpeza pedida pela fundadora ("tudo que for teste pode excluir"), executada
@@ -57,7 +101,7 @@ toda a API pública (`app/api/public/v1/deals/*`,
 `lib/public-api/dealsMoveStage.ts`) — só a camada consumida pelo frontend
 estava sem, o que explica o bug ter passado despercebido.
 
-Testes: `test/dealsServiceDeletedFilter.test.ts` (4 guardas, uma por ponto
+Testes: `test/softDeleteFilters.test.ts` (4 guardas, uma por ponto
 corrigido). Verificado ao vivo em produção após deploy: coluna "Cliente
 Ativo" passou de R$ 5.600 / 2 cards para R$ 0 / "nenhum deal aqui".
 PR: [#7](https://github.com/gabriellapcardoso/CRM-EA/pull/7).

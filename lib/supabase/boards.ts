@@ -327,7 +327,7 @@ export const boardsService = {
       if (!supabase) return { data: null, error: new Error('Supabase não configurado') };
 
       const [boardsResult, stagesResult] = await Promise.all([
-        supabase.from('boards').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('boards').select('*').is('deleted_at', null).order('position', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('board_stages').select('*').order('order', { ascending: true }),
       ]);
 
@@ -398,6 +398,7 @@ export const boardsService = {
         const { data: existingBoards } = await supabase
           .from('boards')
           .select('position')
+          .is('deleted_at', null)
           .order('position', { ascending: false })
           .limit(1);
         boardOrder = existingBoards && existingBoards.length > 0 ? existingBoards[0].position + 1 : 0;
