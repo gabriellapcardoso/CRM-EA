@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(ai): failover nativo de modelo da OpenRouter — 2026-09-01
+
+Fecha a classe de falha que derrubou a IA hoje, não só o caso.
+
+O parâmetro `models` da OpenRouter passa a ser enviado: uma lista de reserva que
+ela percorre **dentro da mesma requisição** quando o modelo primário falha. O
+app não vê erro nenhum.
+
+```
+primário:  deepseek/deepseek-v4-flash-0731   (datado, não alias móvel)
+reserva 1: deepseek/deepseek-v4-flash        (mesma família — a datada sair do catálogo)
+reserva 2: google/gemini-3.5-flash-lite      (outro fabricante — a DeepSeek cair inteira)
+```
+
+Duas famílias de propósito: dois modelos do mesmo fornecedor cairiam juntos e a
+lista não teria servido pra nada. Todos suportam `tools` e `structured_outputs`,
+senão o agente e as tarefas com `Output.object({ schema })` quebrariam
+justamente durante o incidente em que o fallback deveria estar salvando.
+
+Plugado no `extraBody` do factory dentro de `getModel`, que é o ponto único por
+onde as 17 chamadas passam. A alternativa seria repetir `providerOptions` em
+cada uma, e bastaria esquecer uma pra ela ficar sem rede.
+
+O primário também passou de alias móvel para id datado (`-0731`). Alias aponta
+sempre pra versão corrente e pode mudar ou sumir sem aviso — foi exatamente isso
+que quebrou. De quebra é mais barato (US$ 0,065/M contra 0,079/M de entrada).
+
+**Provado em produção, não só em teste.** `organization_settings.ai_model` foi
+forçado de volta para `google/gemini-2.0-flash-001` (o modelo removido que
+causou o incidente) e `POST /api/ai/tasks/deals/analyze` respondeu **200** com
+JSON válido em 6,5s, com zero erros nos logs da Vercel no período — o app nem
+viu a falha. Antes do fix o mesmo cenário dava 500. Banco restaurado em seguida
+e regressão confirmada com o primário válido.
+
+`lib/ai/agent/provider-failover.ts` ficou intocado: faz failover entre
+*providers*, não entre modelos, e o próprio comentário registra que
+`buildProviderList` sempre devolve no máximo 1 item porque só existe a
+OpenRouter. É infraestrutura que nunca rodou e resolve outro problema.
+
+Guarda: `lib/ai/failover.test.ts` (8 asserções). Fecha o item de `TODOS.md`
+"Configurar fallback nativo de modelo da OpenRouter", aberto desde 2026-08-14
+como P3 — a classe de falha que ele previa aconteceu antes de ser priorizada.
+
 ### fix(ai): toda a camada de IA estava fora do ar — modelo removido do catálogo — 2026-09-01
 
 Achado pelo `/qa` na tela do cockpit: o console mostrava `Erro ao executar

@@ -36,7 +36,8 @@
 ## AI Config Rules
 - **`ai_model` must be OpenRouter's `provider/model` format.** A bare id (`gemini-2.5-flash`) is silently discarded by `getModel` and falls back to the default — the org ran for months on the default while settings said otherwise. `getModel` now warns loudly on that path; never remove that warning. Guard: `lib/ai/config.test.ts`
 - **Config fallbacks must be noisy.** Dropping a value someone deliberately chose in a settings screen is an event, not a default. Silent fallback is only acceptable for *absent* config (empty field, new org), never for config that is present and invalid
-- **Model ids are third-party resources that vanish.** `google/gemini-2.0-flash-001` was removed from OpenRouter's catalog with no visible deprecation; the 404 is `isRetryable: false`. Prefer dated ids over moving aliases where stability matters, and see `TODOS.md` for OpenRouter's native `models: [...]` failover, which is the structural fix
+- **Model ids are third-party resources that vanish.** `google/gemini-2.0-flash-001` was removed from OpenRouter's catalog with no visible deprecation; the 404 is `isRetryable: false`. Always use dated ids, never moving aliases
+- **Model failover lives in `getModel`'s `extraBody`, not per call site.** `AI_FALLBACK_MODELS` rides OpenRouter's native `models` param, so all 17 AI call sites get it at once — adding `providerOptions` per call would leave whichever one someone forgets without a net. The list spans two vendors on purpose: two models from one vendor go down together. Every entry needs `tools` + `structured_outputs`. Guard: `lib/ai/failover.test.ts`
 - **Changing the format of a value that lives in the DB is a data migration too.** The OpenRouter migration swapped provider and id format in code but never migrated the rows — new code silently read old data
 
 ## Cockpit / CSS Layout Rules

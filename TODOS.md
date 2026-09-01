@@ -248,7 +248,17 @@
 
 ## AI Provider
 
-### Configurar fallback nativo de modelo da OpenRouter (`models: [...]`)
+### ~~Configurar fallback nativo de modelo da OpenRouter (`models: [...]`)~~ — RESOLVIDO
+
+**Status:** RESOLVIDO 2026-09-01 ([PR #14](https://github.com/gabriellapcardoso/CRM-EA/pull/14)), depois de a classe de falha que este item previa acontecer de verdade: a OpenRouter removeu `google/gemini-2.0-flash-001` do catálogo e derrubou os 17 arquivos da camada de IA, agente do WhatsApp incluso. Estava como P3.
+
+**Lista escolhida** (era o "Cons" em aberto deste item): primário `deepseek/deepseek-v4-flash-0731`, reservas `deepseek/deepseek-v4-flash` e `google/gemini-3.5-flash-lite`. Duas famílias de fabricante de propósito — dois modelos do mesmo fornecedor cairiam juntos e a lista não serviria pra nada. Todos com `tools` e `structured_outputs`, senão o agente e as tarefas quebrariam justamente durante o incidente em que o fallback deveria salvar.
+
+**Provado em produção**, não só em teste: `ai_model` foi forçado para o modelo removido, e `POST /api/ai/tasks/deals/analyze` respondeu **200** com JSON válido, zero erros nos logs da Vercel no período. Antes do fix, o mesmo cenário dava 500. Banco restaurado logo em seguida. Guarda em `lib/ai/failover.test.ts`.
+
+**O que ficou de fora:** `lib/ai/agent/provider-failover.ts` continua intocado — faz failover entre *providers*, não entre modelos, e resolve outro problema.
+
+<details><summary>Descrição original</summary>
 
 **What:** Ao criar o client OpenRouter em `lib/ai/config.ts`, configurar o parâmetro nativo `models: [fallback-list]` (feature da própria API da OpenRouter, não do Vercel AI SDK) — se o modelo primário falhar, a OpenRouter tenta o próximo da lista automaticamente, sem passar pelo `provider-failover.ts` do projeto.
 
@@ -260,6 +270,8 @@
 **Effort:** S
 **Priority:** P3
 **Depends on:** Migração pra OpenRouter (troca de provider) já concluída.
+
+</details>
 
 ### Remover colunas mortas `ai_openai_key`/`ai_anthropic_key` de `organization_settings`
 

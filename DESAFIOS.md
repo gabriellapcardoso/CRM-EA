@@ -672,6 +672,14 @@ Resultado: durante meses **toda** chamada de IA ignorou a configuração escolhi
 
 **Corolário sobre migração**: a migração pra OpenRouter (2026-08-15) trocou provider e formato de id no código, mas não escreveu migration pros dados. Ao trocar o formato de um valor que vive no banco, migrar as linhas existentes faz parte da mudança — senão o código novo lê dado velho e o comportamento diverge em silêncio de org pra org.
 
+## Item de backlog previu o incidente, ficou em P3, e a falha chegou antes da prioridade (2026-09-01)
+
+`TODOS.md` tinha desde 2026-08-14 o item "Configurar fallback nativo de modelo da OpenRouter (`models: [...]`)", com o Why escrito assim: *"dá resiliência a falha de modelo específico (rate limit, outage pontual)"*. Estava em **P3, effort S** — ou seja, identificado corretamente, dimensionado corretamente como trabalho pequeno, e adiado. Dezoito dias depois a falha aconteceu e derrubou 17 arquivos, incluindo o agente que negocia no WhatsApp.
+
+O item tinha um "Cons" que travava tudo: *"nenhuma lista de fallback foi escolhida ainda"*. Escolher a lista levou uma decisão e dois minutos. O bloqueio real não era técnico — era que ninguém tinha motivo pra decidir ainda.
+
+**Como isso não repete**: prioridade de item de resiliência não deveria sair só do esforço e da probabilidade, mas do **alcance quando acontecer**. Este era `effort: S` com blast radius de "produto inteiro para" — essa combinação não é P3. Ao triar um item cuja descrição já contém a frase "se X cair", perguntar quanto do sistema para junto; se a resposta for "tudo", o esforço pequeno é argumento pra fazer agora, não pra adiar. E quando o único bloqueio de um item é uma decisão pequena não tomada ("falta escolher a lista"), isso é um item de decisão, não de engenharia — resolve-se perguntando, não esperando.
+
 ## Modelo de IA sumindo do catálogo do roteador é falha operacional esperada, não acidente (2026-09-01)
 
 `google/gemini-2.0-flash-001` simplesmente deixou de existir na OpenRouter, sem depreciação visível pra quem consome. A resposta é 404 `No endpoints found`, e `isRetryable: false` — nenhum retry salva.
