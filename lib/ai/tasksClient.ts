@@ -2,6 +2,25 @@
 
 import type { Deal, DealView, LifecycleStage } from '@/types';
 
+/**
+ * Erro de uma AI task com o `code` e o `status` HTTP da resposta preservados.
+ *
+ * Sem isto, 403 AI_FEATURE_DISABLED (org desligou de propósito) e 401
+ * UNAUTHORIZED (sessão expirada) viravam a mesma `Error` genérica que uma
+ * falha de verdade — e quem consumia só tinha a mensagem em texto pra
+ * diferenciar. Issue #23, item 2.
+ */
+export class AITaskClientError extends Error {
+  status: number;
+  code: string;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = 'AITaskClientError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export type AnalyzeLeadResult = {
   action: string;
   reason: string;
@@ -51,8 +70,9 @@ async function postTask<T>(path: string, payload: unknown): Promise<T> {
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
+    const code = typeof data?.error?.code === 'string' ? data.error.code : 'UNKNOWN_ERROR';
     const msg = data?.error?.message || data?.error || `AI task failed: ${res.status}`;
-    throw new Error(msg);
+    throw new AITaskClientError(res.status, code, msg);
   }
 
   return data as T;

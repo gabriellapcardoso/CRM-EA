@@ -23,7 +23,7 @@ import { normalizePhoneE164 } from '@/lib/phone';
 import { buildStageGroupMap } from '@/features/boards/stageGroups';
 import { getInitials } from '@/features/boards/cardFormat';
 
-import { useAIDealAnalysis, deriveHealthFromProbability } from '@/features/inbox/hooks/useAIDealAnalysis';
+import { useAIDealAnalysis, deriveHealthFromProbability, describeAIError } from '@/features/inbox/hooks/useAIDealAnalysis';
 import { useDealNotes } from '@/features/inbox/hooks/useDealNotes';
 import { useDealFiles } from '@/features/inbox/hooks/useDealFiles';
 import { useQuickScripts } from '@/features/inbox/hooks/useQuickScripts';
@@ -755,6 +755,9 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
   );
 
   const health = useMemo(() => {
+    // `aiAnalysis?.probabilityScore` vem `undefined` quando a IA falhou (ver
+    // useAIDealAnalysis.ts) — nunca um número inventado. Cai pro probability
+    // real do deal, que é dado do CRM, não análise fabricada. Issue #23, item 2.
     const probability = aiAnalysis?.probabilityScore ?? selectedDeal?.probability ?? 50;
     return deriveHealthFromProbability(probability);
   }, [aiAnalysis?.probabilityScore, selectedDeal?.probability]);
@@ -774,12 +777,17 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
     // mesmo texto. Em 2026-09-01 a IA ficou fora do ar (modelo removido do
     // catálogo da OpenRouter) e a tela dizia calmamente que não havia sugestão —
     // a operadora agiu achando que o deal não tinha nada a sugerir, quando na
-    // verdade não havia IA nenhuma. O erro já chegava aqui em `aiAnalysis.error`
-    // e era descartado. Ver issue #16.
+    // verdade não havia IA nenhuma. Ver issue #16.
+    //
+    // "IA fora do ar" também não pode virar o texto padrão pra QUALQUER erro:
+    // 403 AI_FEATURE_DISABLED (org desligou de propósito) e 401 UNAUTHORIZED
+    // (sessão expirada) não são queda — dizer isso reporta um incidente que
+    // não existe e queima a credibilidade do aviso na próxima queda real.
+    // `describeAIError` diferencia pelo `errorCode`. Issue #23, item 2.
     return {
       action: 'Analisar deal manualmente',
       reason: aiAnalysis?.error
-        ? 'IA fora do ar — sugestão indisponível'
+        ? describeAIError(aiAnalysis.errorCode)
         : 'Sem sugestão da IA no momento',
       urgency: 'low' as const,
       actionType: 'TASK' as const,
