@@ -165,11 +165,22 @@ sobrevive à Vercel inteira cair. Erros de banco agora são lidos, contados em
 `errosBanco` e devolvidos na resposta. Cooldown passou a medir
 `details.email_enviado` em vez de linha gravada.
 
-**Ressalva que continua aberta (issue #23):** o watchdog *grava* o alerta, não
-*envia*. SQL não manda e-mail, e depender da aplicação pra avisar que a aplicação
-morreu seria circular. Fechar de verdade exige dead-man's switch externo.
+**Ressalva RESOLVIDA (2026-09-01, item 1 da issue #23):** o watchdog *gravava* o
+alerta, não *enviava*. SQL não manda e-mail, e depender da aplicação pra avisar que
+a aplicação morreu seria circular. `supabase/migrations/20260903000000_healthchecks_dead_mans_switch.sql`
+faz `check_cron_heartbeats()` pingar um dead-man's switch externo (healthchecks.io) toda
+vez que roda e encontra ZERO heartbeats atrasados. Se o Supabase inteiro cair, ou o
+pg_cron for desativado, o ping para de chegar e o healthchecks.io alerta por fora — sem
+depender de nada nosso pra funcionar. Se só `ai-health`/`evolution-health` pararem, o
+watchdog já detecta isso hoje (não pinga, porque não está tudo são) e o alerta segue
+saindo por `security_alerts`/e-mail, como já funcionava. Guarda:
+`test/healthchecksDeadMansSwitch.test.ts` — trava que o ping é condicional (não sai se
+algo estiver atrasado) e que a URL não foi commitada em texto plano. Verificado
+injetando as duas regressões (ping incondicional, guarda removida) — vermelho, depois
+verde. **Pendência:** aplicar a migration em produção com a Ping URL real substituída
+(placeholder no arquivo) e confirmar o primeiro ping chegando no painel do healthchecks.io.
 **Context:** `app/api/cron/ai-health/route.ts:140-230`.
-**Effort:** M · **Priority:** P0
+**Effort:** M · **Priority:** P0 — RESOLVIDO NO CÓDIGO, PENDENTE DE APLICAR EM PRODUÇÃO
 
 ### ~~Migration de pg_cron quebra a produção se aplicada pelo fluxo normal~~ — RESOLVIDO (PR #22)
 
