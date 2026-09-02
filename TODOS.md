@@ -198,8 +198,12 @@ migram junto.
   `toBeGreaterThanOrEqual`~~ — **RESOLVIDO (PR #22)**: agora conta os blocos SEM
   classe e exige zero. Verificado injetando um bloco sem classe: o teste falha e
   nomeia o culpado.
-- `test/cockpitAiErrorText.test.ts:49-55` — "os dois textos são diferentes" não
-  compara string nenhuma: recalcula dois `includes` e afirma `true && true`.
+- ~~`test/cockpitAiErrorText.test.ts:49-55` — "os dois textos são diferentes" não
+  compara string nenhuma~~ — **RESOLVIDO (item 2 da #23)**: reescrito pra chamar
+  `describeAIError` de verdade em vez de grep de texto. A checagem antiga também
+  tinha um segundo defeito descoberto ao mexer: `toContain('IA fora do ar')`
+  batia em **comentário**, não em código — passava mesmo com o texto fora do
+  branch funcional. A versão nova remove comentários antes de procurar string.
 - `lib/ai/failover.test.ts:42-53` — dois testes com a mesma asserção. E
   `createOpenRouter` está mockado, então a **forma do contrato nunca é validada**:
   se o SDK renomear `extraBody`, as 8 asserções seguem verdes e a IA roda num
@@ -214,18 +218,29 @@ migram junto.
 **Why:** teste que não pode falhar é pior que teste ausente — dá licença pra não olhar.
 **Effort:** M · **Priority:** P1
 
-### Cockpit exibe dados inventados durante queda da IA — P1
+### ~~Cockpit exibe dados inventados durante queda da IA~~ — RESOLVIDO (2026-09-01)
 
-**What:** `features/inbox/hooks/useAIDealAnalysis.ts:53` devolve
-`probabilityScore: deal.probability || 50` no catch, e o cockpit deriva a saúde disso
+**What:** `features/inbox/hooks/useAIDealAnalysis.ts:53` devolvia
+`probabilityScore: deal.probability || 50` no catch, e o cockpit derivava a saúde disso
 (`DealCockpitClient.tsx:758`). Com a IA 100% fora do ar, o bloco "risco do deal"
-mostra **"médio · saúde 50%"** como se fosse análise. O PR #17 corrigiu só o texto do
-`reason`; o número, que é o que se olha primeiro, continua fabricado. O `|| 50` também
-transforma probabilidade real de 0 em 50.
+mostrava **"médio · saúde 50%"** como se fosse análise. O PR #17 corrigiu só o texto do
+`reason`; o número, que é o que se olha primeiro, continuava fabricado. O `|| 50` também
+transformava probabilidade real de 0 em 50.
 
-Relacionado: `DealCockpitClient.tsx:781` mostra "IA fora do ar" para **qualquer**
-rejeição, incluindo 403 `AI_FEATURE_DISABLED` (org desligou de propósito), 400 e 401
-de sessão expirada — reporta queda inexistente e queima a credibilidade do aviso.
+Relacionado: `DealCockpitClient.tsx:781` mostrava "IA fora do ar" para **qualquer**
+rejeição, incluindo 403 `AI_FEATURE_DISABLED` (org desligou de propósito) e 401 de
+sessão expirada — reportava queda inexistente e queimava a credibilidade do aviso.
+
+**Resolvido:** `useAIDealAnalysis.ts` nunca mais fabrica `probabilityScore` — no erro
+ele vem `undefined`, e o cockpit cai pro `probability` real do deal (dado do CRM, não
+análise fingida). `lib/ai/tasksClient.ts` ganhou `AITaskClientError`, que preserva
+`status` e `code` da resposta HTTP em vez de virar `Error` genérica. `DealCockpitClient`
+usa `describeAIError(errorCode)` pra diferenciar: `AI_DISABLED`/`AI_FEATURE_DISABLED`
+(org desligou), `AI_KEY_NOT_CONFIGURED` (falta configurar) e `UNAUTHORIZED` (sessão
+expirada) ganham texto próprio; só erro de verdade continua dizendo "IA fora do ar".
+Guarda: `features/inbox/hooks/useAIDealAnalysis.test.ts` (novo) e
+`test/cockpitAiErrorText.test.ts` (reescrito). Verificado injetando as regressões —
+vermelho, depois verde.
 
 **Effort:** S · **Priority:** P1
 

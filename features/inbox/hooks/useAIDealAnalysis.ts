@@ -3,7 +3,7 @@
  * Fetches real AI analysis for a deal using the AI Proxy
  */
 import { useQuery } from '@tanstack/react-query';
-import { analyzeLead } from '@/lib/ai/tasksClient';
+import { AITaskClientError, analyzeLead } from '@/lib/ai/tasksClient';
 import { Deal, DealView } from '@/types';
 
 export interface AIAnalysis {
@@ -11,10 +11,58 @@ export interface AIAnalysis {
     reason: string;       // Razão breve (max 80 chars)
     actionType: 'CALL' | 'MEETING' | 'EMAIL' | 'TASK' | 'WHATSAPP';
     urgency: 'low' | 'medium' | 'high';
-    probabilityScore: number;
+    /** Ausente quando não há análise real (erro) — nunca um número inventado. */
+    probabilityScore?: number;
     error?: string;
+    /** Código HTTP da AI task (AI_DISABLED, AI_FEATURE_DISABLED, UNAUTHORIZED, ...). Ver `describeAIError`. */
+    errorCode?: string;
     // Legacy field for backward compatibility
     suggestion?: string;
+}
+
+/**
+ * Traduz o código de erro de uma AI task pra texto que a operadora vê.
+ *
+ * Só falha de rede, `INTERNAL_ERROR` e código desconhecido são queda de
+ * verdade. `AI_DISABLED`/`AI_FEATURE_DISABLED` (org desligou de propósito),
+ * `AI_KEY_NOT_CONFIGURED` (falta configurar) e `UNAUTHORIZED` (sessão
+ * expirada) não são "IA fora do ar" — dizer isso reporta uma queda que não
+ * existe e queima a credibilidade do aviso na próxima queda real.
+ * Issue #23, item 2.
+ */
+export function describeAIError(errorCode: string | undefined): string {
+    switch (errorCode) {
+        case 'AI_DISABLED':
+        case 'AI_FEATURE_DISABLED':
+            return 'Análise por IA desativada pela organização';
+        case 'AI_KEY_NOT_CONFIGURED':
+            return 'IA sem configuração — configure em Configurações → Inteligência Artificial';
+        case 'UNAUTHORIZED':
+            return 'Sessão expirada — atualize a página';
+        default:
+            return 'IA fora do ar — sugestão indisponível';
+    }
+}
+
+/**
+ * Constrói o `AIAnalysis` de fallback quando a AI task falha.
+ *
+ * Extraída do `queryFn` pra ser testável sem montar `useQuery`/React: o que
+ * importa verificar é que `probabilityScore` nunca vem preenchido aqui (issue
+ * #23, item 2) e que o `errorCode` de um `AITaskClientError` é preservado.
+ */
+export function buildFailureAnalysis(error: unknown): AIAnalysis {
+    return {
+        action: 'Analisar deal manualmente',
+        reason: 'Não foi possível obter análise da IA',
+        actionType: 'TASK' as const,
+        urgency: 'low' as const,
+        // Sem score inventado — quem consome cai pro probability real do
+        // deal (ou "sem dado"), nunca um número de IA falso.
+        probabilityScore: undefined,
+        error: String(error),
+        errorCode: error instanceof AITaskClientError ? error.code : undefined,
+    };
 }
 
 /**
@@ -45,14 +93,7 @@ export function useAIDealAnalysis(
                 return result as AIAnalysis;
             } catch (error) {
                 console.error('[AI Analysis] Error:', error);
-                return {
-                    action: 'Analisar deal manualmente',
-                    reason: 'Não foi possível obter análise da IA',
-                    actionType: 'TASK' as const,
-                    urgency: 'low' as const,
-                    probabilityScore: deal.probability || 50,
-                    error: String(error),
-                };
+                return buildFailureAnalysis(error);
             }
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

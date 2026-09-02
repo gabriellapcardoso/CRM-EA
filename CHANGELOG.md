@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(cockpit): parar de inventar "saúde 50%" quando a IA falha — 2026-09-01
+
+Item 2 da issue #23. `useAIDealAnalysis.ts:53` devolvia
+`probabilityScore: deal.probability || 50` quando a análise de IA falhava, e o
+cockpit usava esse número direto no bloco "risco do deal" — o primeiro número
+que a operadora olha. Durante a queda de IA de 2026-09-01 (issue #16), a tela
+mostrava **"médio · saúde 50%"** como se fosse análise de verdade. O `|| 50`
+também convertia probabilidade real de 0 em 50.
+
+Segundo achado, no mesmo bloco: qualquer erro — inclusive 403
+`AI_FEATURE_DISABLED` (org desligou a função de propósito) e 401
+`UNAUTHORIZED` (sessão expirada) — virava o texto "IA fora do ar", reportando
+uma queda que não existia.
+
+**O que entrou:**
+
+- `lib/ai/tasksClient.ts`: `AITaskClientError` preserva `status` e `code` da
+  resposta HTTP em vez de descartar tudo numa `Error` genérica
+- `useAIDealAnalysis.ts`: `probabilityScore` nunca mais fabricado — vem
+  `undefined` no erro, e quem consome cai pro `probability` real do deal
+- `useAIDealAnalysis.ts`: `describeAIError(errorCode)` diferencia estado de
+  config (desativado, sem chave, sessão expirada) de queda de verdade
+- `DealCockpitClient.tsx`: usa `describeAIError` em vez do texto fixo
+- `test/cockpitAiErrorText.test.ts`: reescrito pra chamar `describeAIError`
+  de verdade — a versão anterior tinha uma asserção que batia em **comentário
+  de código**, não em texto funcional, e passava mesmo com o bug presente
+- `useAIDealAnalysis.test.ts` (novo): guarda o fallback de erro isolado, sem
+  precisar montar `useQuery`
+
+Verificado injetando as duas regressões (score fabricado, texto sem
+diferenciação) — vermelho, depois verde.
+
 ### fix(docs): CLAUDE.md mandava editar o `vercel.json`, que é o que congela a produção — 2026-09-01
 
 Item 3 da issue #23. O `CLAUDE.md` afirmava *"Cadência de cron vive **só** no
