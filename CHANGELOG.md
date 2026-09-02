@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ops): pg_net com timeout real nas rotas de health check — 2026-09-01
+
+Item 5 da issue #23. `net.http_get` chamava `ai-health`/`evolution-health`
+com o `timeout_milliseconds` padrão de 5s — a checagem interna de IA sozinha
+pode levar até 20s (`CHECK_TIMEOUT_MS`), fora o resto do trabalho da rota
+(banco, e-mail, heartbeat). Não quebrava nada até agora porque `net.http_get`
+é fire-and-forget do lado do pg_cron e a rota HTTP continua rodando até
+completar mesmo que o pg_net já tenha desistido de esperar — mas era sorte
+de latência, não garantia.
+
+`supabase/migrations/20260904000000_pg_net_timeout_health_checks.sql`
+reagenda os dois jobs (`ai-health-check`, `evolution-health-check`) com
+`timeout_milliseconds := 45000` — folga real acima dos 20s internos, ainda
+abaixo do `maxDuration=60` da rota.
+
+A guarda do placeholder desta vez usa canário quebrado desde o início — não
+o `position()` contra cópia em dollar-quote que travou a aplicação do
+dead-man's switch mais cedo hoje (ver DESAFIOS.md). Guarda testada:
+`test/pgNetTimeoutHealthChecks.test.ts`, verificado injetando as duas
+regressões (timeout baixo demais, guarda no formato antigo) — vermelho,
+depois verde.
+
+**Pendente aplicar em produção** — precisa de outro ciclo de SQL Editor com
+o `CRON_SECRET` real substituído no lugar do placeholder, mesmo fluxo já
+usado nas migrations anteriores.
+
 ### fix(ops): limita quantas orgs o ai-health checa ao mesmo tempo — 2026-09-01
 
 Item 17 da issue #23. `Promise.allSettled(orgsElegiveis.map(...))` disparava
