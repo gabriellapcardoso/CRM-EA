@@ -318,6 +318,7 @@ Os demais seguem abertos na **issue #23**:
 | 19 | `Promise.allSettled` sem limite de concorrência contra `maxDuration=60` | `route.ts:140` |
 | 20 | Comparação do `CRON_SECRET` não é constant-time (risco prático desprezível) | `route.ts:117` |
 | 21 | Texto de erro do provider vai pro banco e e-mail sem redação | `route.ts:81` |
+| 22 | Guarda de placeholder de `20260901180000_pg_cron_health_checks.sql` compara `__CRON_SECRET__` contra uma cópia dele mesmo em dollar-quote — o mesmo formato que, na migration do dead-man's switch (item 1 da #23), disparava sempre, substituído ou não (ver DESAFIOS.md, 2026-09-01). Migration histórica já aplicada, não editar; risco só se precisar ser reaplicada do zero num ambiente novo | `20260901180000_pg_cron_health_checks.sql:31,59` |
 
 **Varredura de PII:** limpa. Todos os matches no diff são fixtures de teste
 (`sk-or-v1-fake-para-teste`, `destino@exemplo.test`, uuid falso) ou o remetente

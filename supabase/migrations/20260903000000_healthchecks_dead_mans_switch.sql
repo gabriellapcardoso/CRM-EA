@@ -21,9 +21,22 @@
 -- credencial de autenticação (não dá acesso a nada além de marcar aquele
 -- check específico como "vivo"), mas o repositório é público — nunca
 -- commitar o valor real, só pra não virar alvo de ping de terceiros.
+--
+-- A guarda abaixo NÃO pode comparar o placeholder contra uma cópia dele
+-- mesmo (ex.: `position('__X__' in $g$__X__$g$)`): a substituição por texto
+-- (sed/find-replace) troca AMBOS os lados igualmente, e "valor == valor" dá
+-- verdadeiro sempre — a guarda dispararia mesmo com o valor certo já no
+-- lugar. Foi exatamente isso que aconteceu aqui (ver DESAFIOS.md). O canário
+-- abaixo é escrito quebrado — concatenado em runtime — de propósito: sed não
+-- enxerga "__HEALTHCHECKS" || "_PING_URL__" como o texto contíguo do
+-- placeholder, então nunca é tocado pela substituição e continua valendo o
+-- placeholder de verdade depois que o resto do arquivo já foi trocado.
 DO $$
+DECLARE
+  valor_no_arquivo TEXT := '__HEALTHCHECKS_PING_URL__';
+  canario_do_placeholder TEXT := '__HEALTHCHECKS' || '_PING_URL__';
 BEGIN
-  IF position('__HEALTHCHECKS_PING_URL__' in $ping_guard$__HEALTHCHECKS_PING_URL__$ping_guard$) > 0 THEN
+  IF valor_no_arquivo = canario_do_placeholder THEN
     RAISE EXCEPTION 'HEALTHCHECKS_PING_URL não substituído. Ver TODOS.md / issue #23, item 1.';
   END IF;
 END $$;
