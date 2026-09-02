@@ -6,6 +6,7 @@ import { createStaticAdminClient } from '@/lib/supabase/server';
 import { getOrgAIConfig } from '@/lib/ai/agent/agent.service';
 import { getModel } from '@/lib/ai/config';
 import { autenticaCron } from '@/lib/security/cronAuth';
+import { redactSecrets } from '@/lib/security/redactSecrets';
 
 export const maxDuration = 60;
 
@@ -111,7 +112,11 @@ async function checarIA(
     return { ok: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, motivo: msg.slice(0, 500) };
+    // Redigido na origem, antes de virar `motivo`: este texto vai pro banco
+    // (security_alerts) e pro corpo do e-mail sem mais nenhum filtro depois
+    // daqui. Provedores às vezes ecoam parte da chave recebida na própria
+    // mensagem de erro pra ajudar a debugar. Issue #23, item 19.
+    return { ok: false, motivo: redactSecrets(msg.slice(0, 500)) };
   }
 }
 
