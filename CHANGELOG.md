@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ops): guarda do dead-man's switch disparava sempre, substituído ou não — 2026-09-01
+
+Achado ao aplicar em produção: colei o SQL da migration anterior (#28) já com
+a Ping URL certa no lugar do placeholder e recebi `HEALTHCHECKS_PING_URL não
+substituído` mesmo assim.
+
+Causa: a guarda comparava `'__X__' in $g$__X__$g$)` — os dois lados são o
+MESMO texto-fonte, e o find-and-replace que troca o placeholder na hora de
+aplicar troca os dois igualmente. Antes de substituir: `'__X__' == '__X__'`
+→ dispara, correto. Depois: os dois viram o mesmo valor real →
+`'valor-real' == 'valor-real'` → **também** dispara. A guarda nunca tinha
+como distinguir os dois estados, porque as duas metades da comparação
+mudavam juntas, sempre.
+
+Conserto: canário escrito quebrado — `'__HEALTHCHECKS' || '_PING_URL__'` em
+vez do literal contíguo. `sed` procura o texto INTEIRO do placeholder; a
+string partida pelo `||` nunca contém esse contíguo, então nunca é tocada —
+continua valendo o placeholder de verdade mesmo depois do resto do arquivo
+já ter sido substituído. Uma metade da comparação fica fixa; a outra, o
+`sed` alcança. Guarda: `test/healthchecksDeadMansSwitch.test.ts` ganhou dois
+testes que montam a comparação a partir do texto real do arquivo — um para
+o estado "antes" (deve disparar) e outro simulando um `sed` de verdade
+(não deve disparar). O teste anterior só checava que a palavra `RAISE
+EXCEPTION` existia em algum lugar — não pegava isto.
+
+O `CRON_SECRET` original (`20260901180000_pg_cron_health_checks.sql`, já
+aplicado em produção) tem o mesmo formato de guarda — provavelmente o mesmo
+defeito, adormecido. Não editado (migration histórica); registrado em
+`TODOS.md` como P2 pro caso de precisar ser reaplicado do zero.
+
 ### feat(ops): dead-man's switch externo pro watchdog de cron — 2026-09-01
 
 Item 1 da issue #23. `check_cron_heartbeats()` (PR #22) já detectava cron

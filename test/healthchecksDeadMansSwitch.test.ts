@@ -24,6 +24,27 @@ function ultimaMigrationDoWatchdog(): string {
   return readFileSync(join(dir, arquivo as string), 'utf-8')
 }
 
+/** Literal (ou expressão `'a' || 'b'`) atribuído a `DECLARE nomeVar TEXT := ...;`. */
+function extrairValor(sqlTexto: string, nomeVar: string): string {
+  const re = new RegExp(`${nomeVar}\\s+TEXT\\s*:=\\s*([^;]+);`)
+  const m = sqlTexto.match(re)
+  expect(m, `variável ${nomeVar} não encontrada na migration`).toBeTruthy()
+  return (m as RegExpMatchArray)[1]
+}
+
+/** Avalia `'x' || 'y' || ...` como o PL/pgSQL faria em runtime — só concatenação de literais. */
+function avaliarConcatenacaoSQL(expressao: string): string {
+  return expressao
+    .split('||')
+    .map((parte) => parte.trim().replace(/^'|'$/g, ''))
+    .join('')
+}
+
+/** Simula o find-and-replace (sed) que substitui o placeholder no arquivo inteiro. */
+function simularSubstituicao(sqlTexto: string, placeholder: string, valorReal: string): string {
+  return sqlTexto.split(placeholder).join(valorReal)
+}
+
 describe('dead-man\'s switch — placeholder da URL', () => {
   it('tem a guarda que impede aplicar sem substituir __HEALTHCHECKS_PING_URL__', () => {
     // Mesmo padrão do CRON_SECRET (20260901180000_pg_cron_health_checks.sql):
@@ -39,6 +60,34 @@ describe('dead-man\'s switch — placeholder da URL', () => {
     // UUID de verdade tem hex; o placeholder não.
     const uuidReal = /hc-ping\.com\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
     expect(sql).not.toMatch(uuidReal)
+  })
+
+  // A primeira versão desta guarda comparava o placeholder contra uma cópia
+  // dele mesmo dentro de dollar-quote (`position('__X__' in $g$__X__$g$)`).
+  // O find-and-replace na hora de aplicar em produção troca OS DOIS LADOS
+  // igualmente — "valor == valor" dá verdadeiro sempre, substituído ou não.
+  // Resultado real: usuária colou o SQL já com a URL certa no lugar do
+  // placeholder e recebeu "HEALTHCHECKS_PING_URL não substituído" mesmo
+  // assim. A guarda nunca teria passado, pra nenhum valor. Estes dois testes
+  // simulam os dois estados de verdade — sem eles, o bug acima passava batido
+  // pelo teste anterior (só checava que a guarda EXISTE, não que ela FUNCIONA).
+  it('ANTES da substituição, os dois lados do comparador são iguais — a guarda deve disparar', () => {
+    const sql = ultimaMigrationDoWatchdog()
+    const valorNoArquivo = avaliarConcatenacaoSQL(extrairValor(sql, 'valor_no_arquivo'))
+    const canario = avaliarConcatenacaoSQL(extrairValor(sql, 'canario_do_placeholder'))
+    expect(valorNoArquivo).toBe(canario)
+  })
+
+  it('DEPOIS da substituição (sed simulado), os dois lados divergem — a guarda não deve disparar', () => {
+    const sql = ultimaMigrationDoWatchdog()
+    const sqlSubstituido = simularSubstituicao(
+      sql,
+      '__HEALTHCHECKS_PING_URL__',
+      '259b7c2c-1b60-45e5-b282-da318cf619a3',
+    )
+    const valorNoArquivo = avaliarConcatenacaoSQL(extrairValor(sqlSubstituido, 'valor_no_arquivo'))
+    const canario = avaliarConcatenacaoSQL(extrairValor(sqlSubstituido, 'canario_do_placeholder'))
+    expect(valorNoArquivo).not.toBe(canario)
   })
 })
 

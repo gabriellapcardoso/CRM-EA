@@ -712,6 +712,24 @@ O que torna isto pior que uma imprecisão comum: `CLAUDE.md` tem **precedência 
 
 **Como isso não repete**: (1) ao documentar um incidente, a regra tem que descrever o **estado final**, não o estado em que o incidente começou — este texto foi escrito enquanto a migração pro pg_cron acontecia, e congelou o "antes"; (2) regra que já falhou duas vezes em prosa vira **teste**, e foi o que aconteceu: `test/vercelCronLimit.test.ts` quebra num 3º cron do `vercel.json`, em qualquer agendamento sub-diário, e no retorno da própria frase falsa ao `CLAUDE.md`; (3) ao corrigir uma afirmação errada em documentação, `grep` pela frase no repositório inteiro antes de dar por encerrado — esta tinha três cópias, e a busca pela versão em negrito só achava uma.
 
+## Guarda de placeholder comparando um valor contra ele mesmo — dispara sempre, substituído ou não (2026-09-01)
+
+A migration do dead-man's switch (issue #23, item 1) copiou o padrão de guarda do `CRON_SECRET`: `IF position('__X__' in $g$__X__$g$) > 0 THEN RAISE EXCEPTION`. A ideia era "se o placeholder ainda estiver aqui sem ser trocado, falha". Na prática, falhava sempre — a usuária colou o SQL já com a Ping URL certa no lugar do placeholder e recebeu `HEALTHCHECKS_PING_URL não substituído` mesmo assim, direto no SQL Editor de produção, na segunda tentativa.
+
+**A causa**: substituição por texto (`sed`, find-and-replace) troca *todas* as ocorrências do placeholder no arquivo — inclusive as duas metades do comparador da guarda, já que os dois lados eram literalmente o mesmo texto `__X__`. Antes de substituir: `'__X__' in '__X__'` → verdadeiro (dispara, correto). Depois de substituir: os dois `__X__` viram o mesmo valor real, e `'valor-real' in 'valor-real'` → **também** verdadeiro (dispara, errado). A guarda comparava o placeholder contra uma cópia dele mesmo, e uma cópia de qualquer coisa é sempre igual a si mesma — o `sed` nunca tinha como fazer os dois lados divergirem, porque os dois eram o mesmo texto-fonte desde o início.
+
+Isto não é bug de digitação: é o padrão em si sendo logicamente incapaz de detectar "substituído" vs "não substituído", porque as duas metades da comparação são atualizadas junto, sempre. Fui verificar e o `CRON_SECRET` original (`20260901180000_pg_cron_health_checks.sql`) tem exatamente o mesmo formato — não vou editar migration histórica já aplicada, mas o defeito provavelmente está lá também, adormecido (só aparece se essa migration precisar ser reaplicada do zero).
+
+**Conserto**: canário escrito **quebrado** — concatenado em runtime, não como um literal contíguo:
+```sql
+valor_no_arquivo TEXT := '__HEALTHCHECKS_PING_URL__';
+canario_do_placeholder TEXT := '__HEALTHCHECKS' || '_PING_URL__';
+IF valor_no_arquivo = canario_do_placeholder THEN RAISE EXCEPTION ...
+```
+`sed` procura o texto contíguo `__HEALTHCHECKS_PING_URL__`; a string `'__HEALTHCHECKS' || '_PING_URL__'` não contém esse contíguo em lugar nenhum (está partida pelo `||`), então nunca é tocada — continua avaliando pro placeholder de verdade em runtime, pra sempre. `valor_no_arquivo` é a ÚNICA metade que o `sed` deveria alcançar. Antes de substituir, os dois avaliam pro mesmo texto (dispara, certo); depois, divergem (não dispara, certo).
+
+**Como isso não repete**: (1) uma guarda de "isto foi substituído?" nunca pode comparar duas cópias do MESMO texto-fonte — tem que haver uma metade que o mecanismo de substituição garantidamente NÃO alcança, servindo de referência fixa; (2) `test/healthchecksDeadMansSwitch.test.ts` ganhou dois testes que montam a comparação a partir do texto real do arquivo — um simulando o estado "antes" (dispara) e outro simulando "depois" de um `sed` de verdade (não dispara) — em vez de só checar que a palavra `RAISE EXCEPTION` existe em algum lugar, que é o que o teste anterior fazia e que não teria pego este bug; (3) antes de mandar um SQL de aplicar-em-produção pro usuário rodar, simular a lógica da guarda localmente (Python bastou) em vez de assumir que copiar um padrão já usado no repo garante que ele funciona.
+
 ## Item de backlog previu o incidente, ficou em P3, e a falha chegou antes da prioridade (2026-09-01)
 
 `TODOS.md` tinha desde 2026-08-14 o item "Configurar fallback nativo de modelo da OpenRouter (`models: [...]`)", com o Why escrito assim: *"dá resiliência a falha de modelo específico (rate limit, outage pontual)"*. Estava em **P3, effort S** — ou seja, identificado corretamente, dimensionado corretamente como trabalho pequeno, e adiado. Dezoito dias depois a falha aconteceu e derrubou 17 arquivos, incluindo o agente que negocia no WhatsApp.
