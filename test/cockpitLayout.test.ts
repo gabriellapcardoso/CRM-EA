@@ -24,19 +24,47 @@ const cockpitTsx = readFileSync(
   'utf8',
 )
 
-/** Extrai o corpo `{ ... }` da primeira regra cujo seletor é exatamente `selector`. */
-function rule(selector: string): string {
+/**
+ * Corpos `{ ... }` de TODAS as regras cujo seletor é exatamente `selector` —
+ * no topo do arquivo ou indentadas dentro de `@media` (`globals.css` usa
+ * indentação de 2 espaços ali, ex.: linha 470).
+ *
+ * A versão anterior usava `.match()` sem a flag `g` e exigia o seletor no
+ * início da linha (`^selector`) sem espaço antes: achava só a PRIMEIRA
+ * ocorrência não indentada. Uma segunda `.cockpit__body { min-width }` mais
+ * abaixo no arquivo, OU dentro de um `@media` (indentada), passava batido —
+ * a checagem de "não tem min-width" nunca a via. Issue #23, item 4.
+ */
+function todasAsRegras(selector: string): string[] {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = css.match(new RegExp(`^${escaped}\\s*\\{([^}]*)\\}`, 'm'))
-  if (!match) throw new Error(`Regra CSS não encontrada: ${selector}`)
-  return match[1]
+  const re = new RegExp(`^[ \\t]*${escaped}\\s*\\{([^}]*)\\}`, 'gm')
+  const bodies: string[] = []
+  let match: RegExpExecArray | null
+  while ((match = re.exec(css)) !== null) {
+    bodies.push(match[1])
+  }
+  return bodies
+}
+
+/** Corpo `{ ... }` da primeira regra cujo seletor é exatamente `selector`. */
+function rule(selector: string): string {
+  const bodies = todasAsRegras(selector)
+  if (bodies.length === 0) throw new Error(`Regra CSS não encontrada: ${selector}`)
+  return bodies[0]
 }
 
 describe('.cockpit__body — coluna única, uma rolagem', () => {
-  it('não tem min-width fixo (era 1180px e forçava scroll horizontal na página)', () => {
+  it('não tem min-width fixo em NENHUMA declaração do arquivo — nem topo, nem dentro de @media', () => {
     // O 1180 era herança do handoff HTML (d924a86), não cálculo: o piso real
-    // das colunas era 288+420+320 = 1028px.
-    expect(rule('.cockpit__body')).not.toMatch(/min-width:\s*\d/)
+    // das colunas era 288+420+320 = 1028px. Checar só a primeira ocorrência
+    // (`rule()`) deixaria uma segunda declaração — mais abaixo no arquivo, ou
+    // indentada dentro de um `@media` — reintroduzir o mesmo bug sem que este
+    // teste percebesse. `todasAsRegras()` cobre as duas formas.
+    const todas = todasAsRegras('.cockpit__body')
+    expect(todas.length).toBeGreaterThan(0)
+    for (const corpo of todas) {
+      expect(corpo).not.toMatch(/min-width:\s*\d/)
+    }
   })
 
   it('não é mais um grid de colunas', () => {

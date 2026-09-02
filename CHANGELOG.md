@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### test: 3 testes que não podiam falhar agora podem — 2026-09-01
+
+Item 4 da issue #23. Review retroativo tinha flagrado 54 asserções verdes que
+não protegiam o que o cabeçalho do arquivo prometia — "teste que não pode
+falhar é pior que teste ausente". Um sub-item (`cockpitAiErrorText.test.ts`) já
+foi resolvido junto com o item 2. Este fecha os outros três:
+
+**`lib/ai/failover.test.ts`** — dois testes faziam a mesma asserção sob nomes
+diferentes; viraram um. No lugar do segundo, um teste novo lê o `.d.ts`
+**instalado de verdade** do `@openrouter/ai-sdk-provider` — não o mock — e
+confirma que `extraBody` ainda existe em `OpenRouterProviderSettings`. Os
+outros 7 testes do arquivo mockam o SDK inteiro pra não bater em rede, o que
+tem um preço: se o pacote renomear o campo, eles continuam verdes porque
+verificam o que o código manda pro mock, não o que o pacote de verdade aceita.
+
+**`test/aiHealthCron.test.ts`** — dois dos quatro gaps listados na issue
+(insert falhando, falha do Resend) já estavam cobertos por um PR anterior sem
+a issue ser atualizada. Os outros dois não: a consulta a `organization_settings`
+tinha filtro (`ai_enabled=true`, chave configurada) mas o mock aceitava
+qualquer `.eq()`/`.not()` sem registrar nada — agora `orgFilterCalls` captura
+e um teste confirma os dois filtros. A janela de 20min só era simulada
+("já houve falha"), nunca medida — agora `alertQueries` guarda o corte de
+cada consulta na ordem em que roda, e um teste mede que a janela é ~20min e o
+cooldown é 4h, valores diferentes de verdade. `checked: 0` (nenhuma org
+elegível) não tinha teste nenhum — ganhou um: array vazio → loga alto.
+
+**`test/cockpitLayout.test.ts`** — o helper `rule()` usava `.match()` sem a
+flag `g` e exigia o seletor sem espaço antes da chave, então só achava a
+PRIMEIRA ocorrência não indentada. Uma segunda declaração do mesmo seletor —
+mais abaixo no arquivo, ou dentro de `@media` (que `globals.css` indenta) —
+nunca era vista. Virou `todasAsRegras()`, com `g` e aceitando indentação; a
+checagem de "sem min-width" agora varre todas as ocorrências.
+
+Verificado nos três: injetei a regressão que cada teste deveria pegar
+(campo renomeado no `.d.ts` real, filtro removido, janela virando 30min, log
+do `checked: 0` apagado, `min-width` escondido num `@media`) — vermelho em
+cada caso, depois verde.
+
 ### fix(cockpit): parar de inventar "saúde 50%" quando a IA falha — 2026-09-01
 
 Item 2 da issue #23. `useAIDealAnalysis.ts:53` devolvia
