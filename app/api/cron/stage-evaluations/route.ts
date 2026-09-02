@@ -22,6 +22,7 @@ import { createStaticAdminClient } from '@/lib/supabase/server';
 import { evaluateStageAdvancement } from '@/lib/ai/agent/stage-evaluator';
 import { buildLeadContext } from '@/lib/ai/agent/context-builder';
 import { getConversationHistory, getOrgAIConfig } from '@/lib/ai/agent/agent.service';
+import { autenticaCron } from '@/lib/security/cronAuth';
 
 export const maxDuration = 60;
 
@@ -36,10 +37,7 @@ function json<T>(body: T, status = 200): Response {
 }
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!autenticaCron(req)) {
     return json({ error: 'Unauthorized' }, 401);
   }
 

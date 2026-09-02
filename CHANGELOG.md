@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix: 6 P2 da issue #23 — pega por oportunidade — 2026-09-01
+
+Com os 4 P1 fechados, atacando os P2 mais baratos e mais bem definidos.
+
+- **Cadência x janela de 2ª falha**: `CONSECUTIVE_WINDOW_MS` (20min) e a
+  cadência do cron (15min) viviam em arquivos diferentes sem nada ligando os
+  dois. Esticar a cadência (ex.: pra economizar crédito de IA) sem revisar a
+  janela faria o e-mail de alerta nunca mais sair — sem erro, sem log, só
+  silêncio. `test/aiHealthWindowCadence.test.ts` lê os dois números dos
+  arquivos reais e exige janela > cadência.
+- **Org excluída continua sendo checada**: `organization_settings` não tem
+  `deleted_at` próprio (é 1:1 com `organizations`, que tem). Uma org excluída
+  continuava com IA ligada e chave configurada, entrando na consulta do
+  `ai-health` — gastando crédito de IA paga e recebendo e-mail por uma org
+  que não existe mais pro produto. Filtra contra `organizations.deleted_at`
+  agora; erro na consulta auxiliar falha aberto (continua checando todas),
+  não fechado.
+- **`model_used` gravava o modelo pedido, não o que respondeu**: se o
+  failover nativo da OpenRouter resgatasse a chamada com outro modelo — o
+  mesmo mecanismo que salvou a aplicação em 2026-09-01 —, o log de
+  `tasks/deals/analyze` continuava afirmando o modelo configurado. Dado falso
+  exatamente no período em que auditar qual modelo respondeu de verdade
+  importa mais. Usa `result.response?.modelId` agora, mesmo padrão já
+  usado em `ai-health/route.ts`.
+- **Stepper sem indicar onde o deal está**: a quantidade de estágios é
+  dinâmica por board/org; um deal no estágio 18 de 20 abria com o passo atual
+  fora da área visível do `.stepper` (`max-height` + `overflow-y: auto`), sem
+  rolar até lá. `useEffect` novo rola `.stepper__step--current` pra dentro da
+  vista ao trocar de estágio ou de deal.
+- **Título e select truncados sem `title=`**: o nome do deal no cabeçalho do
+  cockpit e no seletor de deals cortavam com `text-overflow: ellipsis` sem
+  nenhuma forma de ver o texto completo sem abrir o dropdown. `title=` nos
+  dois agora mostra o texto inteiro no hover.
+- **Comparação do `CRON_SECRET` não era constant-time**: `!==` numa string
+  normal vaza quanto do prefixo bate através do tempo de resposta. Risco
+  prático baixo (tudo atrás de HTTPS), custo de corrigir baixo também.
+  `lib/security/cronAuth.ts` centraliza a autenticação com `timingSafeEqual`,
+  compartilhada pelas 4 rotas de cron (`ai-health`, `evolution-health`,
+  `template-sync`, `stage-evaluations`) — que antes duplicavam a mesma
+  checagem `!==` cada uma.
+
+Todos os seis verificados injetando a regressão que cada guarda deveria
+pegar — vermelho, depois verde. `lint ok · typecheck ok · 627 passed`
+(610 + 17 novos).
+
 ### fix(ops): guarda do dead-man's switch disparava sempre, substituído ou não — 2026-09-01
 
 Achado ao aplicar em produção: colei o SQL da migration anterior (#28) já com

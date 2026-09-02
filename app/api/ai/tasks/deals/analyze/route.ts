@@ -55,11 +55,19 @@ export async function POST(req: Request) {
       prompt,
     });
 
+    // Modelo que RESPONDEU, não o pedido: se o failover nativo da OpenRouter
+    // (lib/ai/config.ts, extraBody.models) resgatar a chamada com outro
+    // modelo, `model_used` continuava afirmando o modelo configurado —
+    // exatamente o dado que se quer conferir depois de um incidente, falso
+    // justamente durante o incidente. `result.response?.modelId` ausente cai
+    // no modelo pedido, pra nunca gravar a coluna vazia. Issue #23, item 8.
+    const modeloQueRespondeu = result.response?.modelId || modelId;
+
     void (supabase as any).from('ai_conversation_log').insert({
       organization_id: organizationId,
       ai_response: '',
       tokens_used: result.usage?.totalTokens ?? 0,
-      model_used: modelId,
+      model_used: modeloQueRespondeu,
       action_taken: 'analyze_lead',
       context_snapshot: {},
     }).then(({ error }: { error: unknown }) => {
