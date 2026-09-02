@@ -40,6 +40,57 @@ export async function uploadToFileSearchStore(
 }
 
 /**
+ * Chamada mínima pro caminho de RAG, só pra verificar que a chave (`ai_google_key`)
+ * e o modelo nativo do Google ainda respondem — usada pelo health check
+ * (`app/api/cron/ai-health/route.ts`). Issue #34, item 5.
+ *
+ * **Sem File Search Store de propósito.** O store é por board
+ * (`board_ai_config.knowledge_store_id`) e nem toda org que configurou a chave
+ * tem um; exigir store deixaria o check sem cobrir justamente quem ainda não
+ * subiu documento. O que ESTA chamada pega é a classe de incidente de
+ * 2026-09-01: chave revogada, cota estourada, modelo fora do catálogo — tudo
+ * isso falha já aqui, antes de qualquer coisa de store.
+ *
+ * O que ela NÃO pega: store apagado ou inacessível numa org específica. Isso
+ * exigiria um check por board, não por org — fica registrado como limitação
+ * conhecida, não como esquecimento.
+ */
+export async function verificarCaminhoRAG({
+  apiKey,
+  model,
+  timeoutMs,
+}: {
+  apiKey: string;
+  model: string;
+  timeoutMs: number;
+}): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  try {
+    const client = new GoogleGenAI({ apiKey });
+    const response = await client.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: 'Responda: ok' }] }],
+      config: {
+        maxOutputTokens: 16,
+        abortSignal: AbortSignal.timeout(timeoutMs),
+      },
+    });
+
+    // Mesma regra do check de chat: o que importa é a via ter respondido, não o
+    // teor. Exigir texto específico transformaria variação normal de modelo em
+    // alarme falso.
+    const candidatos = response.candidates?.length ?? 0;
+    if (candidatos === 0) {
+      return { ok: false, motivo: 'RAG (Google File Search): modelo não devolveu nenhum candidato' };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, motivo: `RAG (Google File Search) falhou: ${msg.slice(0, 300)}` };
+  }
+}
+
+/**
  * Gera uma resposta usando @google/genai com File Search Store ativo.
  * tools ficam em config.tools conforme GenerateContentParameters.
  */

@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(ops): health check passa a cobrir o caminho de RAG — 2026-09-02
+
+Item 5 da issue #34, e o último gap real da leva. `ai_google_key` e a API
+nativa do Google (File Search Store) são um **segundo caminho de IA**, com
+chave e fornecedor separados do chat — nada no health check exercitava isso.
+Chave revogada ou cota estourada ali é a mesma classe do incidente de
+2026-09-01, num caminho que ninguém vigiava.
+
+`verificarCaminhoRAG()` (`lib/ai/messaging/file-search.ts`) faz uma chamada
+mínima na API nativa do Google com a chave da org. O `ai-health` chama isso
+**depois** do check de chat passar e **só** pra org que configurou a chave:
+
+- depois, porque se o chat caiu esse é o problema maior e o motivo do alerta
+  tem que falar dele — reportar RAG no lugar mandaria a operadora consertar a
+  coisa errada durante um incidente;
+- só pra quem configurou, porque org sem RAG não é falha, é ausência de
+  configuração — mesma regra do filtro de orgs elegíveis.
+
+Reusa a máquina de janela/cooldown/e-mail inteira, sem tocar nela: uma falha
+de RAG entra pelo mesmo fluxo de 2ª falha consecutiva que já existe, com o
+motivo dizendo claramente que foi o RAG.
+
+**Limitação conhecida e deliberada:** a chamada não usa File Search Store. O
+store é por board (`board_ai_config.knowledge_store_id`) e nem toda org que
+configurou a chave tem um — exigir store deixaria o check sem cobrir quem
+ainda não subiu documento. Pega chave revogada, cota estourada e modelo fora
+do catálogo; não pega store apagado numa org específica. Registrado como
+limitação, não como esquecimento.
+
+Guarda: 4 testes em `aiHealthCron.test.ts`, incluindo a ordem (chat quebrado
+não chega a checar RAG). Verificado removendo a chamada do route: 2 testes
+vermelhos, restaurado, verde.
+
+### docs: decisões dos 4 P2 restantes da #34 — 2026-09-02
+
+Fechados por decisão, não por código. Racional completo em `TODOS.md` e nos
+comentários da issue:
+
+- **`security_alerts` sem tela** — adiado: não é defeito, é feature. A
+  detecção chega por e-mail (verificado) e o dead-man's switch externo cobre a
+  falha do próprio monitor. A tabela é histórico pra auditoria, não canal de
+  alerta.
+- **Race TOCTOU** — não corrigir: só se sobrepõe em invocação manual de teste,
+  e o pior desfecho é e-mail duplicado. O conserto exige lock no banco, ou
+  seja mais uma migration e mais um ciclo de aplicação manual.
+- **Crédito de IA sem cap** — aceitar: ~290k tokens/mês por org em modelo
+  flash, centavos. Opt-out ainda criaria o pior modo de falha possível — org
+  que desliga o monitor e descobre a queda do jeito antigo.
+- **Lista de reserva com 1 alternativa fora da DeepSeek** — aceitar: o
+  objetivo é sobreviver a um fornecedor inteiro cair, e ela já cumpre nos dois
+  sentidos. Um 3º fabricante só cobre queda simultânea de dois.
+
 ### fix(ops): pg_net com timeout real nas rotas de health check — 2026-09-01
 
 Item 5 da issue #23. `net.http_get` chamava `ai-health`/`evolution-health`
