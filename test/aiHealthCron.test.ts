@@ -285,6 +285,42 @@ describe('IA saudável', () => {
   })
 })
 
+describe('concorrência entre orgs tem limite (issue #23, item 17)', () => {
+  // Sem limite, o número de chamadas simultâneas à OpenRouter cresce junto
+  // com o número de orgs — rate limit e contenção no pool de conexão viram
+  // backoff que acumula tempo, e numa rota com maxDuration fixo o lote pode
+  // ser cortado no meio. Este teste mede a concorrência de verdade, não só
+  // confirma que todas as orgs terminam (o que aconteceria mesmo sem limite).
+  it('nunca checa mais orgs ao mesmo tempo do que o limite configurado', async () => {
+    const TOTAL_ORGS = 15
+    orgsResult = {
+      data: Array.from({ length: TOTAL_ORGS }, (_, i) => ({
+        organization_id: `org-${i}`,
+        alert_email: 'destino@exemplo.test',
+      })),
+      error: null,
+    }
+
+    let emVoo = 0
+    let picoDeConcorrencia = 0
+    generateTextMock = vi.fn(async () => {
+      emVoo++
+      picoDeConcorrencia = Math.max(picoDeConcorrencia, emVoo)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      emVoo--
+      return { output: { ok: true }, usage: { totalTokens: 12 }, response: { modelId: 'x/y' } }
+    })
+
+    const res = await GET(req())
+    expect(await res.json()).toMatchObject({ checked: TOTAL_ORGS })
+    // CONCORRENCIA_MAXIMA no route.ts é 10 — se o número aqui não bater com
+    // lá, é porque um dos dois mudou sem o outro. O teste importa o
+    // comportamento observável (o pico real), não a constante em si.
+    expect(picoDeConcorrencia).toBeLessThanOrEqual(10)
+    expect(picoDeConcorrencia).toBeGreaterThan(1) // prova que roda em paralelo, não sequencial
+  })
+})
+
 describe('primeira falha', () => {
   beforeEach(() => {
     generateTextMock = vi.fn(async () => {

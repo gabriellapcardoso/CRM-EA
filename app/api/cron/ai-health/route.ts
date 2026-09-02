@@ -7,6 +7,7 @@ import { getOrgAIConfig } from '@/lib/ai/agent/agent.service';
 import { getModel } from '@/lib/ai/config';
 import { autenticaCron } from '@/lib/security/cronAuth';
 import { redactSecrets } from '@/lib/security/redactSecrets';
+import { comLimiteDeConcorrencia } from '@/lib/utils/concurrency';
 
 export const maxDuration = 60;
 
@@ -32,6 +33,15 @@ const CONSECUTIVE_WINDOW_MS = 20 * 60 * 1000;
  * noite renderia 90+ e-mails e o alerta real se perderia no ruído.
  */
 const EMAIL_COOLDOWN_HOURS = 4;
+
+/**
+ * Máximo de orgs checadas ao mesmo tempo. Sem limite, o número de chamadas
+ * simultâneas à OpenRouter e ao pool de conexão do Supabase cresce junto com
+ * o número de orgs — rate limit e contenção no pool viram backoff que
+ * acumula tempo, e numa rota com `maxDuration=60` o lote pode ser cortado no
+ * meio sem nenhum registro do que ficou pra trás. Issue #23, item 17.
+ */
+const CONCORRENCIA_MAXIMA = 10;
 
 const ALERT_TYPE = 'ai_health_degraded';
 
@@ -197,8 +207,8 @@ export async function GET(req: Request) {
   /** Erros de banco engolidos viravam alerta que nunca escala. Agora são contados e devolvidos. */
   let errosBanco = 0;
 
-  await Promise.allSettled(
-    orgsElegiveis.map(async (org) => {
+  await comLimiteDeConcorrencia(
+    orgsElegiveis.map((org) => async () => {
       checked++;
       const resultado = await checarIA(supabase, org.organization_id);
       if (resultado.ok) return; // sucesso não grava nada: 96 execuções saudáveis = 0 linhas
@@ -336,6 +346,7 @@ export async function GET(req: Request) {
         console.error('[Cron:ai-health] IA fora do ar mas RESEND_API_KEY não está configurada — e-mail não enviado.');
       }
     }),
+    CONCORRENCIA_MAXIMA,
   );
 
   // Heartbeat: gravado em TODA execução, inclusive quando está tudo saudável.
