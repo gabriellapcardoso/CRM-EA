@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ops): redige chave de API no texto de erro do provider antes de gravar — 2026-09-01
+
+Item 19 da issue #23. `checarIA` (`ai-health/route.ts`) capturava
+`err.message` cru e gravava direto em `security_alerts.details.motivo` e no
+corpo do e-mail de alerta. Provedores às vezes ecoam parte da chave recebida
+na própria mensagem de erro pra ajudar a debugar ("Invalid API key:
+sk-or-v1-abc...") — e essa mensagem é exatamente o que se quer ver quando a
+IA cai, então não dava pra simplesmente esconder o motivo inteiro.
+
+`lib/security/redactSecrets.ts` cobre os formatos de chave já tratados nas
+varreduras de PII deste projeto: OpenRouter/OpenAI (`sk-...`), Resend
+(`re_...`), JWT/Supabase (`eyJ...`) e `Bearer <token>` genérico. Aplicado na
+ORIGEM — dentro do catch de `checarIA`, antes do texto virar `motivo` — pra
+todo consumidor downstream (banco, e-mail) receber a versão já redigida sem
+precisar redigir de novo em cada lugar.
+
+Guarda: testes unitários do redator + um teste de integração em
+`aiHealthCron.test.ts` simulando o provider ecoando uma chave real no erro,
+confirmando que o `motivo` gravado no banco já sai sem ela. Verificado
+revertendo a chamada de redação: o teste de integração quebra, os outros 34
+continuam verdes.
+
 ### fix: 6 P2 da issue #23 — pega por oportunidade — 2026-09-01
 
 Com os 4 P1 fechados, atacando os P2 mais baratos e mais bem definidos.

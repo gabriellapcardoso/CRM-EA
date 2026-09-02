@@ -305,6 +305,16 @@ describe('primeira falha', () => {
     const detalhes = linhaGravada().details as Record<string, unknown>
     expect(String(detalhes.motivo)).toContain('No endpoints found')
   })
+
+  it('redige chave que o provider ecoou na mensagem de erro antes de gravar (issue #23, item 19)', async () => {
+    generateTextMock = vi.fn(async () => {
+      throw new Error('Invalid API key: sk-or-v1-abc123def456ghi789')
+    })
+    await GET(req())
+    const detalhes = linhaGravada().details as Record<string, unknown>
+    expect(String(detalhes.motivo)).not.toMatch(/sk-or-v1-[a-z0-9]/i)
+    expect(String(detalhes.motivo)).toContain('[REDACTED]')
+  })
 })
 
 describe('segunda falha consecutiva', () => {

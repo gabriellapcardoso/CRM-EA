@@ -317,7 +317,7 @@ Os demais seguem abertos na **issue #23**:
 | 18 | Lista de reserva tem 2 fabricantes mas só 1 alternativa real fora da DeepSeek | `defaults.ts:51` |
 | 19 | `Promise.allSettled` sem limite de concorrência contra `maxDuration=60` | `route.ts:140` |
 | ~~20~~ | ~~Comparação do `CRON_SECRET` não é constant-time~~ — RESOLVIDO (2026-09-01): `lib/security/cronAuth.ts`, `timingSafeEqual`, compartilhado pelas 4 rotas de cron (`ai-health`, `evolution-health`, `template-sync`, `stage-evaluations`). Guarda: `cronAuth.test.ts` | — |
-| 21 | Texto de erro do provider vai pro banco e e-mail sem redação | `route.ts:81` |
+| ~~21~~ | ~~Texto de erro do provider vai pro banco e e-mail sem redação~~ — RESOLVIDO (2026-09-01): `lib/security/redactSecrets.ts` redige `sk-`, `re_`, `eyJ...` e `Bearer <token>` na origem (dentro de `checarIA`), antes do texto virar `motivo`. Guarda: testes unitários + teste de integração em `aiHealthCron.test.ts` simulando o provider ecoando uma chave no erro | — |
 | 22 | Guarda de placeholder de `20260901180000_pg_cron_health_checks.sql` compara `__CRON_SECRET__` contra uma cópia dele mesmo em dollar-quote — o mesmo formato que, na migration do dead-man's switch (item 1 da #23), disparava sempre, substituído ou não (ver DESAFIOS.md, 2026-09-01). Migration histórica já aplicada, não editar; risco só se precisar ser reaplicada do zero num ambiente novo | `20260901180000_pg_cron_health_checks.sql:31,59` |
 
 **Varredura de PII:** limpa. Todos os matches no diff são fixtures de teste
