@@ -825,3 +825,59 @@ Pego no scan de PII de rotina antes do commit (o mesmo grep que faço em todo PR
 **Como isso não repete**: chave/segredo que apareceu em algum momento da conversa — mesmo já marcado como comprometido, mesmo prestes a ser rotacionado — nunca deve ser reescrito de memória em NENHUM arquivo, nem como "exemplo", nem como fixture de teste. Fixture de segredo tem que nascer visivelmente falsa (`re_fake000_teste...`, `sk-aaaaaaaa...`), nunca reaproveitar a forma ou os caracteres de um valor real que passou pela conversa. O scan de PII antes de commitar não é formalidade pós-fato — é a rede que existe exatamente pra pegar este tipo de deslize, e funcionou.
 
 **Como isso não repete**: um 404/erro vindo de uma API externa não significa necessariamente "servidor quebrado" — pode ser um valor de configuração salvo errado apontando pra um recurso que não existe com esse nome exato. Antes de classificar como "infra externa, fora do alcance", comparar o valor salvo (`instanceName`, `serverUrl`, IDs de recurso externo) contra o painel/console real do serviço, se houver acesso — string com acento/case/espaço diferente é o tipo de erro que passa despercebido em code review porque "parece" o nome certo.
+
+## Teste de texto casando em comentário passa sem proteger nada (2026-09-02)
+
+`test/cockpitAiErrorText.test.ts` guardava a distinção entre "sem sugestão" e "IA fora do ar" com `expect(bloco).toContain('IA fora do ar')`, lendo o `.tsx` como texto. Ao mover essa string do código pra dentro de `describeAIError()` (issue #23, item 2), o teste **continuou verde** — não porque o comportamento tinha sido preservado, mas porque a frase sobreviveu num comentário que eu mesma acabara de escrever explicando a mudança. A asserção estava batendo em prosa, com zero efeito em runtime.
+
+O arquivo tinha ainda um segundo defeito, esse já flagrado no review: `expect(semSugestao && foraDoAr).toBe(true)` sob o nome "os dois textos são diferentes" — dois `includes` recalculados e um `true && true`, sem comparar string nenhuma.
+
+**Como isso não repete**: teste que lê código como texto (padrão legítimo e usado bastante neste repo, porque montar componente de 2600 linhas pra checar uma string custa caro) precisa **remover comentários antes de procurar** — a versão nova faz `linha.replace(/\/\/.*$/, '')` antes de casar. E, quando o alvo vira uma função pura exportada, o certo é parar de fazer grep e passar a **chamar a função de verdade**: `describeAIError('AI_DISABLED')` comparado contra `describeAIError('INTERNAL_ERROR')` prova a distinção; procurar as duas strings no arquivo, não.
+
+## "Precisa de decisão do usuário" virou escapatória de análise (2026-09-02)
+
+Ao varrer os P2 da issue #23, classifiquei 6 itens como bloqueados em decisão de produto ou arquitetura e abri a #34 pra eles, com a justificativa de que não eram "código só". Quando a usuária respondeu `decide o item 3`, e depois `termina tudo que estiver pendente`, **5 dos 6 fecharam na mesma sessão** — 4 por decisão escrita em minutos, 1 por código.
+
+O que cada "decisão pendente" exigia de verdade era a análise que eu ainda não tinha feito:
+
+- *cap de crédito de IA*: bastava calcular. ~100 tokens por execução × 96/dia = ~290k tokens/mês por org, centavos em modelo flash. Não era decisão de produto, era uma conta de duas linhas;
+- *`CRON_SECRET` em texto puro*: bastava perguntar quem consegue ler `cron.job`. Resposta: quem já tem `service_role`, que já lê qualquer tabela ignorando RLS. Não era decisão de arquitetura, era análise de fronteira de confiança;
+- *lista de reserva com 1 fabricante alternativo*: bastava confrontar a lista com o objetivo declarado dela. "Sobreviver a um fornecedor cair" já estava cumprido nos dois sentidos.
+
+Só um item era genuinamente decisão de produto (tela pra `security_alerts`: onde na navegação, quem vê, o que fazer com linha de instância sem org).
+
+**Como isso não repete**: antes de marcar item como "precisa de decisão do usuário", fazer a análise que a decisão exigiria e escrever a recomendação. Se depois disso a resposta for óbvia, não era decisão — era trabalho não feito. "Bloqueado em decisão" só vale quando a análise **está pronta** e o que falta é escolha de gosto, custo ou prioridade que o dono do produto precisa fazer. O formato do §7 (opções, prós, contras, riscos, recomendação) não é cerimônia pra decisão grande: é o teste que separa "decisão de verdade" de "ainda não pensei".
+
+## Segredo que nem o agente nem a usuária conseguem ler, e o comando que resolveu (2026-09-02)
+
+Três migrations de cron precisaram ser aplicadas em produção num único dia, cada uma exigindo substituir `__CRON_SECRET__` pelo valor real antes de rodar (a guarda bloqueia o fluxo normal de propósito). Na terceira, mandei "pega o `CRON_SECRET` no dashboard da Vercel" — e a usuária respondeu que não dá.
+
+Ela estava certa, por dois motivos que se somam:
+
+- **na Vercel**, env var marcada como sensível não reexibe o valor depois de criada. O dashboard só oferece editar (digitar um valor novo por cima) ou remover — não há "revelar";
+- **do meu lado**, tentar ler `.env.local` é bloqueado por permissão, e mesmo passando, o harness mascara segredo lido de arquivo como `[SENSITIVE]`. Não é limitação contornável: é proteção funcionando.
+
+Ou seja, os dois lados da conversa estavam cegos pro mesmo valor, cada um por um motivo diferente.
+
+**Como isso não repete**: pra aplicar migration com placeholder de segredo, entregar **um comando único** que a pessoa roda no terminal dela, sem ninguém precisar enxergar o valor:
+
+```bash
+vercel env pull /tmp/s.env --environment=production --yes && \
+SECRET=$(grep '^CRON_SECRET=' /tmp/s.env | cut -d= -f2- | tr -d '"') && \
+sed "s/__CRON_SECRET__/$SECRET/g" supabase/migrations/<arquivo>.sql > /tmp/apply.sql && \
+rm /tmp/s.env && open -e /tmp/apply.sql
+```
+
+O valor existe só como variável de shell na máquina dela, some com o `rm`, e nunca passa pelo chat nem pelo meu contexto. Copiar/colar valor de segredo à mão entre dashboard e SQL Editor foi a maior fonte de fricção do dia — vale gastar as três linhas de comando.
+
+## Teste só vale depois de falhar de propósito (2026-09-02)
+
+Prática usada em todos os ~20 fixes desta sessão: escrever o teste, vê-lo passar, **reintroduzir o bug no código de produção**, confirmar que o teste fica vermelho, restaurar, confirmar verde de novo. Custa segundos por fix e pegou coisa que nenhuma outra checagem pegaria:
+
+- a guarda de placeholder do dead-man's switch, que comparava um valor contra ele mesmo e disparava **sempre** — descoberta só quando a usuária rodou o SQL já substituído e recebeu o erro assim mesmo. O teste que eu tinha escrito antes só verificava que a palavra `RAISE EXCEPTION` existia no arquivo, e teria continuado verde pra sempre;
+- o `toContain` casando em comentário (lição acima);
+- um teste meu que contava blocos com `toBeGreaterThanOrEqual(12, 8)` — quatro vagas de folga, dava pra adicionar quatro blocos sem classe e seguir verde.
+
+O padrão comum aos três: **o teste passava, e o que ele afirmava proteger não estava protegido.** Passar não é evidência de nada — só falhar quando deve falhar é.
+
+**Como isso não repete**: nenhum teste novo de guarda entra num PR sem a injeção de regressão correspondente ter sido rodada e registrada na descrição do PR ("verificado injetando X: vermelho, depois verde"). Se a regressão injetada **não** derruba o teste, o teste está errado, não o código.
