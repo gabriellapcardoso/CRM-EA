@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ops): limita quantas orgs o ai-health checa ao mesmo tempo — 2026-09-01
+
+Item 17 da issue #23. `Promise.allSettled(orgsElegiveis.map(...))` disparava
+TODAS as checagens de uma vez, sem limite. O número de chamadas simultâneas
+à OpenRouter e ao pool de conexão do Supabase crescia junto com o número de
+orgs — rate limit e contenção no pool viram backoff que acumula tempo, e
+numa rota com `maxDuration=60` fixo o lote podia ser cortado no meio sem
+nenhum registro do que ficou pra trás.
+
+`lib/utils/concurrency.ts` (`comLimiteDeConcorrencia`) implementa um pool de
+trabalhadores simples — sem dependência nova — que processa no máximo 10
+orgs por vez (`CONCORRENCIA_MAXIMA`, `ai-health/route.ts`). Preserva a
+ordem dos resultados como `Promise.allSettled` faria.
+
+Guarda: teste do utilitário mede o PICO real de concorrência (não só que as
+tarefas terminam, que aconteceria mesmo sem limite nenhum) + teste de
+integração no `ai-health` com 15 orgs simuladas confirmando que o pico real
+da rota nunca passa de 10. Verificado revertendo pra `Promise.allSettled`
+puro: o teste de integração quebra, os outros 35 continuam verdes.
+
 ### fix(ops): redige chave de API no texto de erro do provider antes de gravar — 2026-09-01
 
 Item 19 da issue #23. `checarIA` (`ai-health/route.ts`) capturava
