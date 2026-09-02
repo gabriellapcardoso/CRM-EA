@@ -310,7 +310,7 @@ Os demais seguem abertos na **issue #23**:
 | ~~11~~ | ~~`usage === undefined` tratado como zero~~ — RESOLVIDO (PR #22) | — |
 | 12 | Race TOCTOU entre execuções sobrepostas (exposição baixa na cadência atual) | `route.ts:151-199` |
 | ~~13~~ | ~~`as never` desligava a checagem de tipo~~ — RESOLVIDO (PR #22) | — |
-| 14 | `CRON_SECRET` em texto puro dentro de `cron.job`, legível por quem tem service role | banco |
+| ~~14~~ | ~~`CRON_SECRET` em texto puro dentro de `cron.job`, legível por quem tem service role~~ — DECIDIDO NÃO CORRIGIR (2026-09-02, issue #34 item 3): quem lê `cron.job` já precisa de `service_role`/superuser, nível que ignora RLS e lê qualquer tabela sem filtro — o segredo não abre porta nova pra esse ator. Migrar pra Vault reescreveria o padrão de todas as migrations de cron pra fechar um caminho que não é caminho de ataque real | banco |
 | 15 | Check gasta crédito da org 96x/dia sem opt-out, cap ou contabilização | — |
 | ~~16~~ | ~~Título e select truncados sem `title=`~~ — RESOLVIDO (2026-09-01): `title=` no `<h2>` e no `<select>` do cockpit | — |
 | 17 | Caminho de RAG (`ai_google_key`, API nativa do Google) não é coberto pelo check | `defaults.ts:58` |
