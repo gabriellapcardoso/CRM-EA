@@ -15,6 +15,8 @@
  * API real, forçando um modelo inexistente (ver CHANGELOG); isso não dá pra
  * afirmar em teste unitário sem bater na rede.
  */
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createOpenRouterMock = vi.fn(() => ({ chat: vi.fn((id: string) => ({ modelId: id })) }))
@@ -39,17 +41,14 @@ beforeEach(() => {
 })
 
 describe('failover de modelo — parâmetro `models` da OpenRouter', () => {
-  it('manda a lista de reserva junto do modelo primário', () => {
+  it('manda a lista de reserva junto do modelo primário, na ordem de prioridade', () => {
+    // Um só teste: `toEqual` num array já verifica presença E ordem ao mesmo
+    // tempo. Existiam dois testes aqui fazendo exatamente esta asserção sob
+    // nomes diferentes — reordenar a lista quebraria os dois juntos, então a
+    // duplicata não comprava cobertura extra, só ruído. A OpenRouter percorre
+    // na ordem dada; reordenar muda qual modelo atende durante um incidente.
     getModel('openrouter', CHAVE, 'deepseek/deepseek-v4-flash-0731')
     expect(ultimaConfig().extraBody?.models).toEqual([...AI_FALLBACK_MODELS])
-  })
-
-  it('preserva a ordem de prioridade da lista', () => {
-    // A OpenRouter percorre na ordem dada. Reordenar aqui muda qual modelo
-    // atende durante um incidente, então a ordem é contrato, não detalhe.
-    getModel('openrouter', CHAVE, 'deepseek/deepseek-v4-flash-0731')
-    const models = ultimaConfig().extraBody?.models ?? []
-    expect(models).toEqual([...AI_FALLBACK_MODELS])
   })
 
   it('não repete o primário na lista de reserva', () => {
@@ -91,5 +90,33 @@ describe('composição da lista de reserva', () => {
     for (const m of AI_FALLBACK_MODELS) {
       expect(m).toMatch(/^[\w.-]+\/[\w.:-]+$/)
     }
+  })
+})
+
+describe('contrato real do SDK — sem o mock do topo do arquivo', () => {
+  // Todo teste acima mocka `@openrouter/ai-sdk-provider` pra não bater em rede
+  // (ver comentário no topo do arquivo). Isso tem um preço: se a versão
+  // instalada do SDK renomear `extraBody`, os testes acima continuam verdes —
+  // eles verificam o que ESTE arquivo manda pro mock, não o que o pacote de
+  // verdade aceita. `getModel` (lib/ai/config.ts) importa o `createOpenRouter`
+  // real e é pego por `tsc` se o campo sumir do tipo, mas isso só roda no
+  // typecheck do projeto inteiro — este teste fecha o mesmo buraco de forma
+  // isolada, lendo o `.d.ts` do pacote instalado (não o mock), como as outras
+  // guardas de "arquivo como texto" deste repo (ver test/cockpitLayout.test.ts).
+  // Issue #23, item 4.
+  it('OpenRouterProviderSettings ainda declara extraBody como Record<string, unknown>', () => {
+    const pacotePath = require.resolve('@openrouter/ai-sdk-provider/package.json')
+    const pacote = JSON.parse(readFileSync(pacotePath, 'utf-8')) as { types?: string; typings?: string }
+    const tiposRel = pacote.types ?? pacote.typings
+    expect(tiposRel, 'pacote sem campo types/typings no package.json — SDK mudou de forma que nem dá pra achar o .d.ts').toBeTruthy()
+    const tiposPath = join(dirname(pacotePath), tiposRel as string)
+    const dts = readFileSync(tiposPath, 'utf-8')
+
+    const inicio = dts.indexOf('interface OpenRouterProviderSettings')
+    expect(inicio, 'OpenRouterProviderSettings sumiu do .d.ts — createOpenRouter mudou de forma').toBeGreaterThan(-1)
+    const fim = dts.indexOf('\n}', inicio)
+    const bloco = dts.slice(inicio, fim)
+
+    expect(bloco).toMatch(/extraBody\?:\s*Record<string,\s*unknown>/)
   })
 })

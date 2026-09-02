@@ -44,6 +44,16 @@ let generateTextMock: ReturnType<typeof vi.fn>
 let getOrgAIConfigMock: ReturnType<typeof vi.fn>
 /** Filtros aplicados na consulta a security_alerts, pra distinguir janela x cooldown. */
 let lastAlertFilters: Record<string, unknown>
+/**
+ * Snapshot dos filtros de CADA consulta a `security_alerts`, na ordem em que
+ * completam. A janela sempre roda primeiro; o cooldown (se rodar) é o segundo.
+ * `lastAlertFilters` acima é um objeto ÚNICO mutado pelas duas consultas — a
+ * chave `created_at` do cooldown sobrescreve a da janela, então não dava pra
+ * usá-lo pra afirmar o corte de 20min sem essa lista separada.
+ */
+let alertQueries: Array<Record<string, unknown>>
+/** Chamadas de filtro na consulta a `organization_settings` (issue #23, item 4). */
+let orgFilterCalls: Array<{ method: string; args: unknown[] }>
 
 vi.mock('ai', () => ({
   generateText: (...args: unknown[]) => generateTextMock(...args),
@@ -77,8 +87,14 @@ function buildSupabase() {
       if (tabela === 'organization_settings') {
         const qb: Record<string, unknown> = {
           select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          not: vi.fn(async () => orgsResult),
+          eq: vi.fn((...args: unknown[]) => {
+            orgFilterCalls.push({ method: 'eq', args })
+            return qb
+          }),
+          not: vi.fn(async (...args: unknown[]) => {
+            orgFilterCalls.push({ method: 'not', args })
+            return orgsResult
+          }),
         }
         return qb
       }
@@ -106,10 +122,11 @@ function buildSupabase() {
           return qb
         }),
         limit: vi.fn().mockReturnThis(),
-        maybeSingle: vi.fn(async () =>
+        maybeSingle: vi.fn(async () => {
+          alertQueries.push({ ...filtros })
           // O cooldown agora filtra por `details.email_enviado`, não por severity.
-          filtros.details ? cooldownResult : janelaResult,
-        ),
+          return filtros.details ? cooldownResult : janelaResult
+        }),
         insert: (row: unknown) => insertSpy(row),
       }
       return qb
@@ -138,6 +155,8 @@ beforeEach(() => {
   janelaResult = { data: null }
   cooldownResult = { data: null }
   lastAlertFilters = {}
+  alertQueries = []
+  orgFilterCalls = []
   insertSpy = vi.fn(async () => ({ error: null }))
   heartbeatSpy = vi.fn(async () => ({ error: null }))
   sendEmailSpy = vi.fn(async () => ({ data: {}, error: null }))
@@ -160,6 +179,37 @@ describe('autenticação', () => {
   it('recusa quando CRON_SECRET não está configurado no ambiente', async () => {
     vi.stubEnv('CRON_SECRET', '')
     expect((await GET(req())).status).toBe(401)
+  })
+})
+
+describe('consulta de orgs elegíveis — só quem ligou a IA e tem chave', () => {
+  // Cabeçalho deste arquivo promete "org sem ai_enabled/sem chave nem entra na
+  // consulta" desde a criação, mas nada verificava os filtros de verdade — o
+  // mock aceitava qualquer `.eq()`/`.not()` sem registrar coluna ou valor.
+  // Issue #23, item 4.
+  it('filtra por ai_enabled=true', async () => {
+    await GET(req())
+    expect(orgFilterCalls).toContainEqual({ method: 'eq', args: ['ai_enabled', true] })
+  })
+
+  it('filtra por chave da OpenRouter configurada', async () => {
+    await GET(req())
+    expect(orgFilterCalls).toContainEqual({ method: 'not', args: ['ai_openrouter_key', 'is', null] })
+  })
+})
+
+describe('nenhuma org elegível — checked: 0 não é sucesso silencioso', () => {
+  // Coluna renomeada, `ai_enabled` desligado em massa ou chave migrada de
+  // lugar deixariam a consulta acima sem casar nada — e a rota responderia
+  // 200 com `checked: 0`, indistinguível de "não há nada pra checar hoje".
+  it('devolve checked: 0 e loga alto — o monitor está inerte', async () => {
+    orgsResult = { data: [], error: null }
+    const erroSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = await GET(req())
+    expect(await res.json()).toMatchObject({ checked: 0, degraded: 0, alerted: 0 })
+    const mensagens = erroSpy.mock.calls.map((c) => c.join(' ')).join('\n')
+    expect(mensagens).toMatch(/nenhuma org/i)
+    erroSpy.mockRestore()
   })
 })
 
@@ -386,6 +436,44 @@ describe('erros de banco não podem virar silêncio', () => {
     expect(await res.json()).toMatchObject({ errosBanco: 1 })
     expect(erroSpy.mock.calls.map((c) => c.join(' ')).join('\n')).toMatch(/primeira falha/i)
     erroSpy.mockRestore()
+  })
+})
+
+describe('janela de 20min é um valor distinto do cooldown de 4h', () => {
+  // O cabeçalho promete guardar a janela de 20min desde a criação do arquivo,
+  // mas nenhum teste checava o VALOR do corte — só simulava "já houve falha"
+  // via `janelaResult`. Trocar `CONSECUTIVE_WINDOW_MS` por qualquer outro
+  // número passava batido. `alertQueries[0]` é sempre a consulta da janela
+  // (roda pra toda falha); `alertQueries[1]`, quando existe, é o cooldown.
+  // Issue #23, item 4.
+  beforeEach(() => {
+    generateTextMock = vi.fn(async () => {
+      throw new Error('falhou')
+    })
+  })
+
+  it('o corte da consulta da janela é ~20 minutos atrás, não outro valor', async () => {
+    const antes = Date.now()
+    await GET(req())
+    const depois = Date.now()
+    const corteJanela = alertQueries[0]?.created_at as string
+    expect(corteJanela).toBeTruthy()
+    const idadeMs = antes - new Date(corteJanela).getTime()
+    const VINTE_MIN_MS = 20 * 60 * 1000
+    const folga = depois - antes + 1000
+    expect(idadeMs).toBeGreaterThanOrEqual(VINTE_MIN_MS - 1000)
+    expect(idadeMs).toBeLessThanOrEqual(VINTE_MIN_MS + folga)
+  })
+
+  it('o corte do cooldown (4h) é bem mais antigo que o da janela (20min)', async () => {
+    janelaResult = { data: { id: 'falha-anterior' } } // 2ª falha: dispara a consulta de cooldown também
+    cooldownResult = { data: null }
+    await GET(req())
+    const corteJanela = new Date(alertQueries[0].created_at as string).getTime()
+    const corteCooldown = new Date(alertQueries[1].created_at as string).getTime()
+    // Se os dois cortes fossem o mesmo valor (bug de copiar/colar a constante
+    // errada), esta comparação não distinguiria os dois cenários.
+    expect(corteCooldown).toBeLessThan(corteJanela)
   })
 })
 

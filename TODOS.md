@@ -204,19 +204,37 @@ migram junto.
   tinha um segundo defeito descoberto ao mexer: `toContain('IA fora do ar')`
   batia em **comentário**, não em código — passava mesmo com o texto fora do
   branch funcional. A versão nova remove comentários antes de procurar string.
-- `lib/ai/failover.test.ts:42-53` — dois testes com a mesma asserção. E
-  `createOpenRouter` está mockado, então a **forma do contrato nunca é validada**:
-  se o SDK renomear `extraBody`, as 8 asserções seguem verdes e a IA roda num
-  modelo que ninguém escolheu.
-- `test/aiHealthCron.test.ts` — o cabeçalho promete guardar "org sem ai_enabled não
-  entra na consulta" e "janela de 20min"; não há asserção sobre nenhum dos dois. Sem
-  teste para insert falhando, `checked: 0`, ou falha do Resend.
-- `rule()` helper em `cockpitLayout.test.ts:28-33` só enxerga a primeira regra com o
-  seletor no início da linha: uma segunda `.cockpit__body { min-width }` mais abaixo,
-  ou dentro de `@media`, passa batido.
+- ~~`lib/ai/failover.test.ts:42-53` — dois testes com a mesma asserção. E
+  `createOpenRouter` está mockado, então a forma do contrato nunca é validada~~
+  — **RESOLVIDO (item 4 da #23)**: os dois testes idênticos viraram um. No lugar
+  do segundo, um teste novo lê o `.d.ts` **instalado de verdade** do
+  `@openrouter/ai-sdk-provider` (não o mock) e confirma que `extraBody` ainda
+  existe em `OpenRouterProviderSettings`. Verificado renomeando o campo no
+  `.d.ts` instalado: o teste novo quebra, os 7 que usam o mock continuam verdes
+  — prova de que eles não fechavam esse buraco.
+- ~~`test/aiHealthCron.test.ts` — o cabeçalho promete guardar "org sem ai_enabled
+  não entra na consulta" e "janela de 20min"; não há asserção sobre nenhum dos
+  dois~~ — **RESOLVIDO (item 4 da #23)**: os outros dois itens desta linha (insert
+  falhando, `checked: 0`... falha do Resend) já tinham sido cobertos em algum PR
+  anterior sem a issue ser atualizada — só `ai_enabled`/chave e a janela de 20min
+  seguiam sem asserção real. Agora: `orgFilterCalls` captura os filtros de
+  `.eq()`/`.not()` da consulta a `organization_settings` (o mock antes aceitava
+  qualquer chamada sem registrar nada); `alertQueries` guarda o corte de cada
+  consulta a `security_alerts` na ordem em que rodam, e um teste novo mede que o
+  corte da janela é ~20min e o do cooldown é 4h — valores diferentes, não só
+  "já houve falha" simulado. `checked: 0` ganhou teste próprio (org array
+  vazio → loga alto). Verificado injetando as 3 regressões (filtro removido,
+  janela virando 30min, log do `checked: 0` apagado) — 3 vermelhos, depois verde.
+- ~~`rule()` helper em `cockpitLayout.test.ts:28-33` só enxerga a primeira regra
+  com o seletor no início da linha~~ — **RESOLVIDO (item 4 da #23)**: virou
+  `todasAsRegras()`, com flag global e aceitando indentação (pega regra dentro de
+  `@media`, que `globals.css` indenta com 2 espaços). A checagem de "sem
+  min-width" agora varre todas as ocorrências. Verificado injetando um
+  `.cockpit__body { min-width: 1180px }` dentro de um `@media` no fim do
+  arquivo — exatamente o cenário que passava batido — e o teste quebrou.
 
 **Why:** teste que não pode falhar é pior que teste ausente — dá licença pra não olhar.
-**Effort:** M · **Priority:** P1
+**Effort:** M · **Priority:** P1 — RESOLVIDO (2026-09-01)
 
 ### ~~Cockpit exibe dados inventados durante queda da IA~~ — RESOLVIDO (2026-09-01)
 
