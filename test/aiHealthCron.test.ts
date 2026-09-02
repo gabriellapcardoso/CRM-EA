@@ -42,6 +42,8 @@ let heartbeatSpy: ReturnType<typeof vi.fn>
 let sendEmailSpy: ReturnType<typeof vi.fn>
 let generateTextMock: ReturnType<typeof vi.fn>
 let getOrgAIConfigMock: ReturnType<typeof vi.fn>
+/** Checagem do caminho de RAG (issue #34, item 5). Só roda pra org com ai_google_key. */
+let verificarRAGMock: ReturnType<typeof vi.fn>
 /** Filtros aplicados na consulta a security_alerts, pra distinguir janela x cooldown. */
 let lastAlertFilters: Record<string, unknown>
 /**
@@ -79,6 +81,10 @@ vi.mock('@/lib/ai/agent/agent.service', () => ({
 
 vi.mock('@/lib/ai/config', () => ({
   getModel: vi.fn(() => ({ modelId: 'fake/model' })),
+}))
+
+vi.mock('@/lib/ai/messaging/file-search', () => ({
+  verificarCaminhoRAG: (...args: unknown[]) => verificarRAGMock(...args),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -181,6 +187,7 @@ beforeEach(() => {
     response: { modelId: 'x/y' }, // igual ao model do getOrgAIConfigMock: sem fallback
   }))
   getOrgAIConfigMock = vi.fn(async () => ({ provider: 'openrouter', apiKey: 'sk-or-fake', model: 'x/y' }))
+  verificarRAGMock = vi.fn(async () => ({ ok: true }))
 })
 
 describe('autenticação', () => {
@@ -581,6 +588,66 @@ describe('janela de 20min é um valor distinto do cooldown de 4h', () => {
     // Se os dois cortes fossem o mesmo valor (bug de copiar/colar a constante
     // errada), esta comparação não distinguiria os dois cenários.
     expect(corteCooldown).toBeLessThan(corteJanela)
+  })
+})
+
+describe('caminho de RAG — segundo caminho de IA, chave e API separadas', () => {
+  // ai_google_key e a API nativa do Google não são exercitadas por nada no
+  // check de chat. Chave revogada ou cota estourada ali é a MESMA classe do
+  // incidente de 2026-09-01, num caminho que ninguém vigiava. Issue #34, item 5.
+
+  it('org SEM ai_google_key não dispara checagem de RAG', async () => {
+    // Org sem RAG configurado não é falha — é ausência de configuração, mesma
+    // regra do filtro de orgs elegíveis. Cobrar chamada aqui gastaria cota
+    // Google de quem nem usa RAG.
+    await GET(req())
+    expect(verificarRAGMock).not.toHaveBeenCalled()
+    expect(insertSpy).not.toHaveBeenCalled()
+  })
+
+  it('org COM ai_google_key e RAG saudável não grava nada', async () => {
+    getOrgAIConfigMock = vi.fn(async () => ({
+      provider: 'openrouter',
+      apiKey: 'sk-or-fake',
+      model: 'x/y',
+      ragApiKey: 'chave-google-fake',
+    }))
+    await GET(req())
+    expect(verificarRAGMock).toHaveBeenCalledTimes(1)
+    expect(insertSpy).not.toHaveBeenCalled()
+  })
+
+  it('RAG quebrado com chat saudável ainda conta como falha e grava o motivo', async () => {
+    getOrgAIConfigMock = vi.fn(async () => ({
+      provider: 'openrouter',
+      apiKey: 'sk-or-fake',
+      model: 'x/y',
+      ragApiKey: 'chave-google-fake',
+    }))
+    verificarRAGMock = vi.fn(async () => ({
+      ok: false,
+      motivo: 'RAG (Google File Search) falhou: API key not valid',
+    }))
+    const res = await GET(req())
+    expect(await res.json()).toMatchObject({ degraded: 1 })
+    expect(String((linhaGravada().details as Record<string, unknown>).motivo)).toContain('RAG')
+  })
+
+  it('chat quebrado NÃO chega a checar RAG — o motivo tem que falar da falha maior', async () => {
+    // Se o chat caiu, esse é o problema. Reportar RAG no lugar mandaria a
+    // operadora consertar a coisa errada durante um incidente.
+    getOrgAIConfigMock = vi.fn(async () => ({
+      provider: 'openrouter',
+      apiKey: 'sk-or-fake',
+      model: 'x/y',
+      ragApiKey: 'chave-google-fake',
+    }))
+    generateTextMock = vi.fn(async () => {
+      throw new Error('402 insufficient credits')
+    })
+    await GET(req())
+    expect(verificarRAGMock).not.toHaveBeenCalled()
+    expect(String((linhaGravada().details as Record<string, unknown>).motivo)).toContain('402')
   })
 })
 

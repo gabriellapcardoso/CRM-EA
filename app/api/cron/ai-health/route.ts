@@ -5,6 +5,8 @@ import { Resend } from 'resend';
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { getOrgAIConfig } from '@/lib/ai/agent/agent.service';
 import { getModel } from '@/lib/ai/config';
+import { GOOGLE_RAG_MODEL } from '@/lib/ai/defaults';
+import { verificarCaminhoRAG } from '@/lib/ai/messaging/file-search';
 import { autenticaCron } from '@/lib/security/cronAuth';
 import { redactSecrets } from '@/lib/security/redactSecrets';
 import { comLimiteDeConcorrencia } from '@/lib/utils/concurrency';
@@ -117,6 +119,26 @@ async function checarIA(
     const semTokens = usageConhecido && (result.usage?.totalTokens ?? 0) === 0;
     if (semSaida && (semTokens || !usageConhecido)) {
       return { ok: false, motivo: 'modelo não gerou saída estruturada nem tokens' };
+    }
+
+    // RAG é um segundo caminho de IA, com chave (`ai_google_key`) e API
+    // (Google nativa) SEPARADAS do chat — chave revogada ou cota estourada ali
+    // não aparece em nada que o check acima exercita. Mesma classe do incidente
+    // de 2026-09-01, num caminho que ninguém vigiava. Issue #34, item 5.
+    //
+    // Roda DEPOIS do chat passar, de propósito: se o chat caiu, esse é o
+    // problema maior e o motivo tem que falar dele, não do RAG. E só roda pra
+    // quem configurou a chave — org sem RAG não é falha, é ausência de
+    // configuração (mesma regra do filtro de orgs elegíveis).
+    if (config.ragApiKey) {
+      const rag = await verificarCaminhoRAG({
+        apiKey: config.ragApiKey,
+        model: GOOGLE_RAG_MODEL,
+        timeoutMs: CHECK_TIMEOUT_MS,
+      });
+      if (!rag.ok) {
+        return { ok: false, motivo: redactSecrets(rag.motivo) };
+      }
     }
 
     return { ok: true };
