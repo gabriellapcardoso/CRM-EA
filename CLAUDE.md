@@ -135,11 +135,27 @@ const model = getModel(config.provider, config.apiKey, config.model)
 
 **Onde cron mora: `vercel.json` só aguenta 2 jobs diários (plano Hobby).** Qualquer coisa além disso faz a Vercel **rejeitar o deployment inteiro sem criar build** — sem falha, sem e-mail, produção congelada no commit anterior até alguém perceber (aconteceu, ~40min). Por isso tudo que roda abaixo de 1x/dia vive em pg_cron + pg_net: `supabase/migrations/*_pg_cron_*.sql` e `*_cron_*.sql`. Hoje o `vercel.json` tem **um** cron (`template-sync`, diário); `stage-evaluations`, `deal-stage-dispatcher`, os dois health checks e o watchdog estão no banco. Antes de mexer no `vercel.json`, ler essas migrations: se existem, o limite já foi batido e já foi resolvido. Ver `AGENTS.md`.
 
-**Health check passa pelo caminho da própria aplicação** (`getOrgAIConfig` + `getModel`), nunca um ping ao fornecedor: em 2026-09-01 o fornecedor estava de pé e a config da org é que estava quebrada — um ping teria reportado tudo saudável. Duas janelas distintas em `ai-health`: 20min decide se é a 2ª falha consecutiva, 4h decide se manda e-mail. Grava sempre, e-mail limitado.
+**Health check passa pelo caminho da própria aplicação** (`getOrgAIConfig` + `getModel`), nunca um ping ao fornecedor: em 2026-09-01 o fornecedor estava de pé e a config da org é que estava quebrada — um ping teria reportado tudo saudável. Duas janelas distintas em `ai-health`: 20min decide se é a 2ª falha consecutiva, 4h decide se manda e-mail. Grava sempre, e-mail limitado. A janela precisa ser **maior que a cadência do cron** — se a cadência esticar sem a janela acompanhar, a 2ª falha nunca é reconhecida como consecutiva e o e-mail **nunca sai**, com os registros continuando a ser gravados normalmente. Guarda: `test/aiHealthWindowCadence.test.ts` lê os dois números dos arquivos reais.
+
+**RAG é um segundo caminho de IA, com chave e fornecedor separados** (`ai_google_key` + API nativa do Google, não passa pela OpenRouter). O `ai-health` cobre esse caminho via `verificarCaminhoRAG()` (`lib/ai/messaging/file-search.ts`), chamado **depois** do check de chat passar — se o chat caiu, esse é o problema maior e o motivo do alerta tem que falar dele — e **só** pra org que configurou a chave. Limitação deliberada: a chamada não usa File Search Store (o store é por board, nem toda org tem), então pega chave revogada/cota/modelo fora do catálogo, não pega store apagado.
+
+**Concorrência do health check**: `comLimiteDeConcorrencia()` (`lib/utils/concurrency.ts`, pool de trabalhadores, sem dependência nova) limita a 10 orgs simultâneas. `Promise.allSettled` cru dispara todas de uma vez — o número de chamadas simultâneas à OpenRouter e ao pool do Supabase cresceria junto com o número de orgs, e rate limit vira backoff que estoura o `maxDuration=60` cortando o lote no meio sem registro.
 
 **Failover de modelo** (`AI_FALLBACK_MODELS` em `lib/ai/defaults.ts`): vai no `extraBody` do factory dentro de `getModel`, usando o parâmetro nativo `models` da OpenRouter — assim as 17 chamadas ganham rede de uma vez, em vez de `providerOptions` repetido em cada uma. A lista cobre dois fabricantes de propósito (dois modelos do mesmo fornecedor caem juntos), e todo item precisa de `tools` + `structured_outputs`. Guarda: `lib/ai/failover.test.ts`. Não confundir com `lib/ai/agent/provider-failover.ts`, que faz failover entre *providers* e nunca rodou (só existe a OpenRouter).
 
 **Trocar o formato de um valor que vive no banco é migration também** — a migração pra OpenRouter trocou o formato no código e não migrou as linhas, então o código novo passou a ler dado velho em silêncio.
+
+**Autenticação das rotas de cron**: `autenticaCron(req)` de `lib/security/cronAuth.ts` — `timingSafeEqual`, compartilhado pelas 4 rotas (`ai-health`, `evolution-health`, `stage-evaluations`, `template-sync`), que antes duplicavam a mesma comparação `!==` cada uma. Rota de cron nova usa essa função, não reimplementa.
+
+**Texto de erro de provider é redigido antes de sair da aplicação**: `redactSecrets()` de `lib/security/redactSecrets.ts` cobre `sk-`, `re_`, `eyJ...` e `Bearer <token>`. Aplicado na **origem** (dentro do catch de `checarIA`), não em cada consumidor — o motivo vai pro banco e pro corpo do e-mail sem mais nenhum filtro depois dali, e provedores às vezes ecoam parte da chave recebida na mensagem de erro.
+
+**Migration com placeholder de segredo: a guarda não pode comparar o valor contra uma cópia dele mesmo.** `IF position('__X__' in $g$__X__$g$) > 0` parece checar "o placeholder ainda está aqui?", mas o find-and-replace da hora de aplicar troca **os dois lados** igualmente — depois de substituído, `'valor' in 'valor'` continua verdadeiro e a guarda dispara sempre, pra qualquer valor. Aconteceu em produção: SQL colado já correto, erro assim mesmo. O canário tem que ser escrito **quebrado**, concatenado em runtime, pra o `sed` não alcançá-lo:
+```sql
+valor_no_arquivo TEXT := '__CRON_SECRET__';
+canario_do_placeholder TEXT := '__CRON' || '_SECRET__';
+IF valor_no_arquivo = canario_do_placeholder THEN RAISE EXCEPTION ...
+```
+Modelo correto em `20260904000000_pg_net_timeout_health_checks.sql`; o formato quebrado ainda existe em `20260901180000_pg_cron_health_checks.sql` (histórica, já aplicada, não editar — ver `TODOS.md`).
 
 **Realtime**: invalidação targeted em `lib/realtime/useRealtimeSync.ts` — nunca invalidar globalmente. UPDATE/DELETE usam debounce; INSERT não.
 
