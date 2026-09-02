@@ -54,6 +54,10 @@ let lastAlertFilters: Record<string, unknown>
 let alertQueries: Array<Record<string, unknown>>
 /** Chamadas de filtro na consulta a `organization_settings` (issue #23, item 4). */
 let orgFilterCalls: Array<{ method: string; args: unknown[] }>
+/** Resposta da consulta a `organizations` que filtra orgs excluídas (issue #23, item 7). */
+let deletedOrgsResult: { data: unknown; error: unknown }
+/** Quantas vezes `.from('organizations')` foi chamado — pra provar que não roda com lista vazia. */
+let organizationsQueryCount: number
 
 vi.mock('ai', () => ({
   generateText: (...args: unknown[]) => generateTextMock(...args),
@@ -95,6 +99,15 @@ function buildSupabase() {
             orgFilterCalls.push({ method: 'not', args })
             return orgsResult
           }),
+        }
+        return qb
+      }
+      if (tabela === 'organizations') {
+        organizationsQueryCount++
+        const qb: Record<string, unknown> = {
+          select: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          not: vi.fn(async () => deletedOrgsResult),
         }
         return qb
       }
@@ -152,6 +165,8 @@ beforeEach(() => {
   vi.stubEnv('CRON_SECRET', SECRET)
   vi.stubEnv('RESEND_API_KEY', 'chave-resend-de-teste')
   orgsResult = { data: [{ organization_id: ORG_ID, alert_email: 'destino@exemplo.test' }], error: null }
+  deletedOrgsResult = { data: [], error: null }
+  organizationsQueryCount = 0
   janelaResult = { data: null }
   cooldownResult = { data: null }
   lastAlertFilters = {}
@@ -195,6 +210,52 @@ describe('consulta de orgs elegíveis — só quem ligou a IA e tem chave', () =
   it('filtra por chave da OpenRouter configurada', async () => {
     await GET(req())
     expect(orgFilterCalls).toContainEqual({ method: 'not', args: ['ai_openrouter_key', 'is', null] })
+  })
+})
+
+describe('org excluída (deleted_at) não é checada', () => {
+  // organization_settings não tem deleted_at próprio — uma org excluída
+  // continua com IA ligada e chave configurada, e entraria na consulta
+  // principal sem este filtro: gastando crédito de IA paga e recebendo
+  // e-mail por uma org que não existe mais pro produto. Issue #23, item 7.
+  it('não checa (nem grava IA) org marcada como excluída', async () => {
+    deletedOrgsResult = { data: [{ id: ORG_ID }], error: null }
+    await GET(req())
+    expect(generateTextMock).not.toHaveBeenCalled()
+    expect(insertSpy).not.toHaveBeenCalled()
+  })
+
+  it('checked: 0 quando a única org candidata está excluída', async () => {
+    deletedOrgsResult = { data: [{ id: ORG_ID }], error: null }
+    const res = await GET(req())
+    expect(await res.json()).toMatchObject({ checked: 0 })
+  })
+
+  it('continua checando a org quando ela NÃO está na lista de excluídas', async () => {
+    deletedOrgsResult = { data: [{ id: 'outra-org-excluida-qualquer' }], error: null }
+    const res = await GET(req())
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    expect(await res.json()).toMatchObject({ checked: 1 })
+  })
+
+  it('erro ao consultar organizations não impede checar as orgs (falha aberta, não fechada)', async () => {
+    deletedOrgsResult = { data: null, error: { message: 'timeout' } }
+    const erroSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = await GET(req())
+    // Um erro na consulta AUXILIAR de exclusão não pode derrubar a checagem
+    // de TODAS as orgs — inclusive as ativas — por conta de uma query que
+    // só existe pra filtrar fora um caso raro.
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    expect(await res.json()).toMatchObject({ checked: 1 })
+    erroSpy.mockRestore()
+  })
+
+  it('não consulta organizations quando não há org candidata nenhuma', async () => {
+    orgsResult = { data: [], error: null }
+    await GET(req())
+    // Consulta auxiliar desnecessária com lista vazia seria round-trip
+    // de banco pra nada.
+    expect(organizationsQueryCount).toBe(0)
   })
 })
 

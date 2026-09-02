@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { getOrgAIConfig } from '@/lib/ai/agent/agent.service';
 import { getModel } from '@/lib/ai/config';
+import { autenticaCron } from '@/lib/security/cronAuth';
 
 export const maxDuration = 60;
 
@@ -143,10 +144,7 @@ async function checarIA(
  * Ver issue #16.
  */
 export async function GET(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!autenticaCron(req)) {
     return json({ error: 'Unauthorized' }, 401);
   }
 
@@ -165,6 +163,29 @@ export async function GET(req: Request) {
     return json({ error: 'Failed to fetch org settings' }, 500);
   }
 
+  // organization_settings não tem deleted_at próprio (é 1:1 com organizations,
+  // sem soft-delete dele mesmo) — uma org excluída continua com IA ligada e
+  // chave configurada, e entraria na consulta acima: gastando crédito de IA
+  // paga e recebendo e-mail por uma org que não existe mais pro produto.
+  const idsCandidatos = (orgs ?? []).map((o) => o.organization_id);
+  let idsExcluidos = new Set<string>();
+  if (idsCandidatos.length > 0) {
+    const { data: excluidas, error: erroOrgs } = await supabase
+      .from('organizations')
+      .select('id')
+      .in('id', idsCandidatos)
+      .not('deleted_at', 'is', null);
+    if (erroOrgs) {
+      // Na dúvida, segue sem filtrar: um erro de leitura aqui não pode parar
+      // de checar TODAS as orgs (inclusive as ativas) por causa de uma
+      // consulta auxiliar falhando.
+      console.error('[Cron:ai-health] ERRO ao checar orgs excluídas — seguindo sem filtrar (pode checar org já excluída):', erroOrgs);
+    } else {
+      idsExcluidos = new Set((excluidas ?? []).map((o) => o.id));
+    }
+  }
+  const orgsElegiveis = (orgs ?? []).filter((o) => !idsExcluidos.has(o.organization_id));
+
   let checked = 0;
   let degraded = 0;
   let alerted = 0;
@@ -172,7 +193,7 @@ export async function GET(req: Request) {
   let errosBanco = 0;
 
   await Promise.allSettled(
-    (orgs ?? []).map(async (org) => {
+    orgsElegiveis.map(async (org) => {
       checked++;
       const resultado = await checarIA(supabase, org.organization_id);
       if (resultado.ok) return; // sucesso não grava nada: 96 execuções saudáveis = 0 linhas

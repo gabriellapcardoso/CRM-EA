@@ -1,6 +1,7 @@
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { MetaCloudWhatsAppProvider } from '@/lib/messaging/providers/whatsapp/meta-cloud.provider';
 import type { DbMessagingTemplate } from '@/lib/messaging/types';
+import { autenticaCron } from '@/lib/security/cronAuth';
 
 export const maxDuration = 60;
 
@@ -20,10 +21,7 @@ function json<T>(body: T, status = 200): Response {
  * Protected by CRON_SECRET bearer token — only callable by Vercel Cron.
  */
 export async function GET(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!autenticaCron(req)) {
     return json({ error: 'Unauthorized' }, 401);
   }
 

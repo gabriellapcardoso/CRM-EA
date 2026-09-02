@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Activity as ActivityIcon,
@@ -748,6 +748,18 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
   }, [stageId, stages]);
   const stageIndex = stageSelection.stageIndex;
   const activeStage = stageSelection.activeStage ?? stages[0];
+
+  // Sem isto, um board com muitos estágios (a quantidade é dinâmica, por
+  // board/org) abre com o estágio atual fora da área visível do `.stepper`
+  // (max-height + overflow-y: auto) e a pessoa não vê onde o deal está sem
+  // rolar às cegas. `block: 'nearest'` evita puxar a rolagem da PÁGINA quando
+  // o passo já está visível. Issue #23, item 9.
+  const stepperRef = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    stepperRef.current
+      ?.querySelector('.stepper__step--current')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [stageIndex, selectedDeal?.id]);
 
   const { data: aiAnalysis, isLoading: aiLoading, refetch: refetchAI } = useAIDealAnalysis(
     selectedDeal,
@@ -1540,7 +1552,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           <button type="button" className="btn btn--quiet" onClick={() => router.push('/boards')}>
             ← negociação
           </button>
-          <h2 className="cockpit__title">{humanizeTestLabel(deal.title) || deal.title}</h2>
+          <h2 className="cockpit__title" title={humanizeTestLabel(deal.title) || deal.title}>{humanizeTestLabel(deal.title) || deal.title}</h2>
           <p className="cockpit__value num">{formatCurrencyBRL(deal.value ?? 0)}</p>
           <span className={`badge-stage badge-stage--${currentGroup}`}>
             {activeStage?.label ?? '—'}
@@ -1561,6 +1573,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             value={deal.id}
             onChange={(e) => setDealInUrl(e.target.value)}
             aria-label="Selecionar deal"
+            title={`${humanizeTestLabel(deal.title) || deal.title} — ${companyName}`}
           >
             {sortedDeals.map((d) => {
               const labelCompany = d.clientCompanyName || d.companyName || 'Empresa';
@@ -1600,7 +1613,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
           </button>
         </div>
 
-        <ol className="stepper">
+        <ol className="stepper" ref={stepperRef}>
           {stages.map((s, idx) => (
             <li key={s.id} style={{ display: 'contents' }}>
               <button

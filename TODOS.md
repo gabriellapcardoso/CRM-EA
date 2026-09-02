@@ -298,12 +298,12 @@ Os demais seguem abertos na **issue #23**:
 | # | Achado | Onde |
 |---|---|---|
 | 1 | `pg_net` sem `timeout_milliseconds` (padrão 5s) chamando rota que leva até 20s | migration `:30,:49` |
-| 2 | Janela de 20min acoplada à cadência de 15min sem garantia: mudar pro `*/30` faz o e-mail nunca sair | `route.ts:23` |
+| ~~2~~ | ~~Janela de 20min acoplada à cadência de 15min sem garantia~~ — RESOLVIDO (2026-09-01): `test/aiHealthWindowCadence.test.ts` lê os dois números dos arquivos reais e exige janela > cadência. Verificado esticando a cadência simulada pra 30min: quebra | — |
 | ~~3~~ | ~~`alerted++` antes do envio~~ — RESOLVIDO (PR #22): só incrementa em envio confirmado | — |
-| 4 | Org com `deleted_at` continua sendo checada, gastando IA e recebendo e-mail | `route.ts:125` |
+| ~~4~~ | ~~Org com `deleted_at` continua sendo checada~~ — RESOLVIDO (2026-09-01): filtra contra `organizations.deleted_at` antes de checar; erro na consulta auxiliar falha aberto (continua checando), não fechado. Guarda: 4 testes novos em `aiHealthCron.test.ts` | — |
 | ~~5~~ | ~~Check usa texto puro~~ — RESOLVIDO (PR #22): usa `Output.object` | — |
-| 6 | `ai_conversation_log.model_used` grava o modelo **pedido**, não o que respondeu | `tasks/deals/analyze/route.ts:61` |
-| 7 | Stepper com `max-height` e sem `scrollIntoView` no estágio atual: deal no estágio 18 abre sem mostrar onde está | `globals.css:1315` |
+| ~~6~~ | ~~`ai_conversation_log.model_used` grava o modelo pedido, não o que respondeu~~ — RESOLVIDO (2026-09-01): usa `result.response?.modelId`, mesmo padrão já usado em `ai-health/route.ts`. Guarda: `route.test.ts` (novo) | — |
+| ~~7~~ | ~~Stepper sem `scrollIntoView` no estágio atual~~ — RESOLVIDO (2026-09-01): `useEffect` rola `.stepper__step--current` pra dentro da área visível ao trocar de estágio/deal. Guarda: `cockpitLayout.test.ts` | — |
 | ~~8~~ | ~~Sem índice em `security_alerts`~~ — RESOLVIDO (PR #22) | — |
 | 9 | `security_alerts` não tem nenhum consumidor de leitura no produto — é write-only | — |
 | ~~10~~ | ~~`checked: 0` como sucesso silencioso~~ — RESOLVIDO (PR #22) | — |
@@ -312,11 +312,11 @@ Os demais seguem abertos na **issue #23**:
 | ~~13~~ | ~~`as never` desligava a checagem de tipo~~ — RESOLVIDO (PR #22) | — |
 | 14 | `CRON_SECRET` em texto puro dentro de `cron.job`, legível por quem tem service role | banco |
 | 15 | Check gasta crédito da org 96x/dia sem opt-out, cap ou contabilização | — |
-| 16 | Título e select truncados sem `title=` — deals de nome parecido ficam indistinguíveis | `globals.css:1200` |
+| ~~16~~ | ~~Título e select truncados sem `title=`~~ — RESOLVIDO (2026-09-01): `title=` no `<h2>` e no `<select>` do cockpit | — |
 | 17 | Caminho de RAG (`ai_google_key`, API nativa do Google) não é coberto pelo check | `defaults.ts:58` |
 | 18 | Lista de reserva tem 2 fabricantes mas só 1 alternativa real fora da DeepSeek | `defaults.ts:51` |
 | 19 | `Promise.allSettled` sem limite de concorrência contra `maxDuration=60` | `route.ts:140` |
-| 20 | Comparação do `CRON_SECRET` não é constant-time (risco prático desprezível) | `route.ts:117` |
+| ~~20~~ | ~~Comparação do `CRON_SECRET` não é constant-time~~ — RESOLVIDO (2026-09-01): `lib/security/cronAuth.ts`, `timingSafeEqual`, compartilhado pelas 4 rotas de cron (`ai-health`, `evolution-health`, `template-sync`, `stage-evaluations`). Guarda: `cronAuth.test.ts` | — |
 | 21 | Texto de erro do provider vai pro banco e e-mail sem redação | `route.ts:81` |
 | 22 | Guarda de placeholder de `20260901180000_pg_cron_health_checks.sql` compara `__CRON_SECRET__` contra uma cópia dele mesmo em dollar-quote — o mesmo formato que, na migration do dead-man's switch (item 1 da #23), disparava sempre, substituído ou não (ver DESAFIOS.md, 2026-09-01). Migration histórica já aplicada, não editar; risco só se precisar ser reaplicada do zero num ambiente novo | `20260901180000_pg_cron_health_checks.sql:31,59` |
 

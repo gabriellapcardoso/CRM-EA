@@ -187,6 +187,29 @@ describe('.cockpit__head — altura devolvida ao corpo', () => {
   })
 })
 
+describe('.stepper — passo atual visível ao abrir', () => {
+  // A quantidade de estágios é dinâmica (por board/org). Sem rolar o passo
+  // atual pra dentro da área visível do `.stepper` (max-height + overflow-y:
+  // auto), um deal no estágio 18 de 20 abre com o indicador de "onde estou"
+  // fora da tela, sem rolar às cegas pra achar. Issue #23, item 9. Montar o
+  // componente inteiro (AuthContext, TanStack Query, Supabase, Realtime) só
+  // pra checar uma chamada de scrollIntoView custaria caro por motivos alheios
+  // ao que se quer proteger — mesmo raciocínio de cockpitAiErrorText.test.ts.
+  it('o <ol> do stepper tem a ref usada pelo scrollIntoView', () => {
+    expect(cockpitTsx).toMatch(/<ol className="stepper" ref=\{stepperRef\}>/)
+  })
+
+  it('rola o passo atual pra dentro da área visível quando o estágio ou o deal muda', () => {
+    const inicio = cockpitTsx.indexOf('const stepperRef = useRef')
+    expect(inicio, 'stepperRef não encontrado').toBeGreaterThan(-1)
+    const fimEffect = cockpitTsx.indexOf('}, [stageIndex, selectedDeal?.id]);', inicio)
+    expect(fimEffect, 'useEffect do scrollIntoView não encontrado (ou dependências mudaram)').toBeGreaterThan(inicio)
+    const bloco = cockpitTsx.slice(inicio, fimEffect)
+    expect(bloco).toMatch(/\.stepper__step--current/)
+    expect(bloco).toMatch(/scrollIntoView/)
+  })
+})
+
 describe('painel de chat do cockpit', () => {
   it('não tem altura fixa maior que a coluna que o contém', () => {
     // Era `height: 420` numa coluna de ~461px de altura útil: scroll dentro de
