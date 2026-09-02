@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(ops): dead-man's switch externo pro watchdog de cron — 2026-09-01
+
+Item 1 da issue #23. `check_cron_heartbeats()` (PR #22) já detectava cron
+parado e gravava em `security_alerts` — mas SQL não manda e-mail, e depender
+da aplicação (que pode ser exatamente a coisa fora do ar) pra avisar que ela
+caiu é circular. Era a única parte do P0 da issue #20 que ficou pela metade.
+
+**O que entrou:** `check_cron_heartbeats()` agora pinga um check externo no
+healthchecks.io toda vez que roda e encontra ZERO heartbeats atrasados. Um
+dead-man's switch inverte o modelo normal de monitoramento: em vez de algo
+checar se estamos de pé, somos nós que avisamos que estamos vivos — e se o
+ping parar de chegar, o serviço externo alerta por fora, sem depender de nada
+da nossa infraestrutura pra funcionar. Cobre o cenário que o watchdog interno
+não cobre: Supabase inteiro fora do ar, ou pg_cron desativado. Se só
+`ai-health`/`evolution-health` pararem, o watchdog já detecta isso hoje (não
+pinga, porque não está tudo são) e o alerta segue saindo pelo caminho de
+sempre.
+
+Guarda: `test/healthchecksDeadMansSwitch.test.ts` — o ping tem que ficar
+condicional a "nada atrasado" (senão o dead-man's switch mentiria durante um
+incidente de verdade) e a URL real não pode ser commitada. Verificado
+injetando as duas regressões — vermelho, depois verde.
+
+**Pendente:** aplicar `supabase/migrations/20260903000000_healthchecks_dead_mans_switch.sql`
+em produção com a Ping URL real (placeholder no arquivo, mesmo padrão do
+`CRON_SECRET`) e confirmar o primeiro ping chegando no painel do
+healthchecks.io.
+
 ### test: 3 testes que não podiam falhar agora podem — 2026-09-01
 
 Item 4 da issue #23. Review retroativo tinha flagrado 54 asserções verdes que
