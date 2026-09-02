@@ -297,7 +297,7 @@ Os demais seguem abertos na **issue #23**:
 
 | # | Achado | Onde |
 |---|---|---|
-| 1 | `pg_net` sem `timeout_milliseconds` (padrão 5s) chamando rota que leva até 20s | migration `:30,:49` |
+| ~~1~~ | ~~`pg_net` sem `timeout_milliseconds` (padrão 5s) chamando rota que leva até 20s~~ — RESOLVIDO (2026-09-01, código): `supabase/migrations/20260904000000_pg_net_timeout_health_checks.sql` reagenda os dois jobs com `timeout_milliseconds := 45000`. Guarda corrigida desta vez (canário quebrado, não `position()` contra dollar-quote — o bug do dead-man's switch). Testes: `test/pgNetTimeoutHealthChecks.test.ts`, 7 testes, verificado injetando as 2 regressões (timeout baixo, guarda antiga). **Pendente aplicar em produção** — ver PR | migration nova |
 | ~~2~~ | ~~Janela de 20min acoplada à cadência de 15min sem garantia~~ — RESOLVIDO (2026-09-01): `test/aiHealthWindowCadence.test.ts` lê os dois números dos arquivos reais e exige janela > cadência. Verificado esticando a cadência simulada pra 30min: quebra | — |
 | ~~3~~ | ~~`alerted++` antes do envio~~ — RESOLVIDO (PR #22): só incrementa em envio confirmado | — |
 | ~~4~~ | ~~Org com `deleted_at` continua sendo checada~~ — RESOLVIDO (2026-09-01): filtra contra `organizations.deleted_at` antes de checar; erro na consulta auxiliar falha aberto (continua checando), não fechado. Guarda: 4 testes novos em `aiHealthCron.test.ts` | — |
