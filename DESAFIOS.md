@@ -1,5 +1,28 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Capacidade sem call site é capacidade ausente — três vezes na mesma base (2026-09-03)
+
+**O quê:** em uma única sessão, três capacidades implementadas, corretas e
+testáveis não faziam nada, porque nenhum caminho as chamava:
+
+1. `configureWebhook()` nos providers de WhatsApp — 5 semanas de canal mudo.
+2. `useRetryMessage()` + a rota de retry — mensagem falha sem saída na tela.
+3. `INTERNAL_API_SECRET` — nome de env var que só o código conhecia.
+
+**Por que engana:** as três passam em revisão de código, têm tipos certos e
+comentário explicando o propósito. Uma delas até tinha teste de unidade do
+próprio método. Nada disso responde a pergunta que importa: **quem chama?**
+
+**Verificação que custa 5 segundos:** ao encontrar uma função que "já existe",
+`grep` pelo nome dela excluindo o arquivo onde é definida. Zero resultados fora
+da definição significa que ela não roda, por mais correta que seja. Vale também
+pra env var: `grep` pelo nome no repositório inteiro, e depois conferir se
+existe no ambiente (`supabase secrets list`, painel da Vercel).
+
+**Sinal de alerta na leitura de código:** comentário no estilo "isto serve pra
+X" sem nenhum ponto que faça X. O comentário descreve a intenção; o call site é
+o que prova a execução.
+
 ## Nome de env var que só o código conhece é feature desligada (2026-09-03)
 
 **O quê:** a Edge Function do WhatsApp lia `INTERNAL_API_SECRET` e `APP_URL` pra

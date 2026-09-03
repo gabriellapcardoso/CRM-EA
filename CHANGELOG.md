@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(messaging): botão "Reenviar" em mensagem que falhou — 2026-09-03
+
+`useRetryMessage` e `POST /api/messaging/messages/[messageId]/retry` existiam há
+tempos, corretos, e **nenhum componente os chamava**. Mensagem falha aparecia na
+tela com o motivo do erro e nenhuma saída: só restava redigitar o texto à mão.
+
+O custo apareceu hoje. Três respostas da IA para leads reais foram barradas pelo
+kill switch — comportamento correto, e exatamente o que a trava existe pra fazer.
+Ficaram em `failed`. Depois de destravar o envio, a causa da falha tinha sumido e
+o texto continuava preso, sem nenhum caminho de entrega no produto.
+
+Terceira vez nesta base que capacidade implementada sem call site se comporta
+como capacidade ausente, depois de `configureWebhook()` (5 semanas de canal mudo)
+e da própria rota de retry. O padrão está registrado no `DESAFIOS.md`.
+
+Botão espelha o "enviar rascunho" que já existia ao lado, no mesmo bloco.
+Aparece em qualquer mensagem `failed`, com ou sem `errorMessage` — falha sem
+motivo declarado também precisa de saída. Guarda:
+`features/messaging/components/MessageBubble.retry.test.tsx`, validada por
+injeção de regressão.
+
+### chore(ops): kill switch de WhatsApp desligado — 2026-09-03
+
+Desligado a pedido da fundadora, depois de ela ler as três respostas que a IA
+gerou e que a trava barrou. `whatsapp_kill_switch_active = false`.
+
+A trava cumpriu o papel para o qual foi construída: a IA foi acionada, gerou
+resposta para três leads reais, e nada saiu até uma pessoa ler o texto e decidir.
+Era a única das camadas de segurança que nunca tinha sido exercitada.
+
 ### fix(ai): template de estágio escolhido pela posição, não pelo valor de `order` — 2026-09-03
 
 Achado ao ligar a IA no estágio "Novo". `provision-stages` fazia
