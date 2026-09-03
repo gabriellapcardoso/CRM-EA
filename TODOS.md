@@ -1,5 +1,25 @@
 # TODOS
 
+## AI
+
+### `provision-stages` sobrescreve prompt customizado sem avisar — P2
+
+**What:** a rota atualiza `stage_ai_config` de estágios que já têm configuração,
+substituindo `system_prompt`, `stage_goal` e `advancement_criteria` pelo template.
+O comentário no código diz "only if not customized (check if prompt is still
+default-ish)", mas nenhuma checagem desse tipo existe.
+
+**Why:** quem ajustou o prompt à mão perde o trabalho ao clicar num botão que
+promete "provisionar", e nada avisa. Em 2026-09-03 a IA do estágio "Novo" foi
+configurada manualmente — um clique nessa rota a desfaz.
+
+**Como:** ou implementar a checagem que o comentário promete (comparar com o
+template e só atualizar se for igual), ou pedir confirmação listando o que será
+sobrescrito. Enquanto não for feito, remover o comentário que descreve um
+comportamento inexistente.
+
+**Effort:** S.
+
 ## Messaging
 
 ### Remover a instância Evolution morta `aaagência` — P2

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ai): template de estágio escolhido pela posição, não pelo valor de `order` — 2026-09-03
+
+Achado ao ligar a IA no estágio "Novo". `provision-stages` fazia
+`Math.min(stage.order, 3)`, usando o VALOR de `order`. Os dois boards desta org
+começam em `order: 1`, então cada estágio recebia o template do estágio
+seguinte — e o `BANT_STAGE_PROMPTS[0]`, o único que diz "este é o PRIMEIRO
+contato com o lead", era inalcançável.
+
+Efeito prático: o primeiro estágio de um board ganhava o prompt que assume que o
+lead já falou com a empresa antes. O agente abriria a conversa se referindo a um
+contato que nunca existiu.
+
+Agrava porque a rota faz `update` em config existente: clicar em provisionar
+sobrescreveria uma configuração ajustada à mão com o template errado.
+
+Passa a indexar pela posição na lista ordenada, que é 0-based por definição e não
+depende da convenção de numeração de quem criou o board. Guarda:
+`test/stageTemplateIndex.test.ts`, validado por injeção de regressão.
+
+### chore(ai): IA habilitada no estágio "Novo" do board Negociação — 2026-09-03
+
+Configuração de produção pedida pela fundadora, com o `BANT_STAGE_PROMPTS[0]` do
+próprio projeto (objetivo: criar conexão inicial e descobrir motivação; critérios
+de avanço: lead respondeu, demonstrou interesse, conversa iniciada). Defaults de
+segurança do schema mantidos: handoff em "falar com humano"/"atendente"/"pessoa
+real", máximo de 10 mensagens por conversa, 5s de delay.
+
+`whatsapp_kill_switch_active` segue `true` — a IA passa a gerar resposta, e o
+envio continua barrado até alguém desligar a trava conscientemente.
+
 ### fix(messaging): o agente de IA nunca foi acionado por mensagem recebida — 2026-09-03
 
 Achado na primeira mensagem real que entrou no WhatsApp depois do pareamento.

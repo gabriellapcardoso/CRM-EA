@@ -205,9 +205,15 @@ export async function POST() {
       }
 
       // Create/update config for each stage
-      for (const stage of stages) {
-        // Get appropriate template based on order (cap at 3 for last template)
-        const templateIndex = Math.min(stage.order, 3);
+      for (const [posicao, stage] of stages.entries()) {
+        // Template pela POSIÇÃO do estágio na lista ordenada, não pelo valor de
+        // `order`. Os boards deste projeto começam em `order: 1`, então usar o
+        // valor cru dava o template do estágio seguinte pra cada um: o primeiro
+        // estágio recebia o prompt "o lead já fez primeiro contato" e o
+        // BANT_STAGE_PROMPTS[0] ("este é o PRIMEIRO contato") era inalcançável.
+        // Posição é 0-based por definição e não depende da convenção de
+        // numeração de quem criou o board.
+        const templateIndex = Math.min(posicao, 3);
         const template = BANT_STAGE_PROMPTS[templateIndex];
 
         // Check if config already exists
