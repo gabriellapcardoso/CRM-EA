@@ -38,6 +38,7 @@ let getQrCodeMock: ReturnType<typeof vi.fn>
 let getStatusMock: ReturnType<typeof vi.fn>
 let initializeMock: ReturnType<typeof vi.fn>
 let createProviderMock: ReturnType<typeof vi.fn>
+let armarWebhookMock: ReturnType<typeof vi.fn>
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => supabaseClientMock),
@@ -45,6 +46,10 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/security/sameOrigin', () => ({
   isAllowedOrigin: (...args: unknown[]) => isAllowedOriginMock(...args),
+}))
+
+vi.mock('@/lib/messaging/arm-channel-webhook', () => ({
+  armarWebhookDoCanal: (...args: unknown[]) => armarWebhookMock(...args),
 }))
 
 vi.mock('@/lib/messaging', () => ({
@@ -134,6 +139,7 @@ beforeEach(() => {
     getQrCode: getQrCodeMock,
     getStatus: getStatusMock,
   }))
+  armarWebhookMock = vi.fn(async () => ({ armado: true, url: 'https://proj.supabase.co/functions/v1/messaging-webhook-evolution/' + CHANNEL_ID }))
   setup()
 })
 
@@ -143,8 +149,33 @@ describe('POST /api/messaging/channels/[id]/qr-code', () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ qrCode: 'abc123', expiresAt: '2026-08-31T20:00:00Z' })
+    expect(body).toEqual({
+      qrCode: 'abc123',
+      expiresAt: '2026-08-31T20:00:00Z',
+      webhookConfigured: true,
+    })
     expect(updateSpy).toHaveBeenCalledTimes(1)
+  })
+
+  // O webhook tem que estar armado ANTES do scan: quem confirma que o QR foi
+  // lido é o connection.update que a Evolution manda pro webhook. Armar depois
+  // perde justamente esse evento e o canal nunca sai de waiting_qr.
+  it('arma o webhook do canal ao gerar o QR', async () => {
+    await callPost()
+
+    expect(armarWebhookMock).toHaveBeenCalledTimes(1)
+    expect(armarWebhookMock.mock.calls[0][0]).toMatchObject({ id: CHANNEL_ID, provider: 'evolution' })
+  })
+
+  it('QR gerado com webhook que não armou avisa na resposta em vez de fingir sucesso', async () => {
+    armarWebhookMock = vi.fn(async () => ({ armado: false, url: null, motivo: 'NEXT_PUBLIC_SUPABASE_URL ausente' }))
+
+    const res = await callPost()
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.webhookConfigured).toBe(false)
+    expect(body.webhookWarning).toContain('NEXT_PUBLIC_SUPABASE_URL')
   })
 
   it('canal já conectado (status no banco) retorna 400 sem chamar o provider', async () => {
@@ -165,7 +196,11 @@ describe('POST /api/messaging/channels/[id]/qr-code', () => {
 
       expect(res.status).toBe(200)
       const body = await res.json()
-      expect(body).toEqual({ alreadyConnected: true })
+      expect(body).toEqual({ alreadyConnected: true, webhookConfigured: true })
+      // Reconexão pela sessão salva é o caminho que mais parece "deu certo" e
+      // o único em que o admin conecta sem QR — sem armar aqui, é exatamente
+      // ele que deixa o canal conectado e mudo.
+      expect(armarWebhookMock).toHaveBeenCalledTimes(1)
 
       // a última chamada de update() é a que precisa gravar 'connected', não 'error'
       const updateCall = (

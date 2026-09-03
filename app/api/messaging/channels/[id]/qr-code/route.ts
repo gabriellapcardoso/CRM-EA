@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { ChannelProviderFactory } from '@/lib/messaging';
+import { armarWebhookDoCanal } from '@/lib/messaging/arm-channel-webhook';
 
 function json<T>(body: T, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -94,6 +95,23 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     const qrResult = await (provider as { getQrCode: () => Promise<{ qrCode: string; expiresAt: string }> }).getQrCode();
 
+    // Arma o webhook ANTES de o admin escanear, nunca depois: quem confirma
+    // que o QR foi lido é o `connection.update` que a Evolution manda PRO
+    // webhook. Com o webhook desarmado nesse instante, esse evento se perde e
+    // o canal nunca sai de waiting_qr — o mesmo deadlock que o filtro de
+    // status já causou uma vez (issue #3).
+    const webhook = await armarWebhookDoCanal({
+      id: channel.id,
+      channel_type: channel.channel_type,
+      provider: channel.provider,
+      external_identifier: channel.external_identifier,
+      credentials: channel.credentials as Record<string, string>,
+    });
+
+    if (!webhook.armado) {
+      console.error('[qr-code] Falha ao armar webhook do canal:', channel.id, webhook.motivo);
+    }
+
     // Atualizar status do canal para waiting_qr — logar falha de update sem
     // quebrar a resposta (o QR já foi gerado no provider, o admin ainda pode
     // escaneá-lo mesmo que o status no banco fique desatualizado)
@@ -112,6 +130,10 @@ export async function POST(req: Request, { params }: RouteParams) {
     return json({
       qrCode: qrResult.qrCode,
       expiresAt: qrResult.expiresAt,
+      // Sobe na resposta pra UI não poder alegar sucesso liso: QR na tela com
+      // webhook desarmado é canal que conecta e nunca recebe nada.
+      webhookConfigured: webhook.armado,
+      ...(webhook.armado ? {} : { webhookWarning: webhook.motivo }),
     });
   } catch (error) {
     console.error('Error getting QR code:', error);
@@ -153,7 +175,27 @@ export async function POST(req: Request, { params }: RouteParams) {
         console.error('Failed to update channel status to connected:', updateError);
       }
 
-      return json({ alreadyConnected: true });
+      // Reconexão pela sessão salva não gera QR nenhum, então este branch é o
+      // único ponto em que um canal vira 'connected' pela ação do admin. Sem
+      // armar aqui, o caminho que mais parece "deu certo" é justamente o que
+      // deixa o canal mudo.
+      const webhook = await armarWebhookDoCanal({
+        id: channel.id,
+        channel_type: channel.channel_type,
+        provider: channel.provider,
+        external_identifier: channel.external_identifier,
+        credentials: channel.credentials as Record<string, string>,
+      });
+
+      if (!webhook.armado) {
+        console.error('[qr-code] Falha ao armar webhook do canal:', channel.id, webhook.motivo);
+      }
+
+      return json({
+        alreadyConnected: true,
+        webhookConfigured: webhook.armado,
+        ...(webhook.armado ? {} : { webhookWarning: webhook.motivo }),
+      });
     }
 
     // Atualizar status do canal para error

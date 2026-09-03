@@ -1,5 +1,59 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## "Conectado" não é "recebendo": integração que só metade funciona não alerta (2026-09-03)
+
+**O quê:** o WhatsApp comercial ficou 5 semanas sem entregar nenhuma mensagem
+ao CRM. Status no CRM: `connected`. Sessão na Evolution: `open`. Cron de health
+check: verde, execução após execução. Nada em lugar nenhum dizia que havia um
+problema.
+
+**Causa real:** o webhook da instância tinha a URL certa e mais nada —
+`enabled: false`, `events: []`, `headers: null`.
+
+**A armadilha de diagnóstico:** três sinais fortes diziam "está funcionando", e
+todos os três eram verdade. A sessão do WhatsApp estava mesmo no ar; o canal
+estava mesmo conectado; a URL estava mesmo correta. Um canal de integração tem
+pelo menos dois sentidos, e é perfeitamente possível um estar perfeito com o
+outro morto. Perguntar "está conectado?" não é a mesma pergunta que "o que
+chega lá chega aqui?".
+
+**Como separar rápido da próxima vez:** não olhar status, olhar tráfego.
+`select max(created_at) from messaging_webhook_events` responde em um segundo o
+que meia hora de leitura de status não responde. Se o último evento é de
+semanas atrás, o cano está entupido, não importa o que o status diga. E o
+`channel_id` desses eventos diz de qual canal eles são — no caso, todos os 4712
+eram de um canal já excluído, o que sozinho já contava a história.
+
+**Três lições que valem além deste bug:**
+
+1. **Código certo que ninguém chama é código que não existe.**
+   `configureWebhook()` estava implementado nos dois providers desde julho,
+   correto, com header de auth e tudo. Zero call sites. Um `grep` por
+   chamadas de uma função que "já existe" custa 5 segundos e teria fechado
+   isto em julho. Ao encontrar uma capacidade implementada, confirmar quem a
+   aciona antes de assumir que ela roda.
+
+2. **Health check tem que medir o caminho que pode quebrar, não o mais fácil
+   de medir.** Já estava escrito no `CLAUDE.md` desde 2026-09-01 pro
+   `ai-health` ("nunca um ping ao fornecedor") e não tinha sido aplicado ao
+   `evolution-health`, que continuou perguntando ao fornecedor se ele estava
+   de pé. Lição aprendida em um lugar não se propaga sozinha pros outros
+   lugares com a mesma forma — quando um princípio de monitoramento for
+   escrito, varrer os outros health checks no mesmo commit.
+
+3. **Passo manual de configuração é passo que vai ficar meio feito.** A tela
+   mandava copiar a URL e colar no painel do provider; o painel deixa
+   `enabled`, `events` e `headers` em branco por padrão. Ninguém errou nada
+   — a pessoa fez exatamente o que a tela pediu. Quando o app sabe montar a
+   configuração inteira, ele que a aplique; quando não puder, precisa pelo
+   menos conseguir verificar depois se ficou certa.
+
+**Sinal de alerta que se camuflou:** a limpeza de dados de teste de 2026-08-31
+zerou `messaging_conversations` e `messaging_messages` de propósito. Uma tabela
+vazia por motivo legítimo escondeu uma tabela vazia por motivo ilegítimo. Ao
+investigar "não tem dado", checar se alguém apagou antes de concluir que nunca
+chegou — e vice-versa.
+
 ## Dev server servindo build velho faz bug corrigido "voltar" (2026-08-31)
 
 **O quê:** ao testar a barra lateral ocultável em `localhost`, o dashboard

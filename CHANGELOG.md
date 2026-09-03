@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): WhatsApp conectado e mudo — webhook armado e causa raiz fechada — 2026-09-03
+
+O WhatsApp comercial da aaagência estava `connected` no CRM e `open` na
+Evolution, e não entregava uma mensagem sequer desde 2026-07-29. Cinco semanas.
+Nenhum alerta disparou porque nada estava "caído".
+
+**Causa raiz.** O webhook da instância tinha a URL exatamente certa, apontando
+pro canal certo, e mais nada: `enabled: false`, `events: []`, `headers: null`.
+Três bloqueios independentes, cada um sozinho suficiente. Como a Edge Function
+é default-deny, mesmo habilitado o webhook sem `x-api-key` levaria 401 — e a
+Evolution engole 401 sem reclamar em lugar nenhum.
+
+Por que nasceu assim: **`configureWebhook()` estava implementado nos providers
+Evolution e Z-API desde julho, correto, com header de auth e tudo — e nenhum
+caminho do app chamava**. Configurar webhook era copiar a URL da tela de
+settings e colar no painel do provider, à mão, marcando três campos que
+ninguém tinha como saber que precisavam ser marcados. Código certo que ninguém
+chama é código que não existe.
+
+Por que ficou escondido: `evolution-health` roda a cada execução perguntando
+"a sessão está conectada?". Estava. O cron reportou verde o incidente inteiro,
+porque media a metade do cano que não tinha quebrado — a mesma lição que o
+`ai-health` já carregava desde 2026-09-01 e que não tinha sido aplicada aqui.
+
+**Correções:**
+
+- **Produção destravada**: webhook da instância armado com os quatro campos
+  certos (verificado ao vivo: `enabled`, 3 eventos, `x-api-key` presente, URL
+  batendo com a esperada).
+- **`configureWebhook()` passa a ser chamado**: `armarWebhookDoCanal()`
+  (`lib/messaging/arm-channel-webhook.ts`) é acionado nos dois caminhos em que
+  o admin conecta um canal — ao gerar o QR e no branch de reconexão pela sessão
+  salva. Ao gerar QR isso roda **antes** do scan de propósito: quem confirma
+  que o QR foi lido é o `connection.update` que chega pelo webhook; armar
+  depois perde justamente esse evento.
+- **`POST/GET /api/messaging/channels/[id]/webhook`**: (re)armar e
+  diagnosticar sem desconectar o canal. Não existia caminho nenhum no app pra
+  consertar um canal já `connected` — que era exatamente o estado deste.
+- **`evolution-health` passa a checar os dois lados**: sessão conectada E
+  webhook entregando, com alerta próprio (`evolution_webhook_inactive`) que
+  nomeia qual campo está errado, em vez de "webhook com problema".
+- **URL do webhook vira fonte única** (`lib/messaging/webhook-url.ts`), que
+  devolve `null` em vez de string quebrada — armar
+  `undefined/functions/v1/...` deixaria o painel mostrando webhook
+  "configurado" que não entrega, reproduzindo o próprio bug.
+
+**Sobre a IA**: o envio automático foi mantido desligado (kill switch de
+WhatsApp ligado) enquanto a sincronização é validada com tráfego real. Toda
+mensagem recebida dispara o agente, que **envia sozinho** pelo
+`ChannelRouter` — o HITL governa avanço de estágio, não o envio da resposta.
+Religar é desligar `organization_settings.whatsapp_kill_switch_active`.
+
+Testes: `lib/messaging/webhook-url.test.ts`,
+`lib/messaging/arm-channel-webhook.test.ts`,
+`test/whatsappProviderWebhookConfig.test.ts`, mais os casos novos em
+`test/evolutionHealthCron.test.ts` e `test/whatsappQrCodeRoute.test.ts`. O
+teste do ponto cego do cron foi verificado por injeção de regressão: some o
+check do webhook, ele fica vermelho.
+
+**Nota sobre as 0 conversas**: `messaging_conversations` e
+`messaging_messages` estarem zeradas não é efeito deste bug — é a limpeza de
+dados de teste de 2026-08-31, que apagou 42 conversas e 1282 mensagens de
+propósito. As duas coisas juntas escondiam uma à outra.
+
 ### feat(ops): health check passa a cobrir o caminho de RAG — 2026-09-02
 
 Item 5 da issue #34, e o último gap real da leva. `ai_google_key` e a API
