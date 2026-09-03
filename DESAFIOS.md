@@ -1,5 +1,42 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Vigia que só olha quem já se apresentou nunca vê quem nunca chegou (2026-09-03)
+
+**O quê:** o watchdog de cron pegou o `ai-health` parado em 50 minutos e não
+pegou o `evolution-health` nunca, apesar de os dois estarem quebrados pelo mesmo
+motivo, na mesma hora, com o mesmo sintoma.
+
+**Causa:** `check_cron_heartbeats()` percorre as linhas de `cron_heartbeats`. O
+`ai-health` gravava heartbeat, então tinha linha e ficou velha. O
+`evolution-health` nunca gravou: sem linha, não entra no laço, invisível.
+
+**A lição geral:** monitor construído em cima de "registros que envelhecem" só
+enxerga quem já se registrou uma vez. A ausência total não envelhece. Sempre que
+o monitoramento for por heartbeat/last_seen, perguntar quem DEVERIA estar na
+lista e semear essas linhas — senão o pior caso, o serviço que nunca subiu,
+é exatamente o que não dispara nada.
+
+**Correção barata que preferi à lógica nova:** semear a tabela na migration
+transforma "nunca reportou" em "parou de reportar", e o laço que já existe passa
+a tratar o caso. Zero caminho novo no watchdog.
+
+## Guarda de placeholder não é guarda de valor (2026-09-03)
+
+**O quê:** a migration que reagendou os health checks tinha guarda pra impedir
+que o `__CRON_SECRET__` fosse aplicado sem substituir. A guarda passou — o
+placeholder tinha sido substituído. Por um valor de 11 caracteres que não é o
+segredo. Resultado: 401 a cada 15 minutos por 20 horas, sem ninguém notar.
+
+**A lição:** checar "o placeholder foi substituído?" responde uma pergunta bem
+mais fraca que "o valor faz sentido?". Substituição manual erra de duas formas —
+não substituir (a guarda pega) e substituir errado (não pega). Guarda de segredo
+em migration deve checar **formato mínimo**: tamanho plausível, e quando houver
+outra fonte no mesmo banco com o mesmo segredo, igualdade contra ela.
+
+**Como conferir sem ver segredo nenhum:** comparar `md5()` do token de um job
+contra o de outro, e olhar `length()`. Os dois respondem "é o mesmo valor?" e
+"tem tamanho de segredo?" sem imprimir nada. Foi assim que este bug foi isolado.
+
 ## "Conectado" não é "recebendo": integração que só metade funciona não alerta (2026-09-03)
 
 **O quê:** o WhatsApp comercial ficou 5 semanas sem entregar nenhuma mensagem

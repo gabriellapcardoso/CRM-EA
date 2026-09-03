@@ -27,6 +27,7 @@ let getChannelStatusMock: ReturnType<typeof vi.fn>
 let lerWebhookMock: ReturnType<typeof vi.fn>
 let resendSendMock: ReturnType<typeof vi.fn>
 let fromSpy: ReturnType<typeof vi.fn>
+let heartbeatSpy: ReturnType<typeof vi.fn>
 
 function chainable(resolveValue: unknown) {
   const builder: Record<string, unknown> = {}
@@ -81,6 +82,7 @@ describe('GET /api/cron/evolution-health', () => {
     recentAlertResult = { data: null }
     orgSettingsResult = { data: { alert_email: 'ops@aaagencia.com.br' } }
     insertSpy = vi.fn(async () => ({ error: null }))
+    heartbeatSpy = vi.fn(async () => ({ error: null }))
     getChannelStatusMock = vi.fn(async () => ({ status: 'connected' }))
     // Padrão: webhook armado e entregando. Cada teste que quer o contrário diz.
     lerWebhookMock = vi.fn(async () => ({
@@ -105,8 +107,39 @@ describe('GET /api/cron/evolution-health', () => {
         return builder
       }
       if (table === 'organization_settings') return chainable(orgSettingsResult)
+      if (table === 'cron_heartbeats') {
+        const builder = chainable({ error: null })
+        builder.upsert = heartbeatSpy
+        return builder
+      }
       throw new Error(`Unexpected table: ${table}`)
     })
+  })
+
+  // Esta rota existiu sem heartbeat nenhum, e por isso o watchdog nunca a
+  // vigiou — nem funcionando, nem nas ~20h respondendo 401. check_cron_heartbeats()
+  // percorre as LINHAS de cron_heartbeats: sem linha, o cron é invisível.
+  it('grava heartbeat em toda execução, mesmo com tudo saudável', async () => {
+    channelsResult = {
+      data: [{ id: CHANNEL_ID, organization_id: ORG_ID, name: 'Comercial', external_identifier: 'aaagencia-comercial' }],
+      error: null,
+    }
+
+    await callGet()
+
+    expect(heartbeatSpy).toHaveBeenCalledTimes(1)
+    const [linha, opcoes] = heartbeatSpy.mock.calls[0]
+    expect(linha.job_name).toBe('evolution-health')
+    expect(linha.last_run_at).toBeTruthy()
+    expect(opcoes).toEqual({ onConflict: 'job_name' })
+  })
+
+  it('grava heartbeat também quando não há canal nenhum pra checar', async () => {
+    channelsResult = { data: [], error: null }
+
+    await callGet()
+
+    expect(heartbeatSpy).toHaveBeenCalledTimes(1)
   })
 
   it('retorna 401 sem CRON_SECRET correto', async () => {
