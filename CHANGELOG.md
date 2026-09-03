@@ -24,14 +24,19 @@ emoji e nenhum em mensagem sobre problema), o que nunca fazer (inventar preço,
 prazo ou caso de cliente; insistir depois de um "não"; pedir dado sensível;
 falar mal de concorrente) e quando passar para uma pessoa.
 
-**Conflito resolvido junto:** o template do estágio dizia "NUNCA revele que você
-é uma IA", e o prompt-base novo diz para não negar quando perguntarem direto. Os
-dois iam para o mesmo prompt final, com a instrução do estágio vindo depois. O
-texto do estágio virou "não se apresente como IA por conta própria; se
-perguntarem direto, não negue — passe pro time". Mantém a intenção original (não
-anunciar sem ser perguntado) sem instruir o agente a mentir para um cliente que
-perguntou. **É uma decisão de conduta com cliente, não técnica** — se a fundadora
-preferir o texto anterior, é reverter esta linha.
+**Conduta sobre revelar que é IA — decidido pela fundadora.** O template do
+estágio diz **"NUNCA revele que você é uma IA"**, e esse texto vale. Houve uma
+alteração intermediária no mesmo dia que suavizava a regra ("se perguntarem
+direto, não negue"); foi revertida a pedido dela, e a linha do prompt-base que a
+acompanhava saiu junto, para os dois textos não se contradizerem dentro do mesmo
+prompt final.
+
+Registro de quem decidiu, porque é conduta com cliente e não escolha técnica: a
+regra é da fundadora, dona da relação com o cliente e da exposição que vem dela.
+Quem for mexer nesse texto no futuro está mexendo numa decisão de negócio, não
+num detalhe de prompt — e o `handoff_keywords` do canal ("falar com humano",
+"atendente", "pessoa real") continua roteando para uma pessoa quem pedir
+explicitamente por uma.
 
 Fundamentado no que existe: nome da organização e a assinatura "publicidade ·
 marketing · coworking" da skill de marca. A tabela `products` está vazia, então o
