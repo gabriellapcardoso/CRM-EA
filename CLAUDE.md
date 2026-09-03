@@ -4,6 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+**Gerenciador de pacotes é pnpm, fixado em `package.json` (`packageManager`).** Para
+instalar dependência, sempre `pnpm install` / `pnpm add` — **nunca `npm install`**, que
+recria um `package-lock.json` divergente e instala versões diferentes das que a Vercel e
+o CI usam. Rodar script (`npm run build`) funciona com qualquer um dos dois; instalar,
+não. Contexto: até 2026-09-03 conviviam três majors de pnpm (CI 9, Vercel 10, local 11)
+e dois lockfiles — ver `DESAFIOS.md`.
+
 ```bash
 npm run dev          # Dev server (porta 3000; se ocupada: fuser -k 3000/tcp)
 npm run build        # Build de produção

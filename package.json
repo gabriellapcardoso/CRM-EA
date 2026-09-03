@@ -2,6 +2,10 @@
   "name": "crmia-next",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  },
   "scripts": {
     "dev": "next dev",
     "precheck": "npm run lint && npm run typecheck && npm run test:run && npm run build",
