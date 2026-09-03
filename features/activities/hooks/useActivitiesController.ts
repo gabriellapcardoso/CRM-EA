@@ -3,6 +3,7 @@ import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { Activity } from '@/types';
+import { dataLocalISO, hojeLocalISO } from '@/lib/utils/dataLocal';
 import {
   useActivities,
   useCreateActivity,
@@ -62,7 +63,7 @@ export const useActivitiesController = () => {
   const [formData, setFormData] = useState({
     title: '',
     type: 'CALL' as Activity['type'],
-    date: new Date().toISOString().split('T')[0],
+    date: hojeLocalISO(),
     time: '09:00',
     description: '',
     dealId: '',
@@ -116,7 +117,7 @@ export const useActivitiesController = () => {
     setFormData({
       title: '',
       type: 'CALL',
-      date: new Date().toISOString().split('T')[0],
+      date: hojeLocalISO(),
       time: '09:00',
       description: '',
       dealId: '',
@@ -130,7 +131,7 @@ export const useActivitiesController = () => {
     setFormData({
       title: activity.title,
       type: activity.type,
-      date: date.toISOString().split('T')[0],
+      date: dataLocalISO(date),
       time: date.toTimeString().slice(0, 5),
       description: activity.description || '',
       dealId: activity.dealId,

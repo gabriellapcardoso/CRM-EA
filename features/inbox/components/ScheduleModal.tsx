@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Phone, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { dataLocalISOEmDias, hojeLocalISO } from '@/lib/utils/dataLocal';
 
 export type ScheduleType = 'CALL' | 'MEETING' | 'TASK';
 
@@ -90,9 +91,7 @@ export function ScheduleModal({
         if (typeof initialDate === 'string' && initialDate) {
             setDate(initialDate);
         } else {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            setDate(tomorrow.toISOString().split('T')[0]);
+            setDate(dataLocalISOEmDias(1));
         }
 
         setTime(typeof initialTime === 'string' && initialTime ? initialTime : '10:00');
@@ -204,7 +203,7 @@ export function ScheduleModal({
                                 type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
-                                min={new Date().toISOString().split('T')[0]}
+                                min={hojeLocalISO()}
                                 className="input"
                             />
                         </div>
@@ -222,10 +221,7 @@ export function ScheduleModal({
                     {/* Quick time buttons */}
                     <div className="flex gap-2 flex-wrap">
                         {['Hoje', 'Amanhã', 'Próx. semana'].map((label, idx) => {
-                            const d = new Date();
-                            if (idx === 1) d.setDate(d.getDate() + 1);
-                            if (idx === 2) d.setDate(d.getDate() + 7);
-                            const dateStr = d.toISOString().split('T')[0];
+                            const dateStr = dataLocalISOEmDias(idx === 1 ? 1 : idx === 2 ? 7 : 0);
                             return (
                                 <button
                                     key={label}

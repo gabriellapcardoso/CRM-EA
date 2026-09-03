@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, entityCachesExceptDetail } from '../index';
 import { activitiesService } from '@/lib/supabase';
 import { sortActivitiesSmart } from '@/lib/utils/activitySort';
+import { hojeLocalISO } from '@/lib/utils/dataLocal';
 import { useAuth } from '@/context/AuthContext';
 import type { Activity } from '@/types';
 
@@ -109,7 +110,7 @@ export const usePendingActivities = () => {
  */
 export const useTodayActivities = () => {
   const { user, loading: authLoading } = useAuth();
-  const today = new Date().toISOString().split('T')[0];
+  const today = hojeLocalISO();
 
   return useQuery({
     queryKey: queryKeys.activities.list({ date: today }),
