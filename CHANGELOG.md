@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ops): os dois health checks estavam mortos há 20h e o watchdog só viu um — 2026-09-03
+
+Achado por `/qa`. Os jobs `ai-health-check` e `evolution-health-check` do pg_cron
+respondiam **401 a cada 15 minutos** desde 2026-09-02 15:30 UTC: 48 respostas 401
+em 24h, exatamente duas por ciclo. O `CRON_SECRET` embutido nos dois jobs tinha
+**11 caracteres**; o job `stage-evaluations-drain`, que responde 200, tem 64.
+
+Origem: a migration `20260904000000_pg_net_timeout_health_checks.sql` reagendou os
+dois jobs, e a substituição manual do segredo entrou errada. A guarda daquele
+arquivo checava se o placeholder ainda estava lá — e estava substituído, só que
+por um valor curto que não é o segredo. Guarda de placeholder não é guarda de
+valor.
+
+Consequência: todo o monitoramento construído nas últimas sessões ficou inerte,
+incluindo a checagem de webhook adicionada em #41, que **nunca executou em
+produção** — a rota devolvia 401 antes de chegar nela.
+
+**O ponto cego, que é o achado mais importante.** `check_cron_heartbeats()`
+percorre as LINHAS de `cron_heartbeats`. O `evolution-health` nunca escreveu
+heartbeat nenhum: não tinha linha, não entrava no laço, e era invisível pro
+watchdog desde sempre. O `ai-health` foi pego em 50 minutos porque tinha linha.
+O único cron que o watchdog não conseguia notar era justamente o único sem
+heartbeat. "Parou de reportar" era detectado; "nunca reportou", não.
+
+**Correções:**
+
+- **Produção**: os dois jobs foram reagendados com o token do job que funciona,
+  copiado por subselect dentro do próprio Postgres (o valor nunca saiu do banco).
+  Verificado com chamada real: `evolution-health` devolveu `{"checked":1,
+  "alerted":0}` e `ai-health` `{"checked":1,"degraded":0,"alerted":0}`. Essa foi
+  também a primeira execução de verdade da checagem de webhook de #41, que
+  passou sem falso positivo contra o servidor Evolution real.
+- **`evolution-health` passa a gravar heartbeat** em toda execução, inclusive
+  quando não há canal pra checar.
+- **Migration semeia `cron_heartbeats`** com os crons que devem reportar, com
+  `on conflict do nothing` pra não empurrar `last_run_at` e mascarar atraso real.
+  Semear transforma "nunca reportou" em "parou de reportar", que o laço existente
+  já trata. Nenhuma lógica nova no watchdog.
+- **`test/cronHeartbeatCoverage.test.ts`** amarra as três peças que moram em
+  arquivos diferentes: a rota escreve, o `job_name` bate, e a semeadura existe.
+  Validado por injeção de regressão nos dois modos de falha.
+
 ### fix(messaging): WhatsApp conectado e mudo — webhook armado e causa raiz fechada — 2026-09-03
 
 O WhatsApp comercial da aaagência estava `connected` no CRM e `open` na

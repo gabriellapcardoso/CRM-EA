@@ -199,6 +199,31 @@ export async function GET(req: Request) {
     10,
   );
 
+  // Heartbeat: gravado em TODA execução, igual ao ai-health. Esta rota passou a
+  // existir sem heartbeat nenhum, e o resultado foi que o watchdog nunca a
+  // vigiou — nem quando ela funcionava, nem nas ~20h em que respondeu 401 por
+  // CRON_SECRET errado. `check_cron_heartbeats()` percorre as linhas de
+  // `cron_heartbeats`: cron sem linha não entra no laço e é invisível pra
+  // sempre. "Parou de reportar" é detectado; "nunca reportou" não era.
+  const { error: erroHeartbeat } = await supabase.from('cron_heartbeats').upsert(
+    {
+      job_name: 'evolution-health',
+      last_run_at: new Date().toISOString(),
+      last_status: 'ok',
+      details: { checked, alerted },
+    },
+    { onConflict: 'job_name' },
+  );
+  if (erroHeartbeat) {
+    console.error('[Cron:evolution-health] ERRO ao gravar heartbeat — o watchdog vai alertar:', erroHeartbeat);
+  }
+
+  // `checked: 0` com 200 é no-op silencioso: se nenhum canal casar a query (nome
+  // de provider mudou, todos desconectados), o monitor fica inerte parecendo são.
+  if (checked === 0) {
+    console.error('[Cron:evolution-health] NENHUM canal foi checado — a query não casou nada. O monitor está inerte.');
+  }
+
   console.log(`[Cron:evolution-health] Done — checked: ${checked}, alerted: ${alerted}`);
   return json({ checked, alerted });
 }
