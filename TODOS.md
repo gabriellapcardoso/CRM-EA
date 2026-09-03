@@ -2,6 +2,20 @@
 
 ## Messaging
 
+### Remover a instância Evolution morta `aaagência` — P2
+
+**What:** instância criada em 2026-08-15 com `integration: EVOLUTION` (canal
+genérico, sem WhatsApp atrás). Substituída por `aaagencia-whatsapp`
+(`WHATSAPP-BAILEYS`) em 2026-09-03. Ficou no servidor de propósito, pra permitir
+voltar atrás.
+
+**Why:** deletar antes de confirmar o novo funcionando seria irreversível sem
+ganho. Depois do pareamento confirmado e de mensagem real entrando, ela só
+confunde: o painel lista duas instâncias parecidas e a errada responde `open`.
+
+**Quando:** depois da primeira mensagem real chegar pelo canal novo.
+`DELETE /instance/delete/aaag%C3%AAncia`. **Effort:** S.
+
 ### Kill switch de WhatsApp está LIGADO — decisão pendente de religar a IA
 
 **What:** `organization_settings.whatsapp_kill_switch_active = true` desde

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): a instância do WhatsApp era do tipo errado e o QR nunca era lido — 2026-09-03
+
+Achado por `/qa` depois de a fundadora mandar uma mensagem de teste que não
+chegou. Dois defeitos independentes, e o primeiro invalida um diagnóstico que
+eu mesmo dei no dia anterior.
+
+**1. A instância nunca teve WhatsApp atrás.** A instância `aaagência`, criada em
+2026-08-15, tinha `integration: "EVOLUTION"` — o canal genérico interno da
+Evolution, não `WHATSAPP-BAILEYS`. Um canal desse tipo reporta
+`connectionStatus: "open"` para sempre, porque não há sessão de WhatsApp pra
+abrir ou fechar. Daí `ownerJid`, `profileName` e `profilePicUrl` todos `null`,
+`_count` zerado em Chat/Contact/Message, e `/chat/whatsappNumbers` respondendo
+`"Method not available on Evolution Channel"`.
+
+O webhook desarmado, corrigido em #41, era um defeito real e separado. Mas era a
+segunda tranca numa porta que nunca teve sala do outro lado: mesmo perfeito, não
+haveria mensagem pra entregar.
+
+**Correção em produção:** nova instância `aaagencia-whatsapp` com
+`integration: WHATSAPP-BAILEYS`, reusando o token que já estava no canal (lido
+por subselect, sem o valor sair do banco). Nome sem acento de propósito — o
+acento em `aaagência` já custou uma sessão de debug em agosto. A instância antiga
+ficou parada, sem dados, pra ser removida depois da confirmação. Canal repontado
+e marcado como `disconnected`, que é a verdade: falta parear.
+
+**2. `getQrCode()` lançava sempre, mesmo com o QR na resposta.** O tipo declarava
+`{ qrcode: { base64 } }` e o método lia `response.qrcode?.base64`. A Evolution v2
+devolve o QR **plano**: `{ code, count, base64, pairingCode }`, com `base64` já
+trazendo o prefixo `data:image/png;base64,`. Verificado ao vivo com e sem
+`?number=`: as duas formas devolvem o mesmo objeto plano. Ou seja, a leitura era
+sempre `undefined` e o fluxo de QR nunca exibiu um QR.
+
+O custo maior não foi o QR faltando. Foi a mensagem de erro: `"QR code not
+available. Instance may already be connected."` afirmava uma causa que o código
+não tinha checado. Em 2026-08-31 essa frase foi lida como diagnóstico e virou a
+justificativa do branch `alreadyConnected` da rota — que remarca o canal como
+conectado. Erro que chuta causa vira causa raiz falsa na sessão seguinte; o texto
+novo nomeia os campos que vieram e não afirma nada.
+
+Testes: `test/whatsappProviderQrCode.test.ts`, validado por injeção de regressão.
+
 ### fix(ops): os dois health checks estavam mortos há 20h e o watchdog só viu um — 2026-09-03
 
 Achado por `/qa`. Os jobs `ai-health-check` e `evolution-health-check` do pg_cron
