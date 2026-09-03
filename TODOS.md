@@ -21,22 +21,45 @@ antes.
 
 ## AI
 
-### Catálogo de produtos vazio — o agente não sabe o que a agência vende — P2
+### O agente não sabe o que a agência vende — P2
 
-**What:** `products` não tem nenhuma linha para a org. O prompt-base descreve
-identidade e tom, e o do estágio descreve técnica de abordagem, mas nada diz
-quais serviços existem, o que está incluso ou faixa de preço.
+**Correção do que este item dizia antes:** afirmava que o catálogo estava vazio e
+que bastava preencher `products` no CRM. As duas coisas estavam erradas.
 
-**Why:** hoje o agente só atua no estágio "Novo", onde o trabalho é entender a
-necessidade e não oferecer — então a falta não morde. Ela morde no primeiro
-estágio seguinte que for habilitado: o agente vai precisar falar de serviço e
-não terá fonte, e a instrução "nunca invente preço, prazo ou caso de cliente" o
-deixa sem saída além de chamar uma pessoa toda vez.
+**Onde o catálogo mora de verdade:** no gerador de propostas comerciais, tabelas
+`catalogo_servicos` (`nome`, `tipo` em `corporativo`/`politico`/`ambos`,
+`valor_base`, `descricao`, `ativo`) e `catalogo_modificadores` (ajuste por
+serviço, fixo ou percentual). Supabase `qfcylvhfnmzbazdkwzgt`, migration
+`0013_catalogo_avancado.sql`. É a fonte de verdade de serviço e preço da
+esteira, e é lá que a fundadora mantém.
 
-**Como:** preencher `products` (Configurações → Produtos). O `businessSection`
-do prompt já é montado a partir daí — é ligar a fonte, não escrever código.
+**A tabela `products` do CRM não alimenta o agente.** Ela existe e está vazia,
+mas o prompt não a lê. O campo que o agente realmente lê é
+`board_ai_config.business_context` (`agent.service.ts:838`) — texto livre, vazio
+nos dois boards. Preencher `products` não mudaria nada no que o agente sabe.
 
-**Effort:** S de código (zero), M de conteúdo (decidir o que expor ao agente).
+**Por que não morde hoje:** o agente só atua no estágio "Novo", onde o trabalho
+é entender a necessidade e não oferecer, e o prompt proíbe falar de preço ali.
+Morde no primeiro estágio seguinte que for habilitado.
+
+**Caminhos, do mais simples ao mais completo:**
+
+1. **Resumo escrito à mão em `business_context`** — a fundadora escreve o que o
+   agente pode dizer sobre serviço, com ou sem faixa de preço. Imediato, e ela
+   controla palavra por palavra. Envelhece quando o catálogo mudar.
+2. **Sincronizar do gerador pro `business_context`** — reusa a infraestrutura de
+   webhook que já liga os dois sistemas. Precisa filtrar por `tipo` (o catálogo
+   atende também cliente político, que não é a esteira deste CRM) e decidir se
+   `valor_base` vai junto.
+3. **Não dar preço ao agente** — manter a regra atual ("nunca invente preço;
+   diga que vai confirmar com o time") e passar pra uma pessoa quando o assunto
+   for valor. É o desenho de hoje, e é uma escolha legítima, não uma lacuna.
+
+**A decisão não é técnica:** é se o agente pode falar de preço com cliente sem
+uma pessoa no meio. Enquanto isso não for decidido, o caminho 3 está valendo por
+padrão e funciona.
+
+**Effort:** 1 é S. 2 é M. 3 é zero — já está assim.
 
 ### ~~Agente varia o próprio gênero entre mensagens~~ — RESOLVIDO (2026-09-03)
 
