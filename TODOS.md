@@ -52,26 +52,31 @@ voltar atrás.
 ganho. Depois do pareamento confirmado e de mensagem real entrando, ela só
 confunde: o painel lista duas instâncias parecidas e a errada responde `open`.
 
-**Quando:** depois da primeira mensagem real chegar pelo canal novo.
-`DELETE /instance/delete/aaag%C3%AAncia`. **Effort:** S.
+**Quando:** condição satisfeita em 2026-09-03 — mensagens reais entraram,
+respostas saíram e recibo de entrega voltou pelo canal novo. Liberado pra
+remover: `DELETE /instance/delete/aaag%C3%AAncia`. **Effort:** S.
 
-### Kill switch de WhatsApp está LIGADO — decisão pendente de religar a IA
+**Antes de apagar, conferir que é a certa:** as duas têm nome parecido e a morta
+responde `open`. A boa é `aaagencia-whatsapp`, `integration: WHATSAPP-BAILEYS`,
+com `ownerJid` preenchido. A morta é `aaagência` (com acento),
+`integration: EVOLUTION`, `ownerJid` nulo, contadores zerados.
 
-**What:** `organization_settings.whatsapp_kill_switch_active = true` desde
-2026-09-03. Foi ligado de propósito ao armar o webhook, pra sincronização
-entrar sem a IA começar a responder cliente real no mesmo instante.
+### ~~Kill switch de WhatsApp está LIGADO~~ — RESOLVIDO (2026-09-03)
 
-**Why:** toda mensagem recebida dispara `triggerAIProcessing`, e o agente
-**envia sozinho** via `ChannelRouter` (`lib/ai/agent/agent.service.ts`) — o
-HITL governa avanço de estágio, não o envio da resposta. Esse caminho nunca
-rodou ponta-a-ponta neste canal.
+**Status:** `whatsapp_kill_switch_active = false` desde 2026-09-03, depois de a
+fundadora ler as três respostas que a IA gerou e que a trava barrou. A IA
+responde lead novo automaticamente no estágio "Novo".
 
-**Efeito colateral enquanto ligado:** bloqueia TODO envio de WhatsApp, não só
-o da IA — envio manual pelo inbox e envio de proposta por WhatsApp inclusos
+**O que a sequência comprou:** ligar a captação com o envio travado, deixar
+tráfego real chegar, ler o texto gerado, e só então soltar. Isso provou a trava
+com três mensagens de verdade (`failed`, `sent_at` nulo, motivo explícito) e
+achou dois defeitos que só aparecem com tráfego — `CRM_EA_INTERNAL_WEBHOOK_SECRET`
+ausente e o botão de reenvio inexistente — sem nenhum cliente receber mensagem
+errada. Vale repetir esse padrão pra qualquer automação que fale com cliente.
+
+**Pra parar tudo:** `whatsapp_kill_switch_active = true` bloqueia todo envio de
+WhatsApp na hora, envio manual pelo inbox incluso
 (`lib/messaging/whatsapp-send-guard.ts` é o choke point único).
-
-**Como religar:** desligar a flag na org. Recomendado só depois de ler algumas
-conversas reais chegando e conferir o que o agente escreveria.
 
 ### Sem botão na UI pra rearmar/diagnosticar webhook de canal
 
