@@ -142,6 +142,27 @@ conferir uma URL e o CRM armar outra. Trocar as duas pelo helper é mecânico.
 **Priority:** P4
 **Depends on:** None
 
+## Observabilidade
+
+### Guarda de segredo em migration não checa formato do valor — P1
+
+**What:** as migrations que injetam `CRON_SECRET`/`HEALTHCHECKS_PING_URL` têm
+guarda pra impedir que o placeholder seja aplicado sem substituição. Nenhuma
+checa se o valor substituído faz sentido. Em 2026-09-02 um valor de 11
+caracteres passou pela guarda e derrubou os dois health checks por 20h.
+
+**Why:** substituição manual erra de duas formas — não substituir (a guarda pega)
+e substituir errado (não pega). A segunda é pior, porque produz um sistema que
+parece configurado.
+
+**Como:** na guarda, além de comparar com o canário concatenado, checar tamanho
+mínimo plausível; e quando o mesmo segredo já existir em outro job do banco,
+comparar `md5()` contra ele e abortar se divergir. Ambas as checagens são
+possíveis sem imprimir o valor. Ver `DESAFIOS.md`, "Guarda de placeholder não é
+guarda de valor".
+
+**Effort:** S. **Modelo:** Sonnet.
+
 ## Observabilidade — achados do review retroativo de 2026-09-01
 
 Os 10 PRs de 2026-09-01 (#10 a #19) foram para produção **sem passar por `/review`**.
