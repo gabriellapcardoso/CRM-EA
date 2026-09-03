@@ -21,6 +21,29 @@ antes.
 
 ## AI
 
+### Agente varia o próprio gênero entre mensagens — P2
+
+**What:** nas três primeiras respostas reais (2026-09-03), o agente escreveu
+"Obrig**ada**" para uma pessoa e "Obrig**ado**" para outra. Isso é o gênero de
+quem fala, não de quem recebe — o agente se apresenta ora como mulher, ora como
+homem, na mesma conversa comercial e no mesmo número.
+
+**Why:** é voz de marca, e some no meio de respostas que no resto estão boas —
+por isso passa fácil. Quem recebe duas mensagens do mesmo número em dias
+diferentes percebe.
+
+**Causa:** `organization_settings.ai_base_system_prompt` está **vazio**, então o
+agente cai no prompt-base embutido, que não fixa identidade. O template de
+estágio (`BANT_STAGE_PROMPTS`) também não diz nada sobre isso — trata técnica de
+venda, não persona.
+
+**Como:** preencher `ai_base_system_prompt` com a identidade e o tom da
+aaagência, incluindo gênero e forma de tratamento. É o lugar certo: vale para
+todos os estágios e não some quando alguém trocar o template de um deles.
+Decisão de marca, não de código — a fundadora escreve, o agente aplica.
+
+**Effort:** S (o campo já é lido; falta o texto).
+
 ### `provision-stages` sobrescreve prompt customizado sem avisar — P2
 
 **What:** a rota atualiza `stage_ai_config` de estágios que já têm configuração,

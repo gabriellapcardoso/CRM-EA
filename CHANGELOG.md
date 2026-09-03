@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### chore(auth): segunda conta da organização promovida a admin — 2026-09-03
+
+Pedido explícito da fundadora, para que essa conta conseguisse escanear o QR do
+WhatsApp: `POST /api/messaging/channels/[id]/qr-code` exige `profile.role ===
+'admin'`, e a conta estava como `user`. Alteração feita direto no banco, com a
+condição amarrada a id, e-mail e `organization_id` ao mesmo tempo, para não
+haver chance de atingir outra linha.
+
+Fica registrado porque é mudança de privilégio em produção, e mudança de
+privilégio que só existe no histórico de uma conversa não existe. A organização
+passa a ter duas contas admin; a outra é a da fundadora.
+
+Nota: não era isso que bloqueava o QR naquele momento — a conta que clicou já
+era admin, e o erro real foi o `?number=` suprimindo o QR (ver entrada de #45).
+A promoção seguiu válida por si.
+
 ### fix(activities): data derivada de UTC adiantava um dia das 21h à meia-noite — 2026-09-03
 
 `new Date().toISOString().split('T')[0]`, presente em 13 pontos, converte pra
