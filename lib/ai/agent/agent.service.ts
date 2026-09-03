@@ -1058,6 +1058,20 @@ async function handleHandoff(
         ai_handoff_pending: true,
         ai_handoff_reason: reason,
         ai_handoff_at: now,
+        // Cala o agente nesta conversa. `ai_handoff_pending` era escrito aqui e
+        // lido em NENHUM lugar do repositório — o time era avisado, a atividade
+        // era registrada, e na mensagem seguinte o agente respondia de novo,
+        // por cima da pessoa que tinha acabado de assumir. Quem pediu "falar
+        // com um atendente" continuava conversando com a IA.
+        //
+        // `ai_paused` é o campo que o guard de entrada realmente consulta
+        // (ver início de processIncomingMessage). Reusar ele em vez de criar
+        // um segundo caminho de pausa: dois flags com o mesmo significado
+        // divergem na primeira vez que alguém mexer em um só.
+        //
+        // Não há UI pra devolver a conversa ao agente depois — deliberado por
+        // ora: quem assumiu, assumiu. Registrado em TODOS.md.
+        ai_paused: true,
       },
     })
     .eq('id', conversationId);

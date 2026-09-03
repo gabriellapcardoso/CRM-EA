@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ai): handoff avisava o time e não calava o agente — 2026-09-03
+
+Escopo do agente definido pela fundadora: receber o lead, fazer o primeiro
+atendimento, qualificar, e então passar para o atendimento humano **sem deixar
+explícito para o lead**. Ao implementar isso, o handoff mostrou um defeito.
+
+`handleHandoff` marcava `ai_handoff_pending: true`, registrava atividade no deal
+e avisava o time por Realtime. E `ai_handoff_pending` era lido em **nenhum lugar
+do repositório** — quarta capacidade sem call site achada no mesmo dia. Efeito:
+o lead pedia para falar com uma pessoa, o time era notificado, e na mensagem
+seguinte o agente respondia de novo, por cima de quem tinha acabado de assumir.
+
+O handoff passa a gravar `ai_paused: true`, que é o campo que o guard de entrada
+realmente consulta. Reusar em vez de criar um segundo caminho de pausa: dois
+flags com o mesmo significado divergem na primeira vez que alguém mexer em um só.
+
+**A transferência já era silenciosa do lado do lead** — `handleHandoff` não envia
+mensagem nenhuma, só marca metadata, registra atividade e avisa a equipe. O que
+faltava era o prompt: o texto anterior dizia "chame o time", o que convidava o
+modelo a verbalizar a passagem. Agora diz que o escopo termina na qualificação,
+que a passagem não é anunciada (não menciona time, atendente, setor ou sistema),
+e o que fazer quando o assunto sai do alcance dele — nunca chutar preço, prazo
+ou condição para preencher o vazio.
+
+Guarda: `test/agentHandoffPausa.test.ts`, validada por injeção de regressão.
+Cobre também que o handoff **não** manda mensagem pro lead: se algum dia mandar,
+é mudança de comportamento com cliente, não refactor.
+
 ### chore(ai): identidade da aaagência escrita em `ai_base_system_prompt` — 2026-09-03
 
 O campo estava vazio, então o agente caía no prompt-base embutido, que não fixa

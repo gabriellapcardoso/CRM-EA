@@ -21,6 +21,24 @@ antes.
 
 ## AI
 
+### Sem caminho para devolver a conversa ao agente depois do handoff — P3
+
+**What:** o handoff grava `ai_paused: true` na metadata da conversa, e nenhuma
+tela limpa esse campo. Uma vez que uma pessoa assume, o agente não volta a
+atender aquela conversa — só via SQL.
+
+**Why:** é o padrão certo por ora ("quem assumiu, assumiu"), e o oposto seria
+pior: agente voltando a falar por cima de uma conversa humana em andamento. Mas
+é caminho sem volta em produto, e caminho sem volta acaba precisando de volta —
+lead que voltou meses depois com outro assunto, ou handoff disparado por engano
+numa palavra-chave.
+
+**Como:** botão na conversa, visível só pra admin, que limpe `ai_paused` e
+`ai_handoff_pending`. O `ai_handoff_pending` já existe pra marcar o estado e
+hoje serve só de registro — seria o gatilho natural pra mostrar o botão.
+
+**Effort:** S.
+
 ### O agente não sabe o que a agência vende — P2
 
 **Correção do que este item dizia antes:** afirmava que o catálogo estava vazio e
