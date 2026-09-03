@@ -21,7 +21,24 @@ antes.
 
 ## AI
 
-### Agente varia o próprio gênero entre mensagens — P2
+### Catálogo de produtos vazio — o agente não sabe o que a agência vende — P2
+
+**What:** `products` não tem nenhuma linha para a org. O prompt-base descreve
+identidade e tom, e o do estágio descreve técnica de abordagem, mas nada diz
+quais serviços existem, o que está incluso ou faixa de preço.
+
+**Why:** hoje o agente só atua no estágio "Novo", onde o trabalho é entender a
+necessidade e não oferecer — então a falta não morde. Ela morde no primeiro
+estágio seguinte que for habilitado: o agente vai precisar falar de serviço e
+não terá fonte, e a instrução "nunca invente preço, prazo ou caso de cliente" o
+deixa sem saída além de chamar uma pessoa toda vez.
+
+**Como:** preencher `products` (Configurações → Produtos). O `businessSection`
+do prompt já é montado a partir daí — é ligar a fonte, não escrever código.
+
+**Effort:** S de código (zero), M de conteúdo (decidir o que expor ao agente).
+
+### ~~Agente varia o próprio gênero entre mensagens~~ — RESOLVIDO (2026-09-03)
 
 **What:** nas três primeiras respostas reais (2026-09-03), o agente escreveu
 "Obrig**ada**" para uma pessoa e "Obrig**ado**" para outra. Isso é o gênero de
@@ -42,7 +59,8 @@ aaagência, incluindo gênero e forma de tratamento. É o lugar certo: vale para
 todos os estágios e não some quando alguém trocar o template de um deles.
 Decisão de marca, não de código — a fundadora escreve, o agente aplica.
 
-**Effort:** S (o campo já é lido; falta o texto).
+**Status:** `ai_base_system_prompt` preenchido em 2026-09-03. A voz é no plural,
+em nome da equipe — resolve o gênero sem escolher um. Ver `CHANGELOG.md`.
 
 ### `provision-stages` sobrescreve prompt customizado sem avisar — P2
 

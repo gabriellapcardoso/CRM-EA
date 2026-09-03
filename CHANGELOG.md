@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### chore(ai): identidade da aaagência escrita em `ai_base_system_prompt` — 2026-09-03
+
+O campo estava vazio, então o agente caía no prompt-base embutido, que não fixa
+identidade — daí ele escrever "Obrigada" para uma pessoa e "Obrigado" para outra
+no mesmo número.
+
+**A voz é no plural, em nome da equipe.** Resolve o gênero sem precisar escolher
+um: o agente diz "a gente"/"nós", nunca inventa nome próprio, e evita
+construções que marquem gênero de quem fala ("valeu por escrever" no lugar de
+"obrigado/obrigada"). Se a fundadora quiser uma persona nomeada depois, é só
+acrescentar.
+
+O que ficou no prompt: tom (frases curtas, sem jargão de marketing, no máximo um
+emoji e nenhum em mensagem sobre problema), o que nunca fazer (inventar preço,
+prazo ou caso de cliente; insistir depois de um "não"; pedir dado sensível;
+falar mal de concorrente) e quando passar para uma pessoa.
+
+**Conflito resolvido junto:** o template do estágio dizia "NUNCA revele que você
+é uma IA", e o prompt-base novo diz para não negar quando perguntarem direto. Os
+dois iam para o mesmo prompt final, com a instrução do estágio vindo depois. O
+texto do estágio virou "não se apresente como IA por conta própria; se
+perguntarem direto, não negue — passe pro time". Mantém a intenção original (não
+anunciar sem ser perguntado) sem instruir o agente a mentir para um cliente que
+perguntou. **É uma decisão de conduta com cliente, não técnica** — se a fundadora
+preferir o texto anterior, é reverter esta linha.
+
+Fundamentado no que existe: nome da organização e a assinatura "publicidade ·
+marketing · coworking" da skill de marca. A tabela `products` está vazia, então o
+agente não descreve serviço — ver `TODOS.md`.
+
+Verificado que o campo é realmente lido: `organization_settings` → `aiConfig.
+baseSystemPrompt` (`agent.service.ts:170`) → `buildSystemPrompt` (734) →
+`basePrompt` (832) → prompt final (880). `board_ai_config.persona_prompt` tem
+precedência e está nulo nos dois boards; se algum dia for preenchido, silencia
+este texto.
+
 ### chore(auth): segunda conta da organização promovida a admin — 2026-09-03
 
 Pedido explícito da fundadora, para que essa conta conseguisse escanear o QR do
