@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Em escopo: este CRM e os sistemas do ecossistema da agência com que ele se integra (prospecção, gerador de propostas), raciocinando sobre eles a partir daqui. Fora de escopo: o resto de `~/AI/projetos/`, incluindo `gerador-foto-apoio`. Se uma mudança pertencer mesmo a outro repositório, dizer isso e parar.
 
+**Uma exceção nomeada: `~/AI/projetos/CLAUDE.md` é o documento do ecossistema**, e atualizá-lo é parte do trabalho quando o fato atravessa projeto — estado da esteira, webhook novo entre sistemas, segredo compartilhado. Ele tem regra própria: só o que atravessa projeto, nunca detalhe interno do CRM duplicado, porque cópia desatualiza sozinha e passa a apontar pra um estado que não existe mais. Foi o que aconteceu: o arquivo afirmou por semanas que o canal WhatsApp estava testado e funcionando enquanto ele não recebia nada. Tratar esse arquivo como intocável produz a mesma deriva pelo outro lado. A exceção é ele e só ele — os demais diretórios de `~/AI/projetos/` seguem fora.
+
 ## Commands
 
 **Gerenciador de pacotes é pnpm, fixado em `package.json` (`packageManager`).** Para
