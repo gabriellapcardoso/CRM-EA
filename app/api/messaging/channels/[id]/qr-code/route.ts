@@ -77,6 +77,31 @@ export async function POST(req: Request, { params }: RouteParams) {
     return json({ error: 'Channel is already connected' }, 400);
   }
 
+  // Arma o webhook ANTES de qualquer coisa com o provider, nunca depois. Três
+  // motivos, e os dois últimos só apareceram em produção:
+  //
+  // 1. Quem confirma que o QR foi lido é o `connection.update` que a Evolution
+  //    manda PRO webhook. Desarmado nesse instante, o evento se perde e o canal
+  //    nunca sai de waiting_qr (mesmo deadlock da issue #3).
+  // 2. Armar depois do `getQrCode()` pendura o arme numa chamada que pode
+  //    falhar. Em 2026-09-03 ela falhou (a Evolution devolveu pairingCode em
+  //    vez de QR) e o webhook ficou sem armar: o canal foi pra `error` com
+  //    webhook nulo, exigindo duas correções em vez de uma.
+  // 3. Fora do try, o resultado serve os três caminhos de saída (QR gerado,
+  //    já conectado, erro) sem armar duas vezes. `armarWebhookDoCanal` não
+  //    lança por contrato, então não precisa de try próprio.
+  const webhook = await armarWebhookDoCanal({
+    id: channel.id,
+    channel_type: channel.channel_type,
+    provider: channel.provider,
+    external_identifier: channel.external_identifier,
+    credentials: channel.credentials as Record<string, string>,
+  });
+
+  if (!webhook.armado) {
+    console.error('[qr-code] Falha ao armar webhook do canal:', channel.id, webhook.motivo);
+  }
+
   try {
     // Criar provider e obter QR code (dinâmico — z-api ou evolution)
     const provider = ChannelProviderFactory.createProvider('whatsapp', channel.provider);
@@ -94,23 +119,6 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     const qrResult = await (provider as { getQrCode: () => Promise<{ qrCode: string; expiresAt: string }> }).getQrCode();
-
-    // Arma o webhook ANTES de o admin escanear, nunca depois: quem confirma
-    // que o QR foi lido é o `connection.update` que a Evolution manda PRO
-    // webhook. Com o webhook desarmado nesse instante, esse evento se perde e
-    // o canal nunca sai de waiting_qr — o mesmo deadlock que o filtro de
-    // status já causou uma vez (issue #3).
-    const webhook = await armarWebhookDoCanal({
-      id: channel.id,
-      channel_type: channel.channel_type,
-      provider: channel.provider,
-      external_identifier: channel.external_identifier,
-      credentials: channel.credentials as Record<string, string>,
-    });
-
-    if (!webhook.armado) {
-      console.error('[qr-code] Falha ao armar webhook do canal:', channel.id, webhook.motivo);
-    }
 
     // Atualizar status do canal para waiting_qr — logar falha de update sem
     // quebrar a resposta (o QR já foi gerado no provider, o admin ainda pode
@@ -138,12 +146,17 @@ export async function POST(req: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('Error getting QR code:', error);
 
-    // Antes de marcar como erro, confere o status real no provider. Achado
-    // ao vivo em 2026-08-31: pedir QR logo depois de um "Desconectar" (que só
-    // faz logout soft) pode fazer o provider reconectar sozinho usando a
-    // sessão salva — sem QR nenhum. getQrCode() lança erro nesse caso
-    // ("Instance may already be connected"), e sem esta checagem a gente
-    // escreveria status='error' num canal que na verdade está conectado.
+    // Antes de marcar como erro, confere o status real no provider: pedir QR
+    // logo depois de um "Desconectar" (que só faz logout soft) pode fazer o
+    // provider reconectar sozinho pela sessão salva, sem QR nenhum, e sem esta
+    // checagem gravaríamos status='error' num canal conectado.
+    //
+    // Este branch nasceu em 2026-08-31 de uma leitura errada: o texto do erro
+    // de `getQrCode()` afirmava "Instance may already be connected" sem ter
+    // checado nada, e a frase foi tomada como diagnóstico. A causa real era o
+    // base64 lido do campo errado, então o método lançava sempre. O branch
+    // segue valendo pelo motivo do parágrafo acima, que é verificado de fato
+    // por `getStatus()` — não pelo que a mensagem de erro dizia.
     let alreadyConnected = false;
     try {
       const provider = ChannelProviderFactory.createProvider('whatsapp', channel.provider);
@@ -175,22 +188,11 @@ export async function POST(req: Request, { params }: RouteParams) {
         console.error('Failed to update channel status to connected:', updateError);
       }
 
-      // Reconexão pela sessão salva não gera QR nenhum, então este branch é o
-      // único ponto em que um canal vira 'connected' pela ação do admin. Sem
-      // armar aqui, o caminho que mais parece "deu certo" é justamente o que
-      // deixa o canal mudo.
-      const webhook = await armarWebhookDoCanal({
-        id: channel.id,
-        channel_type: channel.channel_type,
-        provider: channel.provider,
-        external_identifier: channel.external_identifier,
-        credentials: channel.credentials as Record<string, string>,
-      });
-
-      if (!webhook.armado) {
-        console.error('[qr-code] Falha ao armar webhook do canal:', channel.id, webhook.motivo);
-      }
-
+      // Reconexão pela sessão salva não gera QR nenhum, e este branch é o
+      // único ponto em que um canal vira 'connected' pela ação do admin — o
+      // caminho que mais parece "deu certo" e o que mais precisa do webhook
+      // armado. Ele já foi armado lá em cima, antes do provider; aqui só
+      // reporta.
       return json({
         alreadyConnected: true,
         webhookConfigured: webhook.armado,

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): `?number=` na chamada de QR fazia a Evolution devolver código de pareamento — 2026-09-03
+
+Achado quando a fundadora clicou Conectar de verdade, minutos depois do deploy
+anterior. O canal foi pra `error` com a mensagem nova de #44:
+`"QR code ausente na resposta da Evolution (campos recebidos: pairingCode,
+count)"` — que é exatamente o que aquela mensagem existia pra dizer.
+
+**Causa:** `getQrCode()` mandava `?number=<external_identifier>`. Com número, a
+Evolution v2 escolhe o fluxo "vincular com número de telefone" e responde
+`{ pairingCode, count }` — código de 8 caracteres pra digitar no app, sem imagem
+nenhuma. Sem número, responde `{ code, count, base64, pairingCode: null }` com o
+QR pronto. Medido nas duas direções contra a mesma instância real, no mesmo
+minuto.
+
+O comentário no código afirmava o contrário: que `number` era obrigatório e que
+sem ele a Evolution devolvia corpo vazio. Aquilo foi observado em 2026-08-31
+contra a instância `integration: EVOLUTION`, que não tem WhatsApp atrás e
+devolve corpo vazio pra qualquer coisa. Conclusão tirada de um caso quebrado e
+aplicada ao caso são — enquanto valeu, a tela de QR não podia funcionar.
+
+**Segunda correção, de ordem:** o arme do webhook estava depois do
+`getQrCode()`. Quando o QR falhou, o arme não rodou: canal em `error` com
+webhook nulo, dois problemas onde havia um. O arme subiu pra antes de qualquer
+coisa com o provider, fora do `try`, e agora serve os três caminhos de saída
+(QR gerado, já conectado, erro) sem armar duas vezes. Não depende do QR: é
+idempotente e o canal precisa dele de todo jeito.
+
+Testes: `test/whatsappProviderQrCode.test.ts` cobre a URL sem `number` e a
+resposta só com `pairingCode`; `test/whatsappQrCodeRoute.test.ts` garante arme
+único.
+
 ### fix(messaging): a instância do WhatsApp era do tipo errado e o QR nunca era lido — 2026-09-03
 
 Achado por `/qa` depois de a fundadora mandar uma mensagem de teste que não

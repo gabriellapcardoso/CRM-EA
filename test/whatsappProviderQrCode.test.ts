@@ -14,8 +14,16 @@
  * remarcava o canal como conectado. Um erro que afirma causa não verificada
  * vira causa raiz falsa na sessão seguinte.
  *
+ * Segundo defeito, achado quando a fundadora clicou Conectar de verdade
+ * (2026-09-03): o método mandava `?number=`, e com número a Evolution escolhe o
+ * fluxo de "vincular com número de telefone" — responde `{ pairingCode, count }`,
+ * sem imagem. O código então exigia um base64 que nunca viria. Medido nas duas
+ * direções contra a mesma instância real: sem `number` vem `base64`, com
+ * `number` vem `pairingCode`.
+ *
  * Guardas de regressão:
  * - resposta plana (o que o servidor realmente manda) devolve o QR
+ * - a URL NÃO carrega `number` — é o que suprime o QR
  * - resposta aninhada continua funcionando (versões antigas)
  * - sem QR nenhum, o erro NOMEIA os campos recebidos e não chuta a causa
  */
@@ -66,6 +74,26 @@ describe('EvolutionWhatsAppProvider.getQrCode', () => {
 
     expect(r.qrCode).toBe(QR)
     expect(r.expiresAt).toBeTruthy()
+  })
+
+  // `?number=` faz a Evolution devolver pairingCode em vez de QR. Foi o que
+  // quebrou o clique real em 2026-09-03. A URL não pode carregar number.
+  it('não manda ?number= na URL, que é o que suprime o QR', async () => {
+    fetchMock.mockResolvedValue(okResponse({ base64: QR }))
+    const provider = await makeProvider()
+
+    await provider.getQrCode()
+
+    const [url] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://evo.example.com/instance/connect/aaagencia-whatsapp')
+    expect(url).not.toContain('number=')
+  })
+
+  it('resposta com pairingCode e sem base64 falha nomeando os dois campos', async () => {
+    fetchMock.mockResolvedValue(okResponse({ pairingCode: 'ABCD1234', count: 1 }))
+    const provider = await makeProvider()
+
+    await expect(provider.getQrCode()).rejects.toThrow(/campos recebidos: pairingCode, count/)
   })
 
   it('o base64 vem pronto pra <img src>, com o prefixo data URI', async () => {
