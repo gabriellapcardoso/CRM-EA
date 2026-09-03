@@ -1006,6 +1006,17 @@ O arquivo tinha ainda um segundo defeito, esse já flagrado no review: `expect(s
 
 **Como isso não repete**: teste que lê código como texto (padrão legítimo e usado bastante neste repo, porque montar componente de 2600 linhas pra checar uma string custa caro) precisa **remover comentários antes de procurar** — a versão nova faz `linha.replace(/\/\/.*$/, '')` antes de casar. E, quando o alvo vira uma função pura exportada, o certo é parar de fazer grep e passar a **chamar a função de verdade**: `describeAIError('AI_DISABLED')` comparado contra `describeAIError('INTERNAL_ERROR')` prova a distinção; procurar as duas strings no arquivo, não.
 
+**Repetiu em 2026-09-03, um dia depois desta entrada ser escrita.** Um teste
+novo lendo a Edge Function passou verde com a regressão injetada, casando
+`last_connected_at` num comentário que eu tinha acabado de pôr ao lado da linha
+consertada. Saber a regra não impediu: a asserção parece certa nas duas
+versões, e a suíte fica verde nas duas.
+
+**O que efetivamente pega:** injeção de regressão. Apagar a linha do conserto e
+exigir que o teste fique VERMELHO. Isso não depende de lembrar de nada — é o
+único passo que distingue teste que protege de teste que só existe. Nas duas
+vezes, foi ele que revelou o problema, não a leitura do código do teste.
+
 ## "Precisa de decisão do usuário" virou escapatória de análise (2026-09-02)
 
 Ao varrer os P2 da issue #23, classifiquei 6 itens como bloqueados em decisão de produto ou arquitetura e abri a #34 pra eles, com a justificativa de que não eram "código só". Quando a usuária respondeu `decide o item 3`, e depois `termina tudo que estiver pendente`, **5 dos 6 fecharam na mesma sessão** — 4 por decisão escrita em minutos, 1 por código.

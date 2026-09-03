@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): connection.update não gravava last_connected_at — 2026-09-03
+
+Achado logo depois do pareamento do WhatsApp funcionar: canal `connected` às
+17:05, `last_connected_at` parado em 31/08.
+
+`handleConnectionUpdate` (Edge Function) gravava `status` e às vezes
+`settings.displayPhone`, nunca os timestamps. E o scan do QR não passa pela rota
+do app — quem marca o canal como conectado é o `connection.update` que chega no
+webhook, então este é o único caminho normal em que um canal vira `connected`.
+
+Importa porque `getActiveChannelForOrg()` escolhe por qual canal a proposta
+automática sai com `order by last_connected_at desc`. Um canal recém-pareado
+mantinha o timestamp antigo (ou nulo) e podia perder a escolha pra um canal
+velho que já não funciona — exatamente o caso de migração de instância que a
+docstring daquela função diz cobrir. Com um canal só, inofensivo; com dois, sai
+mensagem pelo canal errado.
+
+Passa a gravar `last_connected_at` no ramo de `connected` e `updated_at` em toda
+transição. Edge Function redeployada e testada em produção.
+
+Guarda: `test/webhookConnectionUpdateTimestamps.test.ts`, que amarra a Edge
+Function ao consumidor do campo. A primeira versão do teste passava com a
+regressão injetada — casava a string no comentário ao lado do conserto. Corrigido
+pra remover comentários antes de casar, e o próprio teste agora tem um caso que
+verifica isso. Ver `DESAFIOS.md`.
+
 ### fix(messaging): `?number=` na chamada de QR fazia a Evolution devolver código de pareamento — 2026-09-03
 
 Achado quando a fundadora clicou Conectar de verdade, minutos depois do deploy

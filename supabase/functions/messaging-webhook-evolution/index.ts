@@ -791,9 +791,23 @@ async function handleConnectionUpdate(
 
   // When connecting, try to fetch the phone number from Evolution API and save
   // it as settings.displayPhone so the UI can show it like Z-API does.
-  const updatePayload: Record<string, unknown> = { status: newStatus };
+  const updatePayload: Record<string, unknown> = {
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
 
   if (newStatus === "connected") {
+    // `last_connected_at` é o critério de desempate de
+    // `getActiveChannelForOrg()` (`order by last_connected_at desc`), que
+    // escolhe por qual canal a proposta automática sai. Este é o ÚNICO ponto
+    // em que um canal vira `connected` pelo caminho normal — o scan do QR
+    // chega aqui, não na rota. Sem gravar o campo, um canal recém-pareado
+    // mantém o timestamp antigo (ou nulo) e perde a escolha pra um canal velho
+    // que já não funciona: exatamente o caso de migração de instância que a
+    // docstring daquela função diz cobrir. Achado ao vivo em 2026-09-03, com o
+    // canal `connected` e `last_connected_at` três dias atrasado.
+    updatePayload.last_connected_at = new Date().toISOString();
+
     const phone = await fetchEvolutionPhone(channel.credentials);
     if (phone) {
       // Merge displayPhone into existing settings to avoid overwriting other fields
