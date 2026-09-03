@@ -49,6 +49,11 @@
 - **Text-based guard tests must strip comments before matching.** Reading source as text is a legitimate pattern here (mounting a 2600-line component to check one string costs more than it protects), but a `toContain` will happily match the explanatory comment you just wrote above the code. When the target becomes an exported pure function, stop grepping and call the function instead
 - **Never write a secret that appeared in the conversation into any file**, not as an example, not as a test fixture, even if it is already marked compromised and about to be rotated. Fixtures must look obviously fake (`re_fake000_...`, `sk-aaaaaaaa...`). Run the PII scan on the staged diff before every commit — the repo is public
 
+## PR Granularity Rules
+- **One PR per code fix, one PR for all the documentation.** A code fix earns its own PR: it can be reverted alone, and the PR body is where the bug's story lives. Documentation cannot be reverted in isolation and nobody bisects a `.md` — batching it costs nothing and saves the reviewer a round trip
+- **Each PR spends someone else's attention, not just yours.** In the 2026-09-01/02 session this repo took 13 PRs, 4 of which were documentation-only — one changed a single line of `TODOS.md`. Every one made the maintainer stop, read, and type "merge". The right count was ~8. Before opening a PR that touches no code, ask whether it can wait and ride along with the next one
+- **A fix for a bug introduced by the PR merged 20 minutes ago belongs with it, not after it** — unless the original already shipped to production, in which case the follow-up PR is the honest record
+
 ## AI Config Rules
 - **`ai_model` must be OpenRouter's `provider/model` format.** A bare id (`gemini-2.5-flash`) is silently discarded by `getModel` and falls back to the default — the org ran for months on the default while settings said otherwise. `getModel` now warns loudly on that path; never remove that warning. Guard: `lib/ai/config.test.ts`
 - **Config fallbacks must be noisy.** Dropping a value someone deliberately chose in a settings screen is an event, not a default. Silent fallback is only acceptable for *absent* config (empty field, new org), never for config that is present and invalid

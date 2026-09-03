@@ -145,6 +145,17 @@ const model = getModel(config.provider, config.apiKey, config.model)
 
 **Trocar o formato de um valor que vive no banco é migration também** — a migração pra OpenRouter trocou o formato no código e não migrou as linhas, então o código novo passou a ler dado velho em silêncio.
 
+**Quando o alerta dispara — o que olhar, em ordem.** São três mecanismos com significados diferentes, e confundi-los faz procurar no lugar errado:
+
+| Chegou | Significa | Primeiro lugar pra olhar |
+|---|---|---|
+| E-mail "IA fora do ar (2 falhas seguidas)" | 2 execuções seguidas do `ai-health` falharam a chamada real de IA | `organization_settings.ai_model` e `ai_openrouter_key` da org citada — o motivo vem no corpo do e-mail, já redigido |
+| E-mail "IA rodando no modelo de reserva" | A app está **de pé**, mas o modelo configurado não atendeu e o failover resgatou | Trocar `ai_model` pro id que respondeu (vem nomeado no e-mail); o configurado provavelmente saiu do catálogo |
+| E-mail "Cron X parou de reportar" | `check_cron_heartbeats()` viu heartbeat velho — o cron parou, não a IA | `select * from cron.job` (o job existe?), depois se o `CRON_SECRET` do pg_cron bate com o da Vercel |
+| **healthchecks.io ficou vermelho** | O ping parou de chegar: pg_cron, Supabase ou o watchdog inteiro pararam | Supabase está no ar? `select * from cron.job_run_details order by start_time desc limit 5` |
+
+O healthchecks.io é o único que **não** depende de nada nosso — se ele alertou e os e-mails não, o problema é maior que a IA. Check `crm-ea-ai-watchdog`, ping a cada 10min pelo `check_cron_heartbeats()`, só quando **nenhum** heartbeat está atrasado (ping incondicional mentiria durante incidente).
+
 **Autenticação das rotas de cron**: `autenticaCron(req)` de `lib/security/cronAuth.ts` — `timingSafeEqual`, compartilhado pelas 4 rotas (`ai-health`, `evolution-health`, `stage-evaluations`, `template-sync`), que antes duplicavam a mesma comparação `!==` cada uma. Rota de cron nova usa essa função, não reimplementa.
 
 **Texto de erro de provider é redigido antes de sair da aplicação**: `redactSecrets()` de `lib/security/redactSecrets.ts` cobre `sk-`, `re_`, `eyJ...` e `Bearer <token>`. Aplicado na **origem** (dentro do catch de `checarIA`), não em cada consumidor — o motivo vai pro banco e pro corpo do e-mail sem mais nenhum filtro depois dali, e provedores às vezes ecoam parte da chave recebida na mensagem de erro.
