@@ -63,6 +63,19 @@ interface EvolutionConnectionStateResponse {
  * Evolution API QR code response.
  */
 interface EvolutionQrCodeResponse {
+  /**
+   * `GET /instance/connect/{instance}` devolve o QR PLANO na v2:
+   * `{ code, count, base64, pairingCode }`, com `base64` já trazendo o prefixo
+   * `data:image/png;base64,`. O wrapper `qrcode` que este tipo declarava não
+   * existe — confirmado ao vivo contra o servidor em 2026-09-03, com e sem
+   * `?number=`.
+   *
+   * O wrapper fica como fallback porque aparece em versões/rotas antigas, mas
+   * a leitura plana vem primeiro.
+   */
+  base64?: string;
+  code?: string;
+  pairingCode?: string | null;
   qrcode?: {
     base64?: string;
   };
@@ -299,9 +312,17 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
       throw new Error(`QR code error: ${response.error}`);
     }
 
-    const base64 = response.qrcode?.base64;
+    // Plano primeiro, aninhado como fallback. Ler só o aninhado fazia este
+    // método lançar SEMPRE — inclusive numa instância recém-criada, esperando
+    // pareamento, com o QR pronto no corpo da resposta. O texto do erro antigo
+    // ("Instance may already be connected") era um palpite, e custou caro: em
+    // 2026-08-31 ele foi lido como diagnóstico e virou a base do branch
+    // `alreadyConnected` da rota. Erro não deve afirmar causa que não checou.
+    const base64 = response.base64 ?? response.qrcode?.base64;
     if (!base64) {
-      throw new Error('QR code not available. Instance may already be connected.');
+      throw new Error(
+        `QR code ausente na resposta da Evolution (campos recebidos: ${Object.keys(response).join(', ') || 'nenhum'}).`,
+      );
     }
 
     return {

@@ -1,5 +1,55 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## `state: open` da Evolution não quer dizer que existe WhatsApp (2026-09-03)
+
+**O quê:** passei uma sessão inteira consertando o webhook de um canal cuja
+instância nunca teve WhatsApp nenhum. Li `connectionState` devolvendo
+`{"state":"open"}` e afirmei "o WhatsApp está conectado de verdade".
+
+**Por que enganou:** a Evolution cria instâncias de três tipos. Com
+`integration: "EVOLUTION"` (canal genérico interno, não Baileys), o servidor
+responde `open` permanentemente — não há sessão de WhatsApp pra estar aberta ou
+fechada. `open` ali significa "o objeto existe", não "tem telefone pareado".
+
+**O que responde a pergunta certa**, na mesma chamada que eu já tinha:
+
+- `ownerJid` — nulo significa nenhuma conta ligada. É O campo.
+- `profileName` / `profilePicUrl` — nulos junto confirmam.
+- `_count` — Chat/Contact/Message zerados numa conta comercial em uso é impossível.
+- `integration` — tem que ser `WHATSAPP-BAILEYS` pra ser WhatsApp real.
+- `POST /chat/whatsappNumbers/{instance}` — devolve
+  `"Method not available on Evolution Channel"` no tipo errado. Prova barata,
+  não envia nada.
+
+**A parte constrangedora, que é a lição:** o `ownerJid` estava vazio na primeira
+resposta que li, no primeiro dia. Meu próprio regex de redação de segredo
+transformou o valor vazio em `"..."`, e eu li aquilo como "mascarado" em vez de
+"vazio". Mascarar campo pra não vazar segredo é certo; mascarar de um jeito que
+não distingue **vazio** de **oculto** apaga evidência. Redação deve preservar a
+diferença — `(vazio)` e `(N chars)` dizem tudo que importa sem revelar nada.
+
+**Regra geral:** status agregado de fornecedor (`open`, `healthy`, `active`)
+responde a pergunta mais fácil, não a que interessa. Procurar sempre o campo que
+só existe quando a coisa funciona de verdade — um identificador da conta, uma
+contagem, um timestamp de último uso.
+
+## Mensagem de erro que chuta causa vira causa raiz falsa depois (2026-09-03)
+
+**O quê:** `getQrCode()` lançava `"QR code not available. Instance may already be
+connected."` sempre que não achava o base64. Ele lia o campo do lugar errado
+(aninhado, quando a Evolution v2 devolve plano), então lançava SEMPRE — com o QR
+pronto no corpo da resposta.
+
+**O dano real:** em 2026-08-31 aquela frase foi lida como diagnóstico. Virou a
+justificativa do branch `alreadyConnected`, que marca o canal como conectado. Um
+palpite escrito em tom afirmativo dentro de um `throw` atravessou semanas e
+duas sessões como se fosse fato observado.
+
+**Regra:** erro relata o que foi observado, nunca o que se supõe que causou.
+`"campo X ausente (campos recebidos: a, b, c)"` é verificável e leva ao lugar
+certo. `"pode ser que Y"` vira Y na cabeça de quem lê depois — inclusive na
+sua própria, três semanas mais tarde.
+
 ## Vigia que só olha quem já se apresentou nunca vê quem nunca chegou (2026-09-03)
 
 **O quê:** o watchdog de cron pegou o `ai-health` parado em 50 minutos e não
