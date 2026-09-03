@@ -18,7 +18,13 @@ import { processIncomingMessage } from '@/lib/ai/agent';
 import crypto from 'crypto';
 
 // Internal API secret for webhook -> AI communication
-const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
+// Nome canônico da chamada interna neste projeto: é o que está configurado
+// tanto nos secrets da Edge Function quanto na Vercel, e o que o `webhook-in`
+// já usa desde o T4. `INTERNAL_API_SECRET` fica como fallback por compatibilidade,
+// mas nunca chegou a existir em ambiente nenhum — era o nome que só o código
+// conhecia.
+const INTERNAL_API_SECRET =
+  process.env.CRM_EA_INTERNAL_WEBHOOK_SECRET ?? process.env.INTERNAL_API_SECRET;
 
 import { waitUntil } from '@vercel/functions';
 

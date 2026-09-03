@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(messaging): o agente de IA nunca foi acionado por mensagem recebida — 2026-09-03
+
+Achado na primeira mensagem real que entrou no WhatsApp depois do pareamento.
+Contato criado, negócio criado automaticamente, e a IA nunca chamada. O log da
+Edge Function dizia, uma vez por mensagem:
+
+```
+[Evolution] INTERNAL_API_SECRET not set, skipping AI processing
+```
+
+`triggerAIProcessing` lia `INTERNAL_API_SECRET` e `APP_URL`. **Nenhum dos dois
+existe em ambiente nenhum** — confirmado nos secrets do Supabase
+(`supabase secrets list` não os lista) e na Vercel (a rota `/api/messaging/ai/process`
+respondia `500 {"error":"Server misconfigured"}`, que é o ramo de env ausente).
+
+O que existe, configurado desde o T4 e em uso pelo `webhook-in`, é
+`CRM_EA_INTERNAL_WEBHOOK_SECRET` + `CRM_EA_APP_URL`. Dois nomes para o mesmo
+conceito, e o código lia justamente o que ninguém setava. Um nome que só o
+código conhece é indistinguível de uma feature desligada.
+
+**Correções:**
+
+- Edge Function e rota de validação passam a ler `CRM_EA_INTERNAL_WEBHOOK_SECRET`
+  e `CRM_EA_APP_URL`, com os nomes antigos como fallback. Zero segredo novo a
+  criar, e o passo manual de colar credencial em dois painéis — que já quebrou o
+  `CRON_SECRET` nesta mesma data — deixa de existir aqui.
+- Segredo ausente vira `console.error` com texto explícito, não `console.warn`.
+  Sem isso a IA fica muda e nada mais no sistema reclama: mensagem de lead entra,
+  ninguém responde, e a única pista é uma linha de log que ninguém procura.
+- `test/internalSecretNameMatch.test.ts` amarra os dois lados: quem chama (Deno,
+  `Deno.env`) e quem valida (Node, `process.env`) têm que procurar o mesmo nome.
+  Validado por injeção de regressão.
+
+**Correção do que foi dito antes:** durante o teste de mensagem eu afirmei que a
+IA não responderia por causa do kill switch. Nada saiu, que era o que importava,
+mas o kill switch nunca chegou a ser exercitado — a IA parou antes, no segredo
+ausente. Desligar o kill switch sozinho não teria feito a IA responder.
+
 ### fix(messaging): connection.update não gravava last_connected_at — 2026-09-03
 
 Achado logo depois do pareamento do WhatsApp funcionar: canal `connected` às

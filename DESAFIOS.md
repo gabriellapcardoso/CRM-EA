@@ -1,5 +1,31 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Nome de env var que só o código conhece é feature desligada (2026-09-03)
+
+**O quê:** a Edge Function do WhatsApp lia `INTERNAL_API_SECRET` e `APP_URL` pra
+acionar o agente de IA. Nenhum dos dois existia em ambiente nenhum. O que
+existia, configurado e em uso por outro fluxo do mesmo repositório, era
+`CRM_EA_INTERNAL_WEBHOOK_SECRET` e `CRM_EA_APP_URL`. Dois nomes pro mesmo
+conceito, e o código lia o que ninguém setava.
+
+**Por que passou:** o caminho degradava em silêncio (`console.warn` + `return`),
+e o efeito só aparece quando existe tráfego real. Como o canal de WhatsApp nunca
+funcionou até hoje, nunca houve mensagem pra revelar. Duas ausências se
+escondendo uma na outra.
+
+**Como conferir sem ver segredo nenhum:**
+
+- `supabase secrets list --project-ref <ref>` lista os NOMES dos secrets da Edge
+  Function, sem valores. Resolve "está setado?" em um comando.
+- Do lado da app, uma rota que devolve 500 quando a env falta e 401 quando ela
+  existe mas a chave está errada distingue os dois casos sem enviar credencial
+  nenhuma. Vale desenhar rotas internas assim de propósito.
+
+**Regra:** ao introduzir uma env var nova, conferir se o mesmo conceito já tem
+nome neste repositório antes de inventar outro. E fazer ausência de configuração
+obrigatória ser `console.error` com o nome exato da variável — `warn` some no
+meio do log e a feature morre em silêncio.
+
 ## Conclusão tirada de caso quebrado contamina o caso são (2026-09-03)
 
 **O quê:** o provider mandava `?number=` na chamada de QR, com um comentário

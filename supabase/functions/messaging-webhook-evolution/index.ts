@@ -303,11 +303,28 @@ async function triggerAIProcessing(params: {
   messageText: string;
   messageId?: string;
 }): Promise<void> {
-  const appUrl = Deno.env.get("APP_URL") || Deno.env.get("CRM_APP_URL") || "http://localhost:3000";
-  const internalSecret = Deno.env.get("INTERNAL_API_SECRET");
+  // `CRM_EA_*` são os nomes que existem de verdade nos secrets deste projeto,
+  // usados pelo `webhook-in` desde o T4. Este arquivo lia `INTERNAL_API_SECRET`
+  // e `APP_URL`, que nunca foram configurados em lugar nenhum — nem aqui, nem
+  // na Vercel. Resultado: em 2026-09-03, a primeira mensagem real do WhatsApp
+  // criou contato e negócio e o agente de IA nunca foi acionado, com um
+  // `console.warn` como único sinal. Dois nomes pro mesmo conceito, e o que o
+  // código lia era o que ninguém setava.
+  const appUrl =
+    Deno.env.get("CRM_EA_APP_URL") ||
+    Deno.env.get("APP_URL") ||
+    Deno.env.get("CRM_APP_URL") ||
+    "http://localhost:3000";
+  const internalSecret =
+    Deno.env.get("CRM_EA_INTERNAL_WEBHOOK_SECRET") || Deno.env.get("INTERNAL_API_SECRET");
 
   if (!internalSecret) {
-    console.warn("[Evolution] INTERNAL_API_SECRET not set, skipping AI processing");
+    // console.error, não warn: sem isto a IA fica muda e nada mais no sistema
+    // reclama. Mensagem de lead entra, ninguém responde, e a única pista é uma
+    // linha de log que ninguém procura. Ver DESAFIOS.md.
+    console.error(
+      "[Evolution] CRM_EA_INTERNAL_WEBHOOK_SECRET ausente — agente de IA NÃO foi acionado para esta mensagem",
+    );
     return;
   }
 
