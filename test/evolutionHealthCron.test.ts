@@ -7,6 +7,11 @@
  * desconectados (não os desconectados de propósito), respeita o cooldown
  * de 4h entre alertas do mesmo canal, grava em security_alerts e dispara
  * e-mail via Resend quando há alert_email configurado.
+ *
+ * A partir de 2026-09-03 cobre também o segundo check, que é a razão de o
+ * primeiro ter reportado verde por 5 semanas seguidas enquanto o WhatsApp da
+ * aaagência não entregava nada: sessão `open` com webhook desabilitado. Um
+ * cron que só pergunta "está conectado?" responde "sim" o incidente inteiro.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -19,6 +24,7 @@ let recentAlertResult: { data: unknown }
 let orgSettingsResult: { data: unknown }
 let insertSpy: ReturnType<typeof vi.fn>
 let getChannelStatusMock: ReturnType<typeof vi.fn>
+let lerWebhookMock: ReturnType<typeof vi.fn>
 let resendSendMock: ReturnType<typeof vi.fn>
 let fromSpy: ReturnType<typeof vi.fn>
 
@@ -44,6 +50,10 @@ vi.mock('@/lib/messaging', () => ({
   getChannelRouter: vi.fn(() => ({
     getChannelStatus: getChannelStatusMock,
   })),
+}))
+
+vi.mock('@/lib/messaging/arm-channel-webhook', () => ({
+  lerWebhookDoCanal: (...args: unknown[]) => lerWebhookMock(...args),
 }))
 
 vi.mock('resend', () => ({
@@ -72,6 +82,19 @@ describe('GET /api/cron/evolution-health', () => {
     orgSettingsResult = { data: { alert_email: 'ops@aaagencia.com.br' } }
     insertSpy = vi.fn(async () => ({ error: null }))
     getChannelStatusMock = vi.fn(async () => ({ status: 'connected' }))
+    // Padrão: webhook armado e entregando. Cada teste que quer o contrário diz.
+    lerWebhookMock = vi.fn(async () => ({
+      suportado: true,
+      urlEsperada: `https://proj.supabase.co/functions/v1/messaging-webhook-evolution/${CHANNEL_ID}`,
+      saudavel: true,
+      config: {
+        enabled: true,
+        url: `https://proj.supabase.co/functions/v1/messaging-webhook-evolution/${CHANNEL_ID}`,
+        events: ['MESSAGES_UPSERT'],
+        byEvents: true,
+        hasAuthHeader: true,
+      },
+    }))
     resendSendMock = vi.fn(async () => ({ data: { id: 'email-1' }, error: null }))
 
     fromSpy = vi.fn((table: string) => {
@@ -107,7 +130,7 @@ describe('GET /api/cron/evolution-health', () => {
     expect(channelsBuilder.eq).toHaveBeenCalledWith('status', 'connected')
   })
 
-  it('não alerta quando o canal está com sessão conectada de verdade', async () => {
+  it('não alerta quando a sessão está conectada E o webhook está entregando', async () => {
     channelsResult = {
       data: [{ id: CHANNEL_ID, organization_id: ORG_ID, name: 'Comercial', external_identifier: 'aaagencia-comercial' }],
       error: null,
@@ -120,6 +143,65 @@ describe('GET /api/cron/evolution-health', () => {
     expect(body).toEqual({ checked: 1, alerted: 0 })
     expect(insertSpy).not.toHaveBeenCalled()
     expect(resendSendMock).not.toHaveBeenCalled()
+  })
+
+  it('alerta quando a sessão está conectada mas o webhook não entrega — o caso real de 2026-08/09', async () => {
+    channelsResult = {
+      data: [{ id: CHANNEL_ID, organization_id: ORG_ID, name: 'Comercial', external_identifier: 'aaagencia-comercial' }],
+      error: null,
+    }
+    getChannelStatusMock = vi.fn(async () => ({ status: 'connected' }))
+    // Estado exato lido da Evolution em 2026-09-03: URL certa, resto zerado.
+    lerWebhookMock = vi.fn(async () => ({
+      suportado: true,
+      urlEsperada: `https://proj.supabase.co/functions/v1/messaging-webhook-evolution/${CHANNEL_ID}`,
+      saudavel: false,
+      config: {
+        enabled: false,
+        url: `https://proj.supabase.co/functions/v1/messaging-webhook-evolution/${CHANNEL_ID}`,
+        events: [],
+        byEvents: false,
+        hasAuthHeader: false,
+      },
+    }))
+
+    const res = await callGet()
+    const body = await res.json()
+
+    expect(body).toEqual({ checked: 1, alerted: 1 })
+
+    expect(insertSpy).toHaveBeenCalledTimes(1)
+    const alerta = insertSpy.mock.calls[0][0] as Record<string, unknown>
+    expect(alerta.alert_type).toBe('evolution_webhook_inactive')
+    expect(alerta.severity).toBe('critical')
+
+    // O alerta precisa dizer O QUE consertar. "Webhook com problema" manda a
+    // pessoa abrir o painel e adivinhar qual dos campos está errado.
+    const problemas = (alerta.details as { problemas: string[] }).problemas
+    expect(problemas).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('desabilitado'),
+        expect.stringContaining('nenhum evento'),
+        expect.stringContaining('x-api-key'),
+      ]),
+    )
+
+    expect(resendSendMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('não alerta webhook quando a sessão já está desconectada (um problema por vez, sem ruído)', async () => {
+    channelsResult = {
+      data: [{ id: CHANNEL_ID, organization_id: ORG_ID, name: 'Comercial', external_identifier: 'aaagencia-comercial' }],
+      error: null,
+    }
+    getChannelStatusMock = vi.fn(async () => ({ status: 'close' }))
+
+    const res = await callGet()
+    const body = await res.json()
+
+    expect(body).toEqual({ checked: 1, alerted: 1 })
+    expect(lerWebhookMock).not.toHaveBeenCalled()
+    expect((insertSpy.mock.calls[0][0] as Record<string, unknown>).alert_type).toBe('evolution_disconnected')
   })
 
   it('grava security_alerts e dispara e-mail quando a sessão está desconectada', async () => {

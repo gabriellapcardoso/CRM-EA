@@ -340,6 +340,51 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
     }
   }
 
+  /**
+   * Lê a config de webhook que está valendo no servidor Evolution.
+   *
+   * Existe pro health check: `enabled: true` no nosso código não prova nada
+   * sobre o que está gravado do outro lado. O WhatsApp da aaagência ficou 5
+   * semanas com a URL certa e `enabled: false`, `events: []`, `headers: null`
+   * — e `getStatus()` respondia `connected` esse tempo todo, porque a sessão
+   * do WhatsApp estava mesmo no ar. Checar só a conexão é checar a metade do
+   * cano que não quebrou.
+   *
+   * `hasAuthHeader` é booleano de propósito: quem consome isto (cron, rota de
+   * diagnóstico) precisa saber se o header existe, nunca o valor dele — que é
+   * a própria apiKey e não tem por que sair daqui.
+   */
+  async getWebhookConfig(): Promise<{
+    enabled: boolean;
+    url: string | null;
+    events: string[];
+    byEvents: boolean;
+    hasAuthHeader: boolean;
+  }> {
+    const raw = await this.request<{
+      enabled?: boolean;
+      url?: string;
+      events?: string[];
+      webhookByEvents?: boolean;
+      headers?: Record<string, string> | null;
+    }>('GET', `/webhook/find/${encodeURIComponent(this.instanceName)}`);
+
+    const headers = raw?.headers ?? null;
+
+    return {
+      enabled: raw?.enabled === true,
+      url: raw?.url ?? null,
+      events: Array.isArray(raw?.events) ? raw.events : [],
+      byEvents: raw?.webhookByEvents === true,
+      hasAuthHeader: Boolean(
+        headers &&
+          Object.entries(headers).some(
+            ([key, value]) => key.toLowerCase() === 'x-api-key' && typeof value === 'string' && value.length > 0,
+          ),
+      ),
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Messaging
   // ---------------------------------------------------------------------------

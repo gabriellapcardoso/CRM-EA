@@ -2,6 +2,49 @@
 
 ## Messaging
 
+### Kill switch de WhatsApp está LIGADO — decisão pendente de religar a IA
+
+**What:** `organization_settings.whatsapp_kill_switch_active = true` desde
+2026-09-03. Foi ligado de propósito ao armar o webhook, pra sincronização
+entrar sem a IA começar a responder cliente real no mesmo instante.
+
+**Why:** toda mensagem recebida dispara `triggerAIProcessing`, e o agente
+**envia sozinho** via `ChannelRouter` (`lib/ai/agent/agent.service.ts`) — o
+HITL governa avanço de estágio, não o envio da resposta. Esse caminho nunca
+rodou ponta-a-ponta neste canal.
+
+**Efeito colateral enquanto ligado:** bloqueia TODO envio de WhatsApp, não só
+o da IA — envio manual pelo inbox e envio de proposta por WhatsApp inclusos
+(`lib/messaging/whatsapp-send-guard.ts` é o choke point único).
+
+**Como religar:** desligar a flag na org. Recomendado só depois de ler algumas
+conversas reais chegando e conferir o que o agente escreveria.
+
+### Sem botão na UI pra rearmar/diagnosticar webhook de canal
+
+**What:** `POST/GET /api/messaging/channels/[id]/webhook` existe e funciona,
+mas nenhuma tela chama. Hoje só dá pra usar por requisição direta.
+
+**Why:** o incidente de 2026-09-03 (canal `connected` com webhook morto) não
+tinha nenhum caminho de conserto dentro do app. A rota fechou isso pro código;
+a UI ainda não. Um selo "webhook: entregando / não entrega" no card do canal em
+`ChannelsSection`, com botão de rearmar, transforma um diagnóstico de meia hora
+em um olhar.
+
+**Effort:** S.
+
+### URL de webhook ainda montada em três lugares
+
+**What:** `lib/messaging/webhook-url.ts` é a fonte única criada em 2026-09-03 e
+usada pelo servidor. `ChannelsSection.tsx:194` e `ChannelSetupWizard.tsx:886`
+seguem montando a mesma URL por conta própria — e já divergem entre si (uma
+monta por project ref, a outra pela env inteira).
+
+**Why:** divergir na tela é confuso; divergir entre tela e servidor faz o admin
+conferir uma URL e o CRM armar outra. Trocar as duas pelo helper é mecânico.
+
+**Effort:** S. **Modelo:** Haiku.
+
 ### ~~getQrCode() usava endpoint errado + rota marcava canal conectado como erro~~ — RESOLVIDO
 
 **Status:** RESOLVIDO 2026-08-31, achado por `/qa` ao vivo (não em teste isolado — contra o WhatsApp real da aaagência em produção) enquanto verificava o fix do botão "Desconectar".
