@@ -1,5 +1,36 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Conclusão tirada de caso quebrado contamina o caso são (2026-09-03)
+
+**O quê:** o provider mandava `?number=` na chamada de QR, com um comentário
+afirmando que era obrigatório porque "sem ele a Evolution devolve corpo vazio".
+Verdade — na instância `integration: EVOLUTION`, que não tem WhatsApp atrás e
+devolve corpo vazio pra tudo. Numa instância Baileys real, `number` faz a
+Evolution escolher o fluxo de código de pareamento e **suprimir o QR**. A regra
+tirada do ambiente doente quebrava o ambiente são.
+
+**Como se protege:** ao anotar um comportamento observado ao vivo, registrar
+CONTRA O QUÊ foi observado, não só o que foi visto. "Sem `number` vem vazio"
+virou lei; "sem `number` vem vazio nesta instância, que responde vazio pra
+qualquer chamada" teria levantado a suspeita certa. Observação sem sujeito viaja
+pra onde não vale.
+
+**Sinal de alerta:** quando um workaround existe porque "senão vem vazio",
+desconfiar do ambiente antes de aceitar o workaround. Corpo vazio raramente é
+uma resposta legítima de API.
+
+## Arme de pré-requisito não fica atrás da chamada que pode falhar (2026-09-03)
+
+**O quê:** a rota de QR armava o webhook DEPOIS de pedir o QR. Quando o pedido
+de QR falhou, o arme não rodou — canal em `error` com webhook nulo. Dois
+problemas onde havia um, e o segundo silencioso.
+
+**Regra:** passo que é pré-requisito de outra coisa (e idempotente, e útil
+sozinho) vai ANTES do passo que pode falhar, não depois. Aqui o webhook precisa
+estar vivo antes do scan de qualquer forma; pendurá-lo no sucesso do QR só criou
+acoplamento sem ganho. Fora do `try`, o resultado ainda serve todos os caminhos
+de saída sem duplicar o efeito.
+
 ## `state: open` da Evolution não quer dizer que existe WhatsApp (2026-09-03)
 
 **O quê:** passei uma sessão inteira consertando o webhook de um canal cuja

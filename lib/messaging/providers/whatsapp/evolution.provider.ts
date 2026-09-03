@@ -296,16 +296,23 @@ export class EvolutionWhatsAppProvider extends BaseChannelProvider {
     // 2026-08-31: dava 404 "Cannot GET /instance/connect?instanceName=..."
     // porque essa rota nunca existiu no servidor.
     //
-    // `number` é obrigatório na doc oficial e confirmado ao vivo: sem ele a
-    // Evolution devolve 200 com corpo vazio (`{}`) e a instância nunca sai de
-    // `close`, mesmo com credenciais Baileys válidas salvas de antes do
-    // logout — com `number`, ela reconecta na hora usando a sessão salva,
-    // sem precisar de QR novo nenhum.
-    const number = this.config?.externalIdentifier?.replace(/\D/g, '');
-    const query = number ? `?number=${number}` : '';
+    // `number` NÃO vai na query, e isso é o ponto todo deste método.
+    //
+    // Com `?number=`, a Evolution escolhe o fluxo de "vincular com número de
+    // telefone" e responde `{ pairingCode, count }` — código de 8 caracteres
+    // pra digitar no app, sem imagem nenhuma. Sem `number`, responde
+    // `{ code, count, base64, pairingCode: null }`, com o QR pronto. Medido nas
+    // duas direções contra a mesma instância real em 2026-09-03.
+    //
+    // O comentário anterior aqui afirmava o contrário ("`number` é obrigatório
+    // ... sem ele a Evolution devolve 200 com corpo vazio"). Aquilo foi
+    // observado em 2026-08-31 contra uma instância criada com
+    // `integration: EVOLUTION`, que não tem WhatsApp atrás e devolve corpo
+    // vazio pra qualquer coisa. Conclusão tirada de um caso quebrado, aplicada
+    // ao caso são: enquanto valeu, a tela de QR não podia funcionar.
     const response = await this.request<EvolutionQrCodeResponse>(
       'GET',
-      `/instance/connect/${this.instanceName}${query}`
+      `/instance/connect/${encodeURIComponent(this.instanceName)}`
     );
 
     if (response.error) {
