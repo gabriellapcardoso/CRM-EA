@@ -2,6 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Activity, Deal } from '@/types';
+import { hojeLocalISO } from '@/lib/utils/dataLocal';
 import { Modal, ModalForm } from '@/components/ui/Modal';
 import {
   InputField,
@@ -63,7 +64,7 @@ export const ActivityFormModalV2: React.FC<ActivityFormModalV2Props> = ({
   editingActivity,
   deals,
 }) => {
-  const defaultDate = new Date().toISOString().split('T')[0];
+  const defaultDate = hojeLocalISO();
   const defaultTime = new Date().toTimeString().slice(0, 5);
 
   const form = useForm<ActivityFormData>({

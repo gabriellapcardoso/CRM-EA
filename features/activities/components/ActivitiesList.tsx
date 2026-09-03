@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Activity, Deal, Contact, Company } from '@/types';
 import { ActivityRow } from './ActivityRow';
+import { dataLocalISO } from '@/lib/utils/dataLocal';
 
 interface ActivitiesListProps {
     activities: Activity[];
@@ -24,7 +25,7 @@ function dayGroupKey(dateString: string, now: Date): { key: string; label: strin
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const diffDays = Math.round((today.getTime() - dateDay.getTime()) / (1000 * 60 * 60 * 24));
 
-    const key = dateDay.toISOString().slice(0, 10);
+    const key = dataLocalISO(dateDay);
     if (diffDays === 0) return { key, label: 'hoje' };
     if (diffDays === 1) return { key, label: 'ontem' };
     return { key, label: DAY_LABEL_FORMATTER.format(date) };

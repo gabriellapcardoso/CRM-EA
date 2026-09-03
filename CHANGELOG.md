@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(activities): data derivada de UTC adiantava um dia das 21h à meia-noite — 2026-09-03
+
+`new Date().toISOString().split('T')[0]`, presente em 13 pontos, converte pra
+**UTC antes** de cortar a data. Em São Paulo (GMT-3), toda hora local a partir
+das 21:00 já é o dia seguinte em UTC. Três horas por noite, todas as noites, em
+silêncio.
+
+O que isso causava no cliente:
+
+- **Editar corrompia o dado.** Abrir uma atividade das 22:00 para editar
+  mostrava o dia seguinte no formulário; salvar movia a atividade um dia à
+  frente. Não era exibição errada, era escrita errada.
+- **"Atividades de hoje" esvaziava** depois das 21:00, porque
+  `useTodayActivities` filtrava por `startsWith(hoje)` com o dia de amanhã.
+- **Botões "Hoje"/"Amanhã"** do agendamento gravavam um dia a mais.
+- **Agrupamento por dia** na lista usava chave um dia à frente.
+
+`lib/utils/dataLocal.ts` formata pelos componentes locais
+(`getFullYear/getMonth/getDate`) — o mesmo padrão que
+`lib/utils/activitySort.ts` já usava certo. Um módulo tinha acertado e os outros
+divergiram, igual à lição dos health checks.
+
+Servidor fica de fora de propósito: a Vercel roda em UTC e ali `toISOString()`
+é o comportamento pretendido. Os pontos de servidor que mereceriam o fuso da org
+(`lib/mcp/tools/ai.ts`, API pública de contatos) estão no `TODOS.md`.
+
+Guardas: `lib/utils/dataLocal.test.ts` prova a divergência às 22:00 em vez de
+afirmá-la, e `test/dataLocalNoCliente.test.ts` impede o idioma de voltar em
+`features/`, `lib/query/` e `components/`. As duas validadas por injeção de
+regressão.
+
+**O que NÃO era problema:** a exibição. Banco em UTC, `organization_settings.
+timezone` em `America/Sao_Paulo` e a UI formatando com `date-fns`/`toLocaleString`
+no fuso do navegador já estavam corretos — mensagem gravada 18:08 UTC aparece
+15:08 na tela. A confusão veio dos meus relatórios, que citavam valor cru do
+banco sem converter nem dizer o fuso.
+
 ### feat(messaging): botão "Reenviar" em mensagem que falhou — 2026-09-03
 
 `useRetryMessage` e `POST /api/messaging/messages/[messageId]/retry` existiam há

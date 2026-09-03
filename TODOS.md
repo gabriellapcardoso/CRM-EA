@@ -1,5 +1,24 @@
 # TODOS
 
+## Datas e fuso
+
+### "Hoje" no servidor usa UTC, não o fuso da organização — P2
+
+**What:** `lib/mcp/tools/ai.ts:159` e as rotas da API pública de contatos derivam
+a data com `toISOString()`. A Vercel roda em UTC, então "hoje" ali é o dia UTC.
+Para a org em GMT-3, das 21:00 à meia-noite isso é o dia seguinte.
+
+**Why:** no cliente isso foi corrigido em 2026-09-03 usando o fuso do navegador.
+No servidor não existe "fuso do navegador" — o correto é `organization_settings.
+timezone`, que já está preenchido (`America/Sao_Paulo`) e já é lido pelo agente
+de IA.
+
+**Cuidado:** a API pública devolve datas num contrato já publicado. Mudar o fuso
+da resposta é mudança de contrato, não correção silenciosa — precisa de decisão
+antes.
+
+**Effort:** M (a ferramenta de IA é S; a API pública exige decidir o contrato).
+
 ## AI
 
 ### `provision-stages` sobrescreve prompt customizado sem avisar — P2
