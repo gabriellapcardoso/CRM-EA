@@ -2,10 +2,10 @@
 
 import React, { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Check, CheckCheck, Clock, AlertCircle, FileText, MapPin, Play, Pause, Image, Reply, Send, PenLine } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, FileText, MapPin, Play, Pause, Image, Reply, Send, PenLine, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sanitizeUrl } from '@/lib/utils/sanitize';
-import { useSendMessage, useSendDraft } from '@/lib/query/hooks/useMessagingMessagesQuery';
+import { useSendMessage, useSendDraft, useRetryMessage } from '@/lib/query/hooks/useMessagingMessagesQuery';
 import { ChannelIndicator } from './ChannelIndicator';
 import type {
   ChannelType,
@@ -442,6 +442,7 @@ export const MessageBubble = memo(function MessageBubble({
   const time = format(new Date(message.createdAt), 'HH:mm');
   const { mutate: sendMessage } = useSendMessage();
   const { mutate: sendDraft, isPending: isSendingDraft } = useSendDraft();
+  const { mutate: retryMessage, isPending: isRetrying } = useRetryMessage();
 
   const reactions = (message.metadata?.reactions as Record<string, number> | undefined) ?? {};
   const canReact = !isOutbound && !!message.externalId;
@@ -540,9 +541,31 @@ export const MessageBubble = memo(function MessageBubble({
               </span>
             )}
 
-            {message.status === 'failed' && message.errorMessage && (
-              <span className="block mt-1 text-xs" style={{ color: 'var(--danger)' }}>
-                {message.errorMessage}
+            {message.status === 'failed' && (
+              <span className="block mt-1">
+                {message.errorMessage && (
+                  <span className="block text-xs" style={{ color: 'var(--danger)' }}>
+                    {message.errorMessage}
+                  </span>
+                )}
+                {/*
+                  Mensagem que falhou por causa temporária (kill switch ligado,
+                  rede, provider fora) fica legível na tela e sem nenhuma saída:
+                  `useRetryMessage` e a rota de retry existiam desde antes, e
+                  nenhum componente as chamava. Em 2026-09-03 três respostas da
+                  IA a leads reais ficaram presas assim, e a única alternativa
+                  era redigitar tudo à mão.
+                */}
+                <button
+                  type="button"
+                  onClick={() => retryMessage(message.id)}
+                  disabled={isRetrying}
+                  className="btn btn--ghost mt-1"
+                  aria-label="Reenviar mensagem"
+                >
+                  <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                  {isRetrying ? 'Reenviando…' : 'Reenviar'}
+                </button>
               </span>
             )}
           </div>
