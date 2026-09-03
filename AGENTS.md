@@ -1,5 +1,11 @@
 # AGENTS.md — NossoCRM
 
+## Scope (read before touching any file)
+- **Write only inside `/Users/gabriellacardoso/AI/projetos/crm-ea-tmp`.** All documentation and files for this work live here. Do not create, edit, or commit files elsewhere on disk — the parent directory `~/AI/projetos/` is a mixed repo holding unrelated projects and a lot of the owner's uncommitted work
+- **In scope:** this CRM, and the agency's ecosystem systems it integrates with (prospecção, gerador de propostas) — but reason about those from here; do not edit their repos without being asked
+- **Out of scope:** everything else in `~/AI/projetos/`, including `gerador-foto-apoio`, `credenciais-estacionamento` and `painel-controle-eleições-2026`. Not "lower priority" — not this agent's work at all
+- **If a change genuinely belongs in another repo, say so and stop.** Do not switch branches or stash in `~/AI/projetos/`: switching there has already been blocked twice by the owner's uncommitted work, and stashing it would be destroying work that is not yours
+
 ## Commands
 - **Dev**: `npm run dev`
 - **Build**: `npm run build`

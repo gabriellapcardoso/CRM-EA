@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Escopo
+
+**Escrever só dentro de `/Users/gabriellacardoso/AI/projetos/crm-ea-tmp`.** Toda a documentação e todos os arquivos deste trabalho ficam aqui. O diretório pai `~/AI/projetos/` é um repositório misto, com projetos sem relação com a agência e bastante trabalho não commitado da fundadora — trocar de branch lá já foi bloqueado duas vezes por isso, e dar `stash` seria destruir trabalho que não é seu.
+
+Em escopo: este CRM e os sistemas do ecossistema da agência com que ele se integra (prospecção, gerador de propostas), raciocinando sobre eles a partir daqui. Fora de escopo: o resto de `~/AI/projetos/`, incluindo `gerador-foto-apoio`. Se uma mudança pertencer mesmo a outro repositório, dizer isso e parar.
+
 ## Commands
 
 **Gerenciador de pacotes é pnpm, fixado em `package.json` (`packageManager`).** Para
