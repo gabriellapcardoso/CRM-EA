@@ -326,7 +326,11 @@ institucional `alertas@aaagencia.com.br`. Nenhum segredo real vazou.
 
 ## Segurança
 
-### Rotacionar a chave da API Resend exposta em texto puro (2026-09-01) — P1
+### ~~Rotacionar a chave da API Resend exposta em texto puro (2026-09-01)~~ — RESOLVIDO (2026-09-03)
+
+**Rotacionada pela fundadora em 2026-09-03.** A chave exposta não vale mais. Registro
+mantido abaixo porque o episódio é a fonte da regra de fixture em `AGENTS.md`
+(Testing Rules) e da lição em `DESAFIOS.md` — apagar o item apagaria o porquê.
 
 **What:** a chave `RESEND_API_KEY` de produção foi colada em texto puro numa conversa
 com agente de código, em 2026-09-01, pra ser configurada na Vercel. Precisa ser
