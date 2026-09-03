@@ -324,6 +324,33 @@ Os demais seguem abertos na **issue #23**:
 (`sk-or-v1-fake-para-teste`, `destino@exemplo.test`, uuid falso) ou o remetente
 institucional `alertas@aaagencia.com.br`. Nenhum segredo real vazou.
 
+## Segurança
+
+### ~~Rotacionar a chave da API Resend exposta em texto puro (2026-09-01)~~ — RESOLVIDO (2026-09-03)
+
+**Rotacionada pela fundadora em 2026-09-03.** A chave exposta não vale mais. Registro
+mantido abaixo porque o episódio é a fonte da regra de fixture em `AGENTS.md`
+(Testing Rules) e da lição em `DESAFIOS.md` — apagar o item apagaria o porquê.
+
+**What:** a chave `RESEND_API_KEY` de produção foi colada em texto puro numa conversa
+com agente de código, em 2026-09-01, pra ser configurada na Vercel. Precisa ser
+rotacionada no painel do Resend e atualizada na env var da Vercel.
+
+**Why:** chave que passou por canal não criptografado é chave comprometida, mesmo que
+nada indique uso indevido. Ela autentica o envio de **todo** alerta operacional do CRM
+(`ai-health`, `evolution-health`) — se for revogada por terceiro, o CRM perde a via de
+alerta inteira e só descobre pelo dead-man's switch externo.
+
+Agravante do mesmo dia: ao implementar `redactSecrets()`, um rascunho de teste
+reutilizou essa chave como fixture. Foi pego pela varredura de PII antes do commit e
+nunca chegou ao git — mas o episódio confirma que o valor circula em contexto e reforça
+a rotação. Ver `DESAFIOS.md`, "Escrevi a chave real que o usuário colou no chat".
+
+**Como verificar que foi feito:** a chave nova tem prefixo `re_` diferente do valor
+antigo; depois de trocar na Vercel, forçar uma falha de health check e confirmar que o
+e-mail ainda chega.
+**Effort:** S · **Priority:** P1 — ação manual, fora do alcance de agente
+
 ## Layout
 
 ### Painel do discador não fecha com Escape e não é anunciado como diálogo
