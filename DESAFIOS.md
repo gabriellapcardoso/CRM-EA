@@ -881,3 +881,25 @@ Prática usada em todos os ~20 fixes desta sessão: escrever o teste, vê-lo pas
 O padrão comum aos três: **o teste passava, e o que ele afirmava proteger não estava protegido.** Passar não é evidência de nada — só falhar quando deve falhar é.
 
 **Como isso não repete**: nenhum teste novo de guarda entra num PR sem a injeção de regressão correspondente ter sido rodada e registrada na descrição do PR ("verificado injetando X: vermelho, depois verde"). Se a regressão injetada **não** derruba o teste, o teste está errado, não o código.
+
+## Três majors de pnpm em três ambientes, e dois lockfiles no mesmo repo (2026-09-03)
+
+Sintoma que apareceu: `npm run precheck` parou de funcionar na máquina local, e um `pnpm-workspace.yaml` com conteúdo de placeholder (`core-js: set this to true or false`) reaparecia toda vez que era apagado.
+
+A causa era bem maior que o sintoma. O repositório rodava com **três versões major diferentes** do mesmo gerenciador, cada ambiente escolhendo a sua por um caminho diferente:
+
+| Onde | pnpm | Como escolhia |
+|---|---|---|
+| GitHub Actions | 9 | `PNPM_VERSION: "9"` no `ci.yml` |
+| Vercel (produção) | 10.28.0 | heurística da própria Vercel, "based on project creation date" |
+| Máquina local | 11.8.0 | corepack, o que estivesse instalado |
+
+E **dois lockfiles versionados**: `package-lock.json` (503KB) e `pnpm-lock.yaml` (329KB). O do npm não era usado por ninguém — nem Vercel nem CI —, mas qualquer `npm install` acidental o atualizava, criando um segundo conjunto de versões que ninguém instalava mas que parecia autoritativo no diff.
+
+O `pnpm-workspace.yaml` fantasma era consequência: o pnpm 10 introduziu aprovação explícita de build scripts, e cada `pnpm install` local sem essa decisão gerava o arquivo pedindo a resposta.
+
+**O que enganava**: nada disso quebrava a produção. O build da Vercel passava, verde, todo dia — porque *ela* sempre usou a mesma versão. A divergência só machucava quem rodava local, e do jeito mais confuso possível: o comando que a documentação mandava usar simplesmente falhava com um stack trace de pnpm, num projeto cuja documentação inteira dizia `npm run`.
+
+**Conserto**: `packageManager: "pnpm@10.28.0"` no `package.json` (a versão que a produção já usava — alinhar pra baixo, pro que roda em produção, não pra cima, pro mais novo), `PNPM_VERSION` do CI de 9 pra 10.28.0, `package-lock.json` removido, e `pnpm.onlyBuiltDependencies: []` declarando explicitamente o que a produção já fazia na prática (ignorar os build scripts de core-js, esbuild, protobufjs, sharp e unrs-resolver).
+
+**Como isso não repete**: (1) versão de gerenciador de pacote é config de projeto, não de máquina — se não estiver fixada no `package.json`, cada ambiente escolhe uma e a divergência só aparece quando alguém pergunta "por que na minha máquina não roda?"; (2) dois lockfiles no mesmo repositório nunca é intencional — o que não é usado pelo deploy tem que sair, senão vira fonte de verdade paralela que ninguém consulta mas todo mundo commita; (3) ao alinhar versões entre ambientes, alinhar **pelo que a produção já roda**, não pelo mais recente — a produção é a única que não dá pra testar antes.
