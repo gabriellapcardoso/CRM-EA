@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### chore(ai): `ai_enabled` e `ai_takeover_enabled` ligados — 2026-09-03
+
+Duas mensagens de teste entraram e ninguém respondeu. O webhook estava são, o
+contato e a conversa foram criados, a IA foi acionada — e o log da aplicação
+dizia `[AIAgent] AI is disabled for organization`. `ai_enabled` estava `false`,
+desligado em algum momento entre 18:03 e 22:44 (horário de São Paulo). Não dá
+pra dizer por quem: `updated_at` marca o último toque em qualquer coluna, e
+houve edição de prompt na mesma janela.
+
+`ai_takeover_enabled` também estava `false`. Com ela desligada, atribuir uma
+conversa a uma pessoa não cala o agente — os dois respondem por cima um do
+outro. Ligada, o `MessageInput` atribui a conversa a quem responde e o agente
+fica quieto enquanto o operador estiver ativo, voltando sozinho após
+`ai_takeover_minutes` (15) sem resposta humana. É o mecanismo de "assumir o
+chat" que já existia pronto e desligado.
+
+As duas mensagens de teste não recebem resposta retroativa: o agente só roda no
+webhook de entrada.
+
+`CLAUDE.md` ganha o mapa das quatro chaves que calam a IA, com o sintoma de log
+de cada uma — três delas não deixam sinal nenhum no canal, e distinguir "qual
+das quatro" foi o que custou tempo hoje.
+
 ### fix(ai): handoff avisava o time e não calava o agente — 2026-09-03
 
 Escopo do agente definido pela fundadora: receber o lead, fazer o primeiro

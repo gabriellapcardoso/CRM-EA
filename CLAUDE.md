@@ -231,6 +231,19 @@ Dois caminhos distintos:
 
 **`stage_ai_config` é o portão do agente, e ele é por estágio.** Sem linha com `enabled: true` pro `stage_id` do deal, `processIncomingMessage` sai com `"AI not enabled for this stage"` — mensagem entra, contato e deal são criados, e ninguém responde. É o comportamento desejado: o agente só fala onde foi ligado explicitamente. Configura em Configurações → Central de IA. **`system_prompt` é NOT NULL sem default**: ligar um estágio é decidir o que a IA diz a cliente real, não marcar um toggle. `provision-stages` escolhe o template pela **posição** do estágio na lista ordenada, não pelo valor de `"order"` — os boards aqui começam em `order: 1`, e usar o valor cru tornava o template de primeiro contato inalcançável. Guarda: `test/stageTemplateIndex.test.ts`.
 
+**Quatro chaves independentes calam a IA, e confundi-las faz procurar no lugar errado.** "O agente não responde" tem quatro causas possíveis, e três delas não deixam sinal nenhum no canal — a mensagem entra, o contato e o deal são criados, e ninguém responde:
+
+| Chave | Alcance | Onde fica | Sintoma no log |
+|---|---|---|---|
+| `organization_settings.ai_enabled` | **Global**: chat do CRM, agente do WhatsApp e rotas de ação, tudo | Configurações → Central de IA | `[AIAgent] AI is disabled for organization` |
+| `stage_ai_config.enabled` | Por estágio do board | Central de IA → agentes por board | `[AIAgent] AI not enabled for this stage` |
+| `metadata.ai_paused` (conversa) / `contacts.ai_paused` | Por conversa ou contato | Mensagens → painel direito → "agente IA" | `[AIAgent] AI paused for this conversation/contact` |
+| `whatsapp_kill_switch_active` | Bloqueia **envio** de WhatsApp, não a geração | Configurações → Integrações | mensagem fica `failed` com o motivo |
+
+`ai_enabled` é o mais perigoso dos quatro: é global, a tela que o desliga não avisa que está calando o WhatsApp, e do lado do canal nada muda de aparência. Ao investigar "a IA parou", ler o log da rota `/api/messaging/ai/process` antes de qualquer outra coisa — ele nomeia qual das quatro é.
+
+**Takeover: responder assume a conversa, e a IA volta sozinha depois.** Com `ai_takeover_enabled`, o `MessageInput` atribui a conversa a quem responde (`claimConversation`), o agente vê `assigned_user_id` e fica quieto enquanto `isOperatorActive()` for verdade — última mensagem `sender_type: 'user'`, ou o `assigned_at`, dentro de `ai_takeover_minutes` (default 15). Passado esse tempo sem resposta humana, o agente reassume. Com a flag desligada, atribuir não cala nada e os dois respondem por cima um do outro. Ficou desligada até 2026-09-03, o que tornava o pause manual por conversa o único jeito real de assumir.
+
 **Envio da IA passa pelo kill switch, o HITL não cobre isso.** Toda resposta do agente sai por `ChannelRouterService.sendMessage()`, que chama `checkWhatsAppSendGuard()` — choke point único, cobre UI, retry e agente. `organization_settings.whatsapp_kill_switch_active = true` bloqueia **todo** envio de WhatsApp, não só o da IA (envio manual pelo inbox e proposta automática inclusos). O HITL governa avanço de estágio, nunca o envio da resposta. Mensagem barrada fica `failed` com o motivo e pode ser reenviada pelo botão na bolha (`MessageBubble`), depois que a causa sumir.
 
 **HITL (Human-in-the-Loop)**:
