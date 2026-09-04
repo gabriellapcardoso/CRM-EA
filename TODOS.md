@@ -39,45 +39,34 @@ hoje serve só de registro — seria o gatilho natural pra mostrar o botão.
 
 **Effort:** S.
 
-### O agente não sabe o que a agência vende — P2
+### ~~O agente não sabe o que a agência vende~~ — DECIDIDO (2026-09-03): não precisa saber
 
-**Correção do que este item dizia antes:** afirmava que o catálogo estava vazio e
-que bastava preencher `products` no CRM. As duas coisas estavam erradas.
+**Decisão da fundadora:** o agente recebe o lead, faz o primeiro atendimento,
+qualifica e passa para o atendimento humano. Ele sai da conversa **antes** de
+qualquer assunto de serviço ou valor. Então não precisa do catálogo.
 
-**Onde o catálogo mora de verdade:** no gerador de propostas comerciais, tabelas
-`catalogo_servicos` (`nome`, `tipo` em `corporativo`/`politico`/`ambos`,
-`valor_base`, `descricao`, `ativo`) e `catalogo_modificadores` (ajuste por
-serviço, fixo ou percentual). Supabase `qfcylvhfnmzbazdkwzgt`, migration
-`0013_catalogo_avancado.sql`. É a fonte de verdade de serviço e preço da
-esteira, e é lá que a fundadora mantém.
+Isso fecha o item. Não é lacuna esperando conserto: é o desenho.
 
-**A tabela `products` do CRM não alimenta o agente.** Ela existe e está vazia,
-mas o prompt não a lê. O campo que o agente realmente lê é
-`board_ai_config.business_context` (`agent.service.ts:838`) — texto livre, vazio
-nos dois boards. Preencher `products` não mudaria nada no que o agente sabe.
+**O que ficou implementado nessa direção** (ver `CHANGELOG.md`, 2026-09-03):
+o prompt-base diz que o escopo termina na qualificação, que a passagem para a
+pessoa não é anunciada, e que nunca se chuta preço, prazo ou condição para
+preencher o vazio. O handoff grava `ai_paused` e cala o agente de verdade.
 
-**Por que não morde hoje:** o agente só atua no estágio "Novo", onde o trabalho
-é entender a necessidade e não oferecer, e o prompt proíbe falar de preço ali.
-Morde no primeiro estágio seguinte que for habilitado.
+**Onde o catálogo mora, se um dia for preciso:** no gerador de propostas
+comerciais — `catalogo_servicos` (`nome`, `tipo` em
+`corporativo`/`politico`/`ambos`, `valor_base`, `descricao`, `ativo`) e
+`catalogo_modificadores`, Supabase próprio, migration `0013_catalogo_avancado.sql`.
+É a fonte de verdade de serviço e preço da esteira.
 
-**Caminhos, do mais simples ao mais completo:**
+**Se a decisão mudar**, o caminho é `board_ai_config.business_context`
+(`agent.service.ts:838`), texto livre por board — **não** a tabela `products`
+do CRM, que existe, está vazia e não é lida pelo prompt. Preencher `products`
+não muda nada no que o agente sabe; este item já mandou fazer isso uma vez e
+estava errado. Uma sincronização a partir do gerador precisaria filtrar por
+`tipo`, porque aquele catálogo atende também cliente político, fora desta esteira.
 
-1. **Resumo escrito à mão em `business_context`** — a fundadora escreve o que o
-   agente pode dizer sobre serviço, com ou sem faixa de preço. Imediato, e ela
-   controla palavra por palavra. Envelhece quando o catálogo mudar.
-2. **Sincronizar do gerador pro `business_context`** — reusa a infraestrutura de
-   webhook que já liga os dois sistemas. Precisa filtrar por `tipo` (o catálogo
-   atende também cliente político, que não é a esteira deste CRM) e decidir se
-   `valor_base` vai junto.
-3. **Não dar preço ao agente** — manter a regra atual ("nunca invente preço;
-   diga que vai confirmar com o time") e passar pra uma pessoa quando o assunto
-   for valor. É o desenho de hoje, e é uma escolha legítima, não uma lacuna.
-
-**A decisão não é técnica:** é se o agente pode falar de preço com cliente sem
-uma pessoa no meio. Enquanto isso não for decidido, o caminho 3 está valendo por
-padrão e funciona.
-
-**Effort:** 1 é S. 2 é M. 3 é zero — já está assim.
+**O gatilho para reabrir:** habilitar a IA num estágio depois de "Novo", onde o
+trabalho deixa de ser entender e passa a ser oferecer.
 
 ### ~~Agente varia o próprio gênero entre mensagens~~ — RESOLVIDO (2026-09-03)
 
