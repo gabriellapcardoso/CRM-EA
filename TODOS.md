@@ -21,6 +21,29 @@ antes.
 
 ## AI
 
+### Abrir e salvar a tela de agentes por board muda o comportamento do agente — P2
+
+**What:** `board_ai_config.agent_mode` tem `DEFAULT 'observe'`, e a linha só
+nasce quando alguém abre Central de IA → agentes por board e salva. Sem linha,
+`isDryRun` é falso e o agente **envia**. Com linha recém-criada, ele passa a só
+observar — gera a resposta, grava em `ai_conversation_log` com
+`[DRY-RUN]`, e não manda nada.
+
+**Why:** aconteceu em 2026-09-03. O agente respondeu três leads reais de manhã;
+alguém visitou a tela às 17:51; a partir dali toda resposta virou log de DRY-RUN.
+Nada mudou de aparência: a mensagem entra, o contato e o negócio são criados, a
+conversa aparece no inbox. Só não sai resposta.
+
+Abrir e salvar uma tela de configuração não deveria alterar o que o sistema faz.
+Aqui altera, e no sentido mais silencioso possível.
+
+**Como:** ou a tela passa a mostrar explicitamente em qual modo o board está
+antes e depois de salvar (com "observe" nomeado como "não envia"), ou o default
+da coluna vira `respond` e o modo observe passa a ser escolha ativa. A segunda
+inverte o risco: hoje o default é seguro-mas-mudo, e o custo é ninguém perceber.
+
+**Effort:** S para o rótulo, S para o default (migration), M para as duas.
+
 ### Desligar `ai_enabled` cala o WhatsApp sem nenhum aviso — P2
 
 **What:** o toggle da Central de IA é global. Desligá-lo derruba o chat do CRM,
