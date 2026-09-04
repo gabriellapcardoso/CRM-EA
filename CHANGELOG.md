@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### docs: aprendizados da sessão de QA, e o título do DESAFIOS que o #68 apagou — 2026-09-04
+
+**Correção:** o `# DESAFIOS — …` sumiu do topo do arquivo no #68 e foi mergeado
+assim. Um script de edição casava o título como âncora e escrevia a entrada nova
+no lugar dele. Restaurado, e a lição registrada no próprio `DESAFIOS.md`: ancorar
+no primeiro elemento **depois** do cabeçalho, e conferir `head -1` depois de
+editar por script.
+
+**Aprendizados registrados:**
+
+- `DESAFIOS.md` — as seis medições que mentiram durante o QA (sweep de largura
+  que não variou a largura, duas reproduções que não reproduziram, perf de 38s
+  que era aba estrangulada, `resize_window` que respondeu sucesso sem
+  redimensionar, e o watcher de deploy que disparou com valor vazio). Todas de
+  instrumento, nenhuma do sistema.
+- `AGENTS.md` → Reading Rules — **vazio satisfaz verificação escrita para
+  valores** (generaliza a regra de mascaramento do `ownerJid`, que reapareceu
+  numa comparação de shell no mesmo dia); e **não reproduzir não é ausência**, o
+  caminho de entrada faz parte do caso.
+- `AGENTS.md` → CSS Layout Rules — confirmar que a variável independente mudou ao
+  forçar largura (`flex: 1` ignora `width` inline); e percentual de `max-width`
+  precisa de bloco contentor com largura definida.
+- `CLAUDE.md` — a regra de medir layout no browser passa a avisar da armadilha do
+  `flex`, apontando pro `AGENTS.md` em vez de duplicar.
+
 ### fix(mensagens): a URL volta a acompanhar a conversa selecionada — 2026-09-04
 
 Achado pelo `/qa` em produção. Clicando na segunda conversa, a tela trocava e a
