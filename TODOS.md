@@ -44,28 +44,19 @@ inverte o risco: hoje o default é seguro-mas-mudo, e o custo é ninguém perceb
 
 **Effort:** S para o rótulo, S para o default (migration), M para as duas.
 
-### Desligar `ai_enabled` cala o WhatsApp sem nenhum aviso — P2
+### ~~Desligar `ai_enabled` cala o WhatsApp sem nenhum aviso~~ — RESOLVIDO (2026-09-03)
 
-**What:** o toggle da Central de IA é global. Desligá-lo derruba o chat do CRM,
-as rotas de ação e o agente do WhatsApp de uma vez. Nada na tela diz isso, e do
-lado do canal a aparência não muda: mensagem entra, contato e deal são criados,
-conversa aparece no inbox — e ninguém responde. O único rastro é
-`[AIAgent] AI is disabled for organization` no log da aplicação.
+**Status:** resolvido pelo caminho 3 (alerta no `ai-health`), que era o único que
+não depende de alguém olhar a tela — exatamente o que faltou no dia.
 
-**Why:** aconteceu em 2026-09-03. A IA ficou desligada por horas e só apareceu
-porque uma mensagem de teste foi mandada de propósito. Num dia normal, seriam
-leads reais entrando e ninguém percebendo — é a mesma classe do canal que ficou
-cinco semanas mudo.
+Passada separada no cron, porque o laço principal filtra `ai_enabled = true` e a
+org que desliga a IA sumia dele. Cobre também `agent_mode: 'observe'`, que
+produz o mesmo silêncio. Ver `CHANGELOG.md` e `lib/ai/agente-mudo.ts`.
 
-**Como, do mais barato ao mais completo:**
-1. Texto no próprio toggle dizendo o que ele desliga, com o WhatsApp nomeado.
-2. Aviso persistente no inbox quando `ai_enabled` está `false` e existe canal
-   conectado com estágio de IA habilitado — a combinação que significa "deveria
-   estar respondendo e não está".
-3. Incluir no `ai-health`: org com canal conectado, estágio habilitado e
-   `ai_enabled` false é estado inconsistente, não configuração legítima.
-
-**Effort:** 1 é S, 2 é M, 3 é S (o cron já existe e já percorre as orgs).
+**Os caminhos 1 e 2 seguem abertos e continuam valendo**, com prioridade menor
+agora que o alerta existe: texto no próprio toggle dizendo o que ele desliga
+(P3), e aviso persistente no inbox quando o estado for inconsistente (P3). O
+alerta avisa depois; a etiqueta evita antes.
 
 ### Sem caminho para devolver a conversa ao agente depois do handoff — P3
 

@@ -10,6 +10,7 @@ import { verificarCaminhoRAG } from '@/lib/ai/messaging/file-search';
 import { autenticaCron } from '@/lib/security/cronAuth';
 import { redactSecrets } from '@/lib/security/redactSecrets';
 import { comLimiteDeConcorrencia } from '@/lib/utils/concurrency';
+import { motivosDeSilencio, severidadeDoSilencio } from '@/lib/ai/agente-mudo';
 
 export const maxDuration = 60;
 
@@ -46,6 +47,17 @@ const EMAIL_COOLDOWN_HOURS = 4;
 const CONCORRENCIA_MAXIMA = 10;
 
 const ALERT_TYPE = 'ai_health_degraded';
+
+/** Org configurada pra responder que não consegue responder. Ver `lib/ai/agente-mudo.ts`. */
+const ALERT_TYPE_MUDO = 'ai_configurada_mas_muda';
+
+/**
+ * Janela do alerta de agente mudo. 24h, não as 4h do check vizinho: aquilo é
+ * incidente (fornecedor fora), isto é estado de configuração. Alguém pausando a
+ * IA por uma tarde receberia e-mail a cada 4 horas, e alerta que incomoda em
+ * situação legítima é alerta que a pessoa aprende a ignorar.
+ */
+const JANELA_MUDO_HORAS = 24;
 
 /**
  * Resultado da checagem. `degradado` distingue "a aplicação caiu" de "a
@@ -371,6 +383,14 @@ export async function GET(req: Request) {
     CONCORRENCIA_MAXIMA,
   );
 
+  // Segunda passada: orgs configuradas pra responder que não conseguem.
+  // Roda separada de propósito — o laço acima filtra `ai_enabled = true`, então
+  // a org que desliga a IA some do health check por construção. Mesmo ponto
+  // cego do watchdog de cron: o vigia só enxerga quem já se apresentou.
+  const mudas = await verificarAgentesMudos(supabase);
+  alerted += mudas.alertadas;
+  errosBanco += mudas.erros;
+
   // Heartbeat: gravado em TODA execução, inclusive quando está tudo saudável.
   // Sem ele, "cron desagendado", "401 por rotação de segredo" e "deploy fora do
   // ar" produzem exatamente o mesmo estado observável que "IA saudável" —
@@ -400,5 +420,165 @@ export async function GET(req: Request) {
   console.log(
     `[Cron:ai-health] Done — checked: ${checked}, degraded: ${degraded}, alerted: ${alerted}, errosBanco: ${errosBanco}`,
   );
-  return json({ checked, degraded, alerted, errosBanco });
+  return json({ checked, degraded, alerted, errosBanco, mudas: mudas.mudas });
+}
+
+/**
+ * Alerta a org que configurou o agente pra responder e está muda.
+ *
+ * Separado do laço principal porque aquele filtra `ai_enabled = true` — a org
+ * que desliga a IA fica invisível pra ele. Ver `lib/ai/agente-mudo.ts` pro
+ * porquê de `agent_mode` entrar junto e do kill switch ficar de fora.
+ */
+async function verificarAgentesMudos(
+  supabase: ReturnType<typeof createStaticAdminClient>,
+): Promise<{ mudas: number; alertadas: number; erros: number }> {
+  let mudas = 0;
+  let alertadas = 0;
+  let erros = 0;
+
+  // Ponto de partida é quem TEM estágio habilitado — a intenção declarada de
+  // que o agente responda. Sem isso não há inconsistência, só ausência de uso.
+  const { data: estagios, error: erroEstagios } = await supabase
+    .from('stage_ai_config')
+    .select('organization_id, board_id')
+    .eq('enabled', true);
+
+  if (erroEstagios) {
+    console.error('[Cron:ai-health] ERRO ao buscar estágios com IA habilitada:', erroEstagios);
+    return { mudas, alertadas, erros: erros + 1 };
+  }
+  if (!estagios || estagios.length === 0) return { mudas, alertadas, erros };
+
+  const boardsPorOrg = new Map<string, Set<string>>();
+  for (const e of estagios) {
+    const orgId = e.organization_id as string;
+    if (!boardsPorOrg.has(orgId)) boardsPorOrg.set(orgId, new Set());
+    boardsPorOrg.get(orgId)!.add(e.board_id as string);
+  }
+  const orgIds = [...boardsPorOrg.keys()];
+
+  // Só alerta org que tem canal de WhatsApp conectado: sem canal, não há lead
+  // entrando pra ficar sem resposta, e o silêncio não custa nada.
+  const { data: canais, error: erroCanais } = await supabase
+    .from('messaging_channels')
+    .select('organization_id')
+    .eq('channel_type', 'whatsapp')
+    .eq('status', 'connected')
+    .is('deleted_at', null)
+    .in('organization_id', orgIds);
+
+  if (erroCanais) {
+    console.error('[Cron:ai-health] ERRO ao buscar canais conectados:', erroCanais);
+    return { mudas, alertadas, erros: erros + 1 };
+  }
+  const orgsComCanal = new Set((canais ?? []).map((c) => c.organization_id as string));
+  if (orgsComCanal.size === 0) return { mudas, alertadas, erros };
+
+  const alvos = orgIds.filter((id) => orgsComCanal.has(id));
+
+  const [{ data: settings, error: erroSettings }, { data: boardConfigs, error: erroBoards }] =
+    await Promise.all([
+      supabase
+        .from('organization_settings')
+        .select('organization_id, ai_enabled, alert_email')
+        .in('organization_id', alvos),
+      supabase
+        .from('board_ai_config')
+        .select('board_id, agent_mode')
+        .in('organization_id', alvos),
+    ]);
+
+  if (erroSettings || erroBoards) {
+    console.error('[Cron:ai-health] ERRO ao ler settings/board_ai_config:', erroSettings ?? erroBoards);
+    return { mudas, alertadas, erros: erros + 1 };
+  }
+
+  const agentModePorBoard: Record<string, string | null> = {};
+  for (const b of boardConfigs ?? []) {
+    agentModePorBoard[b.board_id as string] = (b.agent_mode as string | null) ?? null;
+  }
+
+  for (const org of settings ?? []) {
+    const orgId = org.organization_id as string;
+    const motivos = motivosDeSilencio({
+      aiEnabled: org.ai_enabled === true,
+      boardsComEstagioHabilitado: [...(boardsPorOrg.get(orgId) ?? [])],
+      agentModePorBoard,
+    });
+
+    if (motivos.length === 0) continue;
+    mudas++;
+
+    const desde = new Date(Date.now() - JANELA_MUDO_HORAS * 60 * 60 * 1000).toISOString();
+    const { data: anterior, error: erroJanela } = await supabase
+      .from('security_alerts')
+      .select('id')
+      .eq('organization_id', orgId)
+      .eq('alert_type', ALERT_TYPE_MUDO)
+      .gte('created_at', desde)
+      .limit(1)
+      .maybeSingle();
+
+    if (erroJanela) {
+      // Mesmo raciocínio do check vizinho: erro de leitura não pode virar
+      // "primeira detecção", senão nunca escala e o e-mail nunca sai.
+      console.error(`[Cron:ai-health] ERRO ao consultar a janela de agente mudo da org ${orgId}:`, erroJanela);
+      erros++;
+    }
+
+    // Dentro da janela já houve alerta: não repete e-mail, só escala a
+    // severidade do registro. Fora dela, é detecção nova.
+    if (anterior) continue;
+
+    const severity = severidadeDoSilencio(false);
+    const title = 'Agente configurado para responder, mas está mudo';
+    const description =
+      `A organização tem estágio com IA habilitada e canal de WhatsApp conectado, mas nenhuma resposta automática sai. ` +
+      `Motivos: ${motivos.join('; ')}.`;
+
+    let emailEnviado = false;
+    if (org.alert_email && process.env.RESEND_API_KEY) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const { error: erroEmail } = await resend.emails.send({
+          from: process.env.ALERT_EMAIL_FROM ?? 'alertas@aaagencia.com.br',
+          to: org.alert_email as string,
+          subject: `[CRM] ${title}`,
+          text:
+            `${description}\n\n` +
+            `Lead que escrever agora entra no CRM normalmente — contato e negócio são criados — e não recebe resposta. ` +
+            `Nada na tela indica isso.\n\n` +
+            `Se foi proposital, ignore. Se não, corrija o que está listado acima.`,
+        });
+        if (erroEmail) {
+          console.error('[Cron:ai-health] Resend recusou o alerta de agente mudo:', erroEmail);
+        } else {
+          emailEnviado = true;
+          alertadas++;
+        }
+      } catch (err) {
+        console.error('[Cron:ai-health] Falha ao enviar alerta de agente mudo:', err);
+      }
+    } else {
+      console.error(
+        `[Cron:ai-health] AGENTE MUDO na org ${orgId} e não há alert_email ou RESEND_API_KEY — ninguém será avisado. Motivos: ${motivos.join('; ')}`,
+      );
+    }
+
+    const { error: erroInsert } = await supabase.from('security_alerts').insert({
+      organization_id: orgId,
+      alert_type: ALERT_TYPE_MUDO,
+      severity,
+      title,
+      description,
+      details: { motivos, email_enviado: emailEnviado, checked_at: new Date().toISOString() },
+    });
+    if (erroInsert) {
+      console.error(`[Cron:ai-health] ERRO ao gravar alerta de agente mudo da org ${orgId}:`, erroInsert);
+      erros++;
+    }
+  }
+
+  return { mudas, alertadas, erros };
 }

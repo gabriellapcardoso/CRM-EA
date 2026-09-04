@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(ops): alerta quando o agente está configurado pra responder e está mudo — 2026-09-03
+
+Fecha o buraco que apareceu na própria noite: `ai_enabled` foi desligado, leads
+continuaram entrando, contato e negócio continuaram sendo criados, e ninguém
+respondeu por horas. O único rastro era uma linha de log, e só apareceu porque
+uma mensagem de teste foi mandada de propósito.
+
+**O `ai-health` não pegava isso por construção**: ele filtra `ai_enabled = true`,
+então a org que desliga a IA some do health check. Mesmo ponto cego do watchdog
+de cron do mesmo dia — o vigia só enxerga quem já se apresentou. Por isso a
+checagem nova é uma **passada separada**, sobre justamente as orgs que o laço
+principal exclui.
+
+**Cobre duas causas, não uma.** `agent_mode: 'observe'` produz exatamente o mesmo
+estado observável e segurou a resposta na mesma noite, horas depois. Cobrir só
+`ai_enabled` repetiria o erro que este projeto já cometeu: a regra de health
+check escrita pro `ai-health` não alcançou o `evolution-health`, que ficou cego
+cinco semanas.
+
+**O kill switch fica de fora de propósito:** ele também impede o envio, mas
+deixa rastro — a mensagem fica `failed` na conversa, com motivo escrito e botão
+de reenviar. É visível pra quem abre o inbox. As duas causas cobertas aqui não
+deixam nada, e é essa diferença que decide o que merece alerta.
+
+Só alerta org que declarou a intenção de responder: precisa ter estágio com IA
+habilitada **e** canal de WhatsApp conectado. Sem isso é ausência de uso, não
+falha. Janela de 24h, não as 4h do check vizinho — aquilo é incidente, isto é
+estado de configuração, e alerta que incomoda em situação legítima é alerta que
+a pessoa aprende a ignorar. Primeira detecção é `info`; persistindo além da
+janela, vira `critical`.
+
+Decisão em função pura (`lib/ai/agente-mudo.ts`), testável sem mockar banco.
+Guarda: `lib/ai/agente-mudo.test.ts`, validada por injeção de regressão. As
+queries foram conferidas contra os dados reais de produção antes do deploy:
+casam uma org, com `motivos` vazio, que é o estado correto de agora.
+
 ### chore(ai): `agent_mode` do board Negociação em `respond` — agente atendendo — 2026-09-03
 
 Terceira e última chave que segurava a resposta. `board_ai_config.agent_mode`
