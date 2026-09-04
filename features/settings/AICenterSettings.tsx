@@ -37,9 +37,30 @@ export const AICenterSettings: React.FC = () => {
             <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <span className="text-lg">✨</span> IA ativa na organização
             </h2>
+            {/*
+              O texto anterior dizia "recursos de IA ficam indisponíveis para
+              toda a equipe" — verdade, e vago o bastante pra ninguém associar
+              ao WhatsApp. Em 2026-09-03 esta chave foi desligada e leads
+              ficaram horas sem resposta: a mensagem entrava, contato e negócio
+              eram criados, a conversa aparecia no inbox, e nada indicava o
+              porquê. Nomear o que para é a diferença entre um toggle e uma
+              armadilha.
+            */}
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              Quando desligado, recursos de IA ficam indisponíveis para toda a equipe.
+              Desliga a IA inteira da organização, não só desta tela: o agente que
+              responde clientes no WhatsApp, o chat do CRM, a análise de negócios
+              e o briefing.
             </p>
+            {aiOrgEnabled === false && (
+              <p
+                role="status"
+                className="text-sm mt-3 rounded-lg px-3 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-500/30"
+              >
+                <strong>A IA está desligada.</strong> Lead que escrever no WhatsApp
+                entra normalmente — contato e negócio são criados — e não recebe
+                resposta. Nada no inbox indica isso.
+              </p>
+            )}
             {!isAdmin && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                 Apenas administradores podem alterar essa configuração.

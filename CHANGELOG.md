@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(settings): o toggle de IA passa a dizer o que ele desliga — 2026-09-03
+
+O texto era *"Quando desligado, recursos de IA ficam indisponíveis para toda a
+equipe"*. Verdade, e vago o bastante pra ninguém associar ao WhatsApp. Em
+2026-09-03 esta chave foi desligada e leads ficaram horas sem resposta: a
+mensagem entrava, contato e negócio eram criados, a conversa aparecia no inbox,
+e nada indicava o porquê.
+
+Agora nomeia: *"Desliga a IA inteira da organização, não só desta tela: o agente
+que responde clientes no WhatsApp, o chat do CRM, a análise de negócios e o
+briefing."*
+
+E quando está desligado, aparece um aviso com a consequência concreta — que o
+silêncio é invisível, que é a parte que o toggle sozinho não comunica: *"Lead que
+escrever no WhatsApp entra normalmente — contato e negócio são criados — e não
+recebe resposta. Nada no inbox indica isso."*
+
+Fecha o caminho 1 do TODO, complementando o alerta do `ai-health` (caminho 3):
+a etiqueta evita antes, o alerta avisa depois. Os dois cobrem janelas
+diferentes — quem lê a tela no momento do clique, e quem não está olhando.
+
+Guarda: `features/settings/AICenterSettings.toggle.test.tsx`, validada por
+injeção de regressão. Copy de consequência é comportamento, não decoração — o
+teste existe pra alguém "simplificando" o texto depois não apagar o WhatsApp
+dele sem perceber.
+
 ### feat(ops): alerta quando o agente está configurado pra responder e está mudo — 2026-09-03
 
 Fecha o buraco que apareceu na própria noite: `ai_enabled` foi desligado, leads

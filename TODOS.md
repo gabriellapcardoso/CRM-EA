@@ -53,10 +53,13 @@ Passada separada no cron, porque o laço principal filtra `ai_enabled = true` e 
 org que desliga a IA sumia dele. Cobre também `agent_mode: 'observe'`, que
 produz o mesmo silêncio. Ver `CHANGELOG.md` e `lib/ai/agente-mudo.ts`.
 
-**Os caminhos 1 e 2 seguem abertos e continuam valendo**, com prioridade menor
-agora que o alerta existe: texto no próprio toggle dizendo o que ele desliga
-(P3), e aviso persistente no inbox quando o estado for inconsistente (P3). O
-alerta avisa depois; a etiqueta evita antes.
+**Caminho 1 também feito** (2026-09-03): o toggle nomeia o agente de WhatsApp,
+o chat, a análise de negócios e o briefing, e mostra a consequência concreta
+quando está desligado. A etiqueta evita antes; o alerta avisa depois.
+
+**Segue aberto o caminho 2 — P3:** aviso persistente no inbox quando o estado
+for inconsistente. Cobre a janela que os outros dois não pegam: quem abre o
+inbox horas depois, sem ter passado pela tela de configuração nem lido o e-mail.
 
 ### Sem caminho para devolver a conversa ao agente depois do handoff — P3
 
