@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(mensagens): a URL volta a acompanhar a conversa selecionada — 2026-09-04
+
+Achado pelo `/qa` em produção. Clicando na segunda conversa, a tela trocava e a
+URL ficava congelada na primeira conversa aberta depois de cada carregamento.
+Recarregar levava a pessoa pra conversa errada; copiar o link pra mandar a
+alguém compartilhava a errada.
+
+**Causa:** `/messaging` é **prerenderizada como estática** — `○ /messaging` na
+saída do `next build`. Em rota estática, `router.push` para a mesma rota com
+outro `searchParam` é reconciliado de volta pelo roteador do cliente. Medido
+instrumentando `history.pushState` em produção: no clique da segunda conversa
+não havia `push` nenhum no histórico, e sim um `replace` com o id **anterior**.
+
+**Só reproduz quando a página é carregada já com `?id=` na URL.** Entrando em
+`/messaging` limpo, os dois primeiros cliques gravam certo — foi por isso que
+passou despercebido, e é o caminho que um teste ingênuo cobriria.
+
+**Conserto:** `window.history.pushState`/`replaceState`, que é o caminho
+documentado do App Router para refletir estado do cliente na URL sem navegação
+de servidor, e continua em sincronia com `useSearchParams`. Aplicado nos três
+pontos que escreviam a própria rota (seleção, pós-exclusão, conversa não
+encontrada). Navegação para `/contacts` e `/boards` continua no `router` — ali
+é navegação de verdade.
+
+Guarda: `test/messagingUrlSync.test.ts`.
+
+### fix(mensagens): mídia sem arquivo passa a dizer que não chegou — 2026-09-04
+
+O áudio de 56 segundos que um lead mandou em 2026-09-03 aparecia como player
+completo: botão de play, forma de onda, cronômetro `0:00`. O botão estava só
+`disabled`. Quem atende clica, nada acontece, e conclui que a interface travou —
+sem descobrir que precisa abrir o WhatsApp para ouvir.
+
+A causa de fundo é maior e continua aberta (`TODOS.md`, P1): a recepção de mídia
+não existe em camada nenhuma. `extractMessageContent` no webhook da Evolution
+devolve `mediaUrl: ""` **fixo** para imagem, áudio, vídeo, documento e figurinha
+e nunca lê a URL do payload; `downloadMedia` está na interface de provider e
+roteado no `channel-router.service.ts`, **nenhum provider implementa e ninguém
+chama**. Quarta ocorrência do padrão "capacidade sem call site" neste projeto.
+
+Esta mudança não traz a mídia — para a tela de mentir sobre ela. Imagem, áudio,
+vídeo e documento sem arquivo passam a mostrar "não disponível — o arquivo não
+foi salvo no CRM. Abra a conversa no WhatsApp para ouvir/ver/assistir/abrir", em
+vez de um controle morto (áudio), bolha vazia (imagem, documento) ou a palavra
+"Vídeo" sobre coisa nenhuma. Figurinha mantém o emoji de marcador, que já não
+finge ser interativo.
+
+Guarda: `features/messaging/components/MessageBubble.midia.test.tsx`, que afirma
+as duas metades — o aviso aparece **e** o controle morto some.
+
 ### fix(mensagens): bolha uma letra por linha e badge de não lida que nunca saía — 2026-09-04
 
 Dois defeitos na tela de Mensagens, sem relação entre si, os dois de produção.

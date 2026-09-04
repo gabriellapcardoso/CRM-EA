@@ -202,6 +202,38 @@ const StatusIcon = memo(function StatusIcon({ status }: { status: MessageStatus 
   }
 });
 
+/**
+ * Mídia que chegou sem arquivo.
+ *
+ * O webhook da Evolution grava `mediaUrl: ""` fixo para imagem, áudio, vídeo,
+ * documento e figurinha — nunca lê a URL que o provider manda, e nenhum provider
+ * implementa `downloadMedia`. Ver `TODOS.md`.
+ *
+ * Enquanto a recepção de mídia não existir, o problema imediato é a tela mentir:
+ * o `AudioPlayer` desenhava um player completo — botão, forma de onda, `0:00` —
+ * com o botão apenas desabilitado. Controle desabilitado não é aviso; é um
+ * controle que parece funcionar e não responde. Quem atende conclui que a
+ * interface travou, não que a mídia nunca chegou, e não tem como saber que
+ * precisa abrir o WhatsApp para ouvir.
+ */
+const MidiaIndisponivel = memo(function MidiaIndisponivel({
+  rotulo,
+  verbo,
+}: {
+  rotulo: string;
+  verbo: string;
+}) {
+  return (
+    <span className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" aria-hidden="true" />
+      <span>
+        {rotulo} não disponível — o arquivo não foi salvo no CRM. Abra a conversa no
+        WhatsApp para {verbo}.
+      </span>
+    </span>
+  );
+});
+
 const MessageContent = memo(function MessageContent({ message }: { message: MessagingMessage }) {
   const { content, contentType } = message;
   const isOutbound = message.direction === 'outbound';
@@ -214,14 +246,17 @@ const MessageContent = memo(function MessageContent({ message }: { message: Mess
 
     case 'image': {
       const imageContent = content as ImageContent;
+      const safeImageUrl = sanitizeUrl(imageContent.mediaUrl);
       return (
         <div className="space-y-1">
-          {sanitizeUrl(imageContent.mediaUrl) && (
+          {safeImageUrl ? (
             <img
-              src={sanitizeUrl(imageContent.mediaUrl)}
+              src={safeImageUrl}
               alt={imageContent.caption || 'Imagem'}
               className="max-w-[240px] rounded-lg"
             />
+          ) : (
+            <MidiaIndisponivel rotulo="Imagem" verbo="ver" />
           )}
           {imageContent.caption && (
             <p className="whitespace-pre-wrap break-words">{imageContent.caption}</p>
@@ -248,7 +283,9 @@ const MessageContent = memo(function MessageContent({ message }: { message: Mess
             )}
           </div>
         </a>
-      ) : null;
+      ) : (
+        <MidiaIndisponivel rotulo="Documento" verbo="abrir" />
+      );
     }
 
     case 'location': {
@@ -271,16 +308,27 @@ const MessageContent = memo(function MessageContent({ message }: { message: Mess
 
     case 'audio': {
       const audioContent = content as AudioContent;
+      // Sem arquivo não existe player: o antigo ficava inteiro na tela com o
+      // botão desabilitado, o que lê como interface travada.
+      if (!sanitizeUrl(audioContent.mediaUrl)) {
+        return <MidiaIndisponivel rotulo="Áudio" verbo="ouvir" />;
+      }
       return <AudioPlayer content={audioContent} isOutbound={isOutbound} />;
     }
 
-    case 'video':
+    case 'video': {
+      // Este ramo nunca olhou a `mediaUrl` — mostrava "Vídeo" mesmo sem arquivo
+      // nenhum por trás.
+      if (!sanitizeUrl((content as { mediaUrl?: string }).mediaUrl ?? '')) {
+        return <MidiaIndisponivel rotulo="Vídeo" verbo="assistir" />;
+      }
       return (
         <div className="flex items-center gap-2">
           <Image className="w-5 h-5" />
           <span>Vídeo</span>
         </div>
       );
+    }
 
     case 'sticker':
       return (
