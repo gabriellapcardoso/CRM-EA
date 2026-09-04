@@ -71,6 +71,35 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
   const { mutate: reopenConversation } = useReopenConversation();
   const { mutate: deleteConversation, isPending: isDeleting } = useDeleteConversation();
 
+  /**
+   * Escreve a conversa selecionada na URL.
+   *
+   * Usa `window.history` em vez de `router.push`/`router.replace` porque
+   * `/messaging` é **prerenderizada como estática** (`○ /messaging` na saída do
+   * build). Em rota estática, navegar para a mesma rota com outro `searchParam`
+   * faz o roteador do cliente reconciliar a URL de volta para a entrada
+   * prerenderizada: o `push` some do histórico e no lugar dele aparece um
+   * `replace` com o id ANTERIOR. Verificado instrumentando `history.pushState`
+   * em produção — a conversa trocava na tela e a URL ficava congelada na
+   * primeira conversa aberta depois de cada carregamento. Recarregar levava a
+   * pessoa pra conversa errada, e copiar o link compartilhava a errada.
+   *
+   * `pushState`/`replaceState` são o caminho documentado do App Router para
+   * refletir estado do cliente na URL sem navegação de servidor, e continuam
+   * em sincronia com `useSearchParams`.
+   */
+  const escreverConversaNaURL = useCallback(
+    (id: string | undefined, modo: 'push' | 'replace' = 'push') => {
+      const url = id ? `/messaging?id=${id}` : '/messaging';
+      if (modo === 'replace') {
+        window.history.replaceState(null, '', url);
+      } else {
+        window.history.pushState(null, '', url);
+      }
+    },
+    [],
+  );
+
   // Handle delete conversation
   const handleDeleteConversation = useCallback(() => {
     if (!selectedConversationId) return;
@@ -88,7 +117,7 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
     // before invalidation or realtime events trigger a refetch of the deleted conversation
     setSelectedConversationId(undefined);
     setShowDeleteConfirm(false);
-    router.push('/messaging', { scroll: false });
+    escreverConversaNaURL(undefined);
 
     // Cancel in-flight refetches so they don't overwrite the optimistic removal below
     queryClient.cancelQueries({ predicate: entityCachesExceptDetail('messagingConversations') });
@@ -103,15 +132,15 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
     );
 
     deleteConversation(idToDelete);
-  }, [selectedConversationId, deleteConversation, router, queryClient]);
+  }, [selectedConversationId, deleteConversation, escreverConversaNaURL, queryClient]);
 
   // Clear URL if conversation was deleted or not found
   useEffect(() => {
     if (selectedConversationId && selectedConversation === null && !isConversationLoading) {
       setSelectedConversationId(undefined);
-      router.replace('/messaging', { scroll: false });
+      escreverConversaNaURL(undefined, 'replace');
     }
-  }, [selectedConversationId, selectedConversation, isConversationLoading, router]);
+  }, [selectedConversationId, selectedConversation, isConversationLoading, escreverConversaNaURL]);
 
   // Mark as read when opening a conversation
   useEffect(() => {
@@ -125,8 +154,8 @@ export function MessagingPage({ initialConversationId }: MessagingPageProps = {}
   const handleSelectConversation = useCallback((id: string) => {
     setSelectedConversationId(id);
     setShowSearch(false);
-    router.push(`/messaging?id=${id}`, { scroll: false });
-  }, [router]);
+    escreverConversaNaURL(id);
+  }, [escreverConversaNaURL]);
 
   // Link conversation to contact
   const handleLinkContact = useCallback(async (contactId: string) => {

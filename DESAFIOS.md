@@ -1,4 +1,52 @@
-# DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
+## Rota estática desfaz `router.push` para ela mesma (2026-09-04)
+
+**O quê:** na tela de Mensagens, clicar na segunda conversa trocava a tela e não
+mexia na URL. Recarregar caía na conversa errada.
+
+**Causa:** `/messaging` é prerenderizada como estática (`○ /messaging` na saída
+do `next build`). Navegar com `router.push` para a **mesma rota** só mudando o
+`searchParam` faz o roteador do cliente reconciliar a URL de volta para a
+entrada prerenderizada.
+
+**O que torna difícil de enxergar:** a chamada não falha e não avisa. A tela faz
+o que devia — o estado do React troca, o item da lista fica ativo, a thread
+muda. Só a URL fica para trás. E **só reproduz quando a página foi carregada já
+com o `searchParam`**: entrando na rota limpa, os primeiros cliques gravam
+normalmente. Testar o caminho limpo confirma um comportamento que não é o do
+usuário, que chega pelo link com `?id=`.
+
+**Como diagnosticar em 30 segundos:** instrumentar `history.pushState` e
+`history.replaceState` no console e clicar. Se aparecer um `replace` com o valor
+ANTERIOR e nenhum `push`, é isto. Confirmar com `next build`: `○` é estática,
+`ƒ` é dinâmica.
+
+**Regra:** URL que é *view* de estado do cliente na mesma rota se escreve com
+`window.history.pushState`/`replaceState` — caminho documentado do App Router,
+que segue em sincronia com `useSearchParams`. `router.push`/`replace` fica para
+navegação de verdade, para outra rota.
+
+## Capacidade sem call site, 4ª vez: recepção de mídia (2026-09-04)
+
+**O quê:** áudio que o lead manda no WhatsApp chega ao CRM com `mediaUrl` vazio.
+A tela desenha um player completo — botão, forma de onda, `0:00` — que não toca.
+
+**Causa:** `extractMessageContent` no webhook da Evolution devolve
+`mediaUrl: ""` **fixo no código**, para imagem, áudio, vídeo, documento e
+figurinha. A `url` que a Evolution manda no payload nunca é lida. Não é download
+que falhou: não existe download. `downloadMedia` está declarado na interface de
+provider e roteado em `channel-router.service.ts`, **nenhum provider implementa**
+e **ninguém chama**.
+
+**Por que entra aqui:** é a quarta ocorrência do mesmo padrão neste projeto,
+depois de `configureWebhook()`, `INTERNAL_API_SECRET` e `useRetryMessage()`. A
+novidade desta é o agravante: a UI renderiza um controle **completo e
+convincente** por cima do valor vazio. Nas três anteriores a capacidade estava
+só ausente; aqui ela está encenada. Quem atende conclui que a interface travou,
+não que a mídia nunca chegou.
+
+**Regra que sai daqui:** componente que renderiza mídia precisa ter um estado
+visível para "mídia indisponível". Botão desabilitado não é mensagem — é um
+controle que parece funcionar e não responde. Ver `TODOS.md`.
 
 ## Escrita otimista com prefixo da entidade alcança caches de formato diferente (2026-09-04)
 

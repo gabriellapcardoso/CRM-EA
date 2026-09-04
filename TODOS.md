@@ -1,5 +1,39 @@
 # TODOS
 
+## Mensageria
+
+### Mídia recebida no WhatsApp nunca chega ao CRM — P1
+
+**What:** toda imagem, áudio, vídeo, documento ou figurinha que um lead manda é
+gravada com `mediaUrl` vazio. `extractMessageContent`
+(`supabase/functions/messaging-webhook-evolution/index.ts:195-226`) devolve
+`mediaUrl: ""` fixo para os cinco tipos e nunca lê a `url` do payload.
+
+**Why:** a Evolution manda no `messages.upsert` a `url` da mídia
+(`mmg.whatsapp.net/….enc`), o `mediaKey`, o `fileEncSha256`, o `mimetype` e o
+`seconds`. É mídia **criptografada**: a URL crua não toca. Para obter o arquivo
+é preciso chamar `POST /chat/getBase64FromMediaMessage/{instance}` na Evolution,
+que devolve o conteúdo decifrado, e então guardá-lo em algum lugar nosso.
+
+`downloadMedia` já existe na interface de provider
+(`lib/messaging/types/provider.types.ts:92`) e é roteado em
+`channel-router.service.ts:350` — **nenhum provider implementa e ninguém chama**.
+
+**Alcance hoje:** 1 mensagem (áudio de 56s do Carlos Alberto, 2026-09-03 17:46).
+O canal WhatsApp só entrou em produção em 2026-09-03; o número é baixo por
+falta de tráfego, não porque o defeito seja parcial. Áudio é o formato que mais
+chega de lead no WhatsApp no Brasil.
+
+**Decisões que isso exige antes de virar código:** onde guardar (Supabase
+Storage é o caminho natural, bucket novo), se a URL vai ser assinada e com que
+validade, limite de tamanho, o que fazer quando o download falha, e retenção.
+Não é conserto de uma linha.
+
+**Feito em 2026-09-04, e não resolve isto:** imagem, áudio, vídeo e documento sem
+arquivo agora mostram "não disponível — o arquivo não foi salvo no CRM. Abra a
+conversa no WhatsApp para …", em vez de um controle morto. A tela parou de
+mentir; a mídia continua sem chegar. Este item segue aberto.
+
 ## Datas e fuso
 
 ### "Hoje" no servidor usa UTC, não o fuso da organização — P2
