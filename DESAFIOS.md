@@ -1,5 +1,61 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Escrita otimista com prefixo da entidade alcança caches de formato diferente (2026-09-04)
+
+**O quê:** abrir uma conversa não zerava o contador de não lidas. Sete conversas
+ficaram marcadas como não lidas depois de abertas uma a uma.
+
+**Causa:** `setQueriesData({ queryKey: queryKeys.X.all }, updater)` casa por
+prefixo com **todo** cache da entidade, não só com as listas. Ali dentro
+convivem três formatos: lista (array), `detail(id)` (objeto) e `unreadCount()`
+(número). O updater fazia `old.map` sem checar, e estourava um TypeError.
+
+**O que torna isso invisível:** no TanStack Query, `onMutate` que lança **aborta
+a mutation** — a `mutationFn` nunca roda. Não há erro na tela, não há requisição
+no Network, não há linha no log do servidor. O que se vê é a badge sumir por um
+frame (a primeira lista já tinha sido atualizada antes do throw) e voltar no
+refetch seguinte. Parece cache teimoso; é o banco intacto.
+
+**Regra:** updater de `setQueriesData` com prefixo de entidade **sempre** começa
+com `if (!Array.isArray(old)) return old;`. Se o alvo é um cache só, use
+`setQueryData` com a key exata. E, ao cancelar com
+`entityCachesExceptDetail(...)`, cancelar `detail(id)` à parte — o predicate o
+exclui de propósito.
+
+**O que quase pegou antes:** os outros três pontos deste mesmo arquivo que
+escrevem com esse prefixo já tinham a guarda, com comentário explicando. A lição
+existia e não foi aplicada onde faltava. Guarda que fecha isso:
+`lib/query/hooks/useMarkConversationRead.test.tsx` — e ela afirma que a
+`mutationFn` rodou, não que o cache mudou, porque o cache mudava um pouco mesmo
+com o bug.
+
+## Percentual dentro de caixa que encolhe: max-width vira quase zero (2026-09-04)
+
+**O quê:** as mensagens recebidas apareciam uma letra por linha na tela de
+Mensagens.
+
+**Causa:** `.message__bubble` tinha `max-width: 62%`, mas passou a viver dentro
+de dois wrappers sem largura própria (`flex items-end gap-1` e um `relative`),
+dentro de `.message`, que tem `align-items: flex-start`. Nenhum deles estica: a
+caixa de referência do percentual encolhia até o conteúdo, que por sua vez
+dependia do percentual. Referência circular. O navegador resolve isso perto de
+zero, e o `break-words` do Tailwind quebra dentro da palavra em vez de estourar.
+
+**Como reconhecer:** bolhas todas com a mesma largura mínima e texto quebrando
+no meio da palavra é assinatura de `max-width` percentual sem referência
+definida — não de texto longo, não de `word-break`.
+
+**Regra:** `max-width` percentual só em filho de caixa com largura definida. Em
+coluna flex com `align-items: flex-start`, o filho não estica — quem precisa da
+referência tem que declarar `width: 100%`.
+
+**Sobre verificar:** happy-dom não tem engine de layout, então o teste do
+repositório é estático (`test/messageBubbleLayout.test.ts`) e afirma a
+estrutura. A prova de que o conserto funciona veio de medir no browser, com o
+CSS compilado de verdade e o Tailwind carregado — a primeira tentativa de
+reproduzir sem o Tailwind **não reproduziu o bug**, e teria "provado" um
+diagnóstico errado.
+
 ## Abrir e salvar uma tela de configuração mudou o comportamento do sistema (2026-09-03)
 
 **O quê:** o agente respondeu três leads reais de manhã. Alguém visitou
