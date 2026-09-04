@@ -1,3 +1,65 @@
+# DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
+
+## Minhas próprias medições mentiram cinco vezes numa sessão (2026-09-04)
+
+**O quê:** durante o `/qa` da tela de Mensagens, cinco medições produziram
+resultado que parecia conclusivo e não era. Nenhuma era bug do sistema — eram
+defeitos do instrumento. Registro porque acreditar em qualquer uma teria
+publicado um diagnóstico errado com números do lado.
+
+**1. Sweep de largura que não variou a largura.** Forcei `.thread` em 900, 700,
+560 e 440px pra testar o teto de 62% da bolha. As quatro linhas voltaram com
+`rowW: 534`: `.thread` é `flex: 1`, e `flex-grow` vence `width` inline. Eu tinha
+medido a mesma coisa quatro vezes, e o resultado *parecia* invariante
+confirmada. Conserto: `flex: none` e `min-width: 0` junto, e imprimir a variável
+independente em cada linha do resultado.
+
+**2 e 3. Reprodução que não reproduziu, duas vezes.** A bolha colapsada não
+reproduziu numa página isolada porque faltava o Tailwind — é o `break-words` dele
+que quebra dentro da palavra. E a URL congelada não reproduz entrando em
+`/messaging` limpo; só carregando a página já com `?id=`, que é como a pessoa
+chega por link. Nas duas, a primeira tentativa deu "não reproduz". Fechar ali
+teria arquivado bug real.
+
+**4. Perf de 38,8 segundos que era a aba estrangulada.** `loadEventEnd` deu
+38829ms no `/inbox`, com **zero long tasks** e um vão de 38 segundos sem nenhuma
+entrada de resource timing — e eu injetando script na aba durante a navegação.
+Remedido em aba nova em primeiro plano: **1013ms**. O sinal de artefato é o vão:
+carregamento lento de verdade tem atividade no meio.
+
+**5. `resize_window` que respondeu sucesso sem redimensionar.** Pedi 420x900 pra
+testar viewport móvel, a ferramenta respondeu "Successfully resized", e
+`innerWidth` continuou 1440. Sem conferir, teria virado "testado em mobile" no
+relatório.
+
+**E uma sexta, na hora de verificar o deploy:** o watcher comparava o hash do CSS
+com o anterior. O nome do arquivo mudou de formato, o regex parou de casar, a
+variável ficou **vazia**, e `"" != "0tlqm..."` disparou "DEPLOY NO AR" sem prova
+nenhuma. É o mesmo erro do `ownerJid` vazio lido como mascarado, que já estava
+registrado no `CLAUDE.md` — escrito por mim, repetido por mim no mesmo dia. Saber
+a regra não impediu; o que pega é conferir o valor.
+
+**Regra:** antes de reportar número, conferir que o instrumento mediu o que você
+pensa. Três perguntas baratas que teriam pego as seis: a variável independente
+mudou de fato? O ambiente é o mesmo em que a pessoa está? O valor está vazio, ou
+está diferente?
+
+## Editar cabeçalho por substituição de âncora apagou o título do arquivo (2026-09-04)
+
+**O quê:** o `# DESAFIOS — …` sumiu deste arquivo no PR #68 e foi mergeado
+assim. O documento ficou começando direto no primeiro `##`.
+
+**Causa:** o script de edição casava o título inteiro como âncora
+(`s.startswith(cab)`) e escrevia `nova_entrada + s[len(cab):]` — a fatia descarta
+o título, e a entrada nova não o recolocava. `assert` passou, o diff ficou verde,
+e a revisão do diff não pegou porque a linha removida fica no topo, longe do
+conteúdo que se está lendo.
+
+**Regra:** ao inserir no topo de um arquivo, ancorar no **primeiro elemento
+depois** do cabeçalho (aqui, o primeiro `## `), nunca consumir o cabeçalho. E
+depois de editar por script, conferir `head -1` do arquivo — custa um comando e
+pega exatamente esta classe.
+
 ## Rota estática desfaz `router.push` para ela mesma (2026-09-04)
 
 **O quê:** na tela de Mensagens, clicar na segunda conversa trocava a tela e não
