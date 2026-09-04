@@ -112,25 +112,20 @@ comportamento inexistente.
 
 ## Messaging
 
-### Remover a instância Evolution morta `aaagência` — P2
+### ~~Remover a instância Evolution morta `aaagência`~~ — RESOLVIDO (2026-09-03)
 
-**What:** instância criada em 2026-08-15 com `integration: EVOLUTION` (canal
-genérico, sem WhatsApp atrás). Substituída por `aaagencia-whatsapp`
-(`WHATSAPP-BAILEYS`) em 2026-09-03. Ficou no servidor de propósito, pra permitir
-voltar atrás.
+**Status:** apagada. `DELETE /instance/delete/aaag%C3%AAncia` devolveu
+`{"status":"SUCCESS","message":"Instance deleted"}`. O servidor Evolution passa
+a ter uma instância só, `aaagencia-whatsapp`, com contadores intactos antes e
+depois (Chat 38, Contact 188, Message 282) — a remoção não a tocou.
 
-**Why:** deletar antes de confirmar o novo funcionando seria irreversível sem
-ganho. Depois do pareamento confirmado e de mensagem real entrando, ela só
-confunde: o painel lista duas instâncias parecidas e a errada responde `open`.
-
-**Quando:** condição satisfeita em 2026-09-03 — mensagens reais entraram,
-respostas saíram e recibo de entrega voltou pelo canal novo. Liberado pra
-remover: `DELETE /instance/delete/aaag%C3%AAncia`. **Effort:** S.
-
-**Antes de apagar, conferir que é a certa:** as duas têm nome parecido e a morta
-responde `open`. A boa é `aaagencia-whatsapp`, `integration: WHATSAPP-BAILEYS`,
-com `ownerJid` preenchido. A morta é `aaagência` (com acento),
-`integration: EVOLUTION`, `ownerJid` nulo, contadores zerados.
+**Conferência feita antes de apagar**, porque os nomes eram parecidos e a morta
+respondia `open`: tipo `EVOLUTION` contra `WHATSAPP-BAILEYS`, `ownerJid` vazio
+contra preenchido, contadores zerados contra em uso, e — o critério decisivo —
+a morta **não** era a referenciada por `messaging_channels.credentials.
+instanceName`. Vale repetir esse último em qualquer remoção de recurso de
+provider: comparar contra o que o sistema realmente usa, não contra o nome que
+parece certo.
 
 ### ~~Kill switch de WhatsApp está LIGADO~~ — RESOLVIDO (2026-09-03)
 
