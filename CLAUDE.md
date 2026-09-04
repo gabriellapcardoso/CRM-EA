@@ -286,6 +286,81 @@ Controladas por `instanceFlags` (operador) via `queryKeys.instanceFlags.byOrg(or
 
 Migrations em `supabase/migrations/` com timestamp `YYYYMMDDHHMMSS`. Sempre idempotentes (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`). Não deletar migrations históricas — tabelas legadas (`voice_calls`, `whatsapp_calls`) existem no banco sem código correspondente.
 
+## Runbook — "o WhatsApp está funcionando?"
+
+Documenta **como verificar**, não qual é o estado. Estado escrito em documento
+envelhece sozinho e passa a mentir: em 2026-09 o arquivo do ecossistema afirmou
+por semanas que o canal estava testado e funcionando enquanto ele não recebia
+nada. As consultas abaixo derivam de dado vivo e não têm como envelhecer.
+
+Ordem deliberada: da mais barata e decisiva para a mais profunda. Pare na
+primeira que responder.
+
+**1. Está entrando alguma coisa?** Uma linha responde o que meia hora de leitura
+de status não responde:
+
+```sql
+select max(created_at) at time zone 'America/Sao_Paulo' as ultimo_evento,
+       count(*) filter (where event_type = 'messages.upsert') as mensagens
+from messaging_webhook_events
+where channel_id = (select id from messaging_channels
+                    where channel_type='whatsapp' and deleted_at is null
+                    order by created_at desc limit 1);
+```
+
+Evento recente = o cano está aberto; o problema, se houver, é da IA pra frente.
+Último evento de semanas atrás = o cano está entupido, **não importa o que o
+status diga**. Conferir também o `channel_id`: eventos podem pertencer a um
+canal já excluído, e foi o que mascarou o incidente de agosto.
+
+**2. Entra mas ninguém responde?** São cinco chaves (tabela acima). O log da
+rota nomeia qual é, e ler isso antes de adivinhar economiza rodadas:
+
+```
+[AIAgent] AI is disabled for organization      → ai_enabled
+[AIAgent] AI not enabled for this stage        → stage_ai_config
+[AIAgent] AI paused for this conversation      → ai_paused
+[AIAgent] DRY-RUN — would have sent: …         → agent_mode = 'observe'
+mensagem outbound com status 'failed'          → kill switch ou provider
+```
+
+**3. Nem evento entra?** Aí é a instância ou o webhook. **`connectionStatus`
+não serve** — ver a regra sobre `integration: EVOLUTION` acima. Os campos que
+respondem: `ownerJid` preenchido, `_count` não-zerado, `integration:
+WHATSAPP-BAILEYS`. E o webhook precisa dos **quatro** campos: `enabled`, URL
+batendo com a esperada, `events` não vazio, `x-api-key` presente.
+`GET /api/messaging/channels/[id]/webhook` devolve isso já avaliado.
+
+**4. O monitoramento está vivo?** `select job_name, last_run_at from
+cron_heartbeats` — heartbeat velho significa que o vigia parou, e aí nenhuma
+ausência de alerta prova coisa nenhuma.
+
+## Sondar API externa sem expor a credencial
+
+Credencial de provider mora em `messaging_channels.credentials`. Para chamar a
+API do provider durante uma investigação sem que o segredo apareça em log,
+transcript ou histórico de shell: fazer a chamada **de dentro do Postgres** com
+`pg_net`, lendo a credencial por subselect na mesma instrução. Ela nunca sai do
+banco.
+
+```sql
+select net.http_get(
+  url := (select rtrim(credentials->>'serverUrl','/') from messaging_channels where id = '…')
+         || '/instance/connectionState/' || replace((select credentials->>'instanceName' from messaging_channels where id = '…'), 'ê', '%C3%AA'),
+  headers := jsonb_build_object('apikey', (select credentials->>'apiKey' from messaging_channels where id = '…')),
+  timeout_milliseconds := 15000) as request_id;
+-- depois: select status_code, content from net._http_response where id = <request_id>;
+```
+
+`pg_net` já está instalado (os crons usam). Nome de instância com acento precisa
+de percent-encoding no path.
+
+**Ao ler a resposta, mascarar preservando a diferença entre vazio e oculto.**
+Um `left(valor, 6) || '...'` transforma string vazia em `"..."`, indistinguível
+de valor mascarado — e foi assim que o `ownerJid` vazio passou por um dia inteiro
+lido como "redigido". Emitir `(vazio)`, `(null)` e `(N chars)` diz tudo que o
+diagnóstico precisa sem revelar nada.
+
 ## Skill routing
 
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
