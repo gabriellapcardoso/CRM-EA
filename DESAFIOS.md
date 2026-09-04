@@ -1,5 +1,73 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Abrir e salvar uma tela de configuração mudou o comportamento do sistema (2026-09-03)
+
+**O quê:** o agente respondeu três leads reais de manhã. Alguém visitou
+Configurações → Central de IA → agentes por board às 17:51 e salvou. A partir
+dali, toda resposta virou log de DRY-RUN e nada mais saiu — por horas, sem que
+nada mudasse de aparência.
+
+**Causa:** `board_ai_config.agent_mode` tem `DEFAULT 'observe'`, e a linha de
+`board_ai_config` **só nasce quando alguém salva aquela tela**. Sem linha,
+`isDryRun` é falso e o agente envia. Com linha recém-criada, ele emudece.
+
+**O que torna isso traiçoeiro:** a mudança de comportamento não foi editar um
+campo — foi a **existência da linha**. Quem salvou não alterou nada visível;
+provavelmente só abriu a tela pra ver o que tinha nela. E o estado resultante é
+indistinguível de funcionamento normal do lado do canal: mensagem entra, contato
+e negócio são criados, conversa aparece no inbox. Só não sai resposta.
+
+**Regra:** default seguro-mas-mudo inverte o risco. Ele protege contra o erro
+barulhento (agente falando o que não devia) e cria o erro silencioso (agente não
+falando, sem ninguém saber). Quando o default silencioso for a escolha certa, a
+tela precisa dizer em texto o que aquele modo faz — "observe: gera e registra,
+não envia" — e não só nomear o modo. Ver `TODOS.md`.
+
+## Três chaves diferentes seguraram a mesma coisa, uma de cada vez (2026-09-03)
+
+**O quê:** "o agente não responde" foi diagnosticado e corrigido três vezes na
+mesma noite, e o sintoma não mudou nas duas primeiras:
+
+1. `ai_enabled` global estava `false` → religado, ainda sem resposta;
+2. `ai_takeover_enabled` estava `false` → ligado, ainda sem resposta;
+3. `agent_mode` estava `observe` → trocado, e aí funcionou.
+
+**A armadilha de raciocínio:** depois de corrigir a primeira e o sintoma
+persistir, a reação natural é achar que a correção falhou e voltar a mexer nela.
+A leitura certa é a oposta — cada correção **revela** o próximo portão, que
+estava lá o tempo todo, escondido atrás do primeiro. Guardas em série só
+mostram a segunda depois que a primeira sai da frente.
+
+**O que fez a diferença:** ler o log de `/api/messaging/ai/process` a cada
+tentativa, em vez de inferir. Ele nomeia a causa exata
+(`AI is disabled for organization`, `AI not enabled for this stage`,
+`DRY-RUN — would have sent`). Sem isso, seriam três rodadas de adivinhação.
+
+**Regra:** quando um sintoma sobrevive à correção da causa confirmada, procurar
+a **próxima** guarda no mesmo caminho antes de duvidar da correção que você
+acabou de fazer.
+
+## Enumerar é afirmar completude, e eu errei duas horas depois de escrever (2026-09-03)
+
+**O quê:** documentei no `CLAUDE.md` "as quatro chaves que calam a IA", com
+tabela e sintoma de log de cada uma. Duas horas depois, a resposta de teste não
+saiu por causa de uma **quinta** chave que eu não tinha listado.
+
+**Por que dói mais que uma omissão comum:** "quatro chaves" não é uma lista
+parcial, é uma afirmação de que são quatro. Quem lê e checa as quatro conclui
+que o problema está em outro lugar e para de procurar ali. Um mapa incompleto
+que se anuncia completo é pior que nenhum mapa.
+
+**Como eu deveria ter verificado:** a lista saiu do que eu tinha visto durante o
+debug, não de uma varredura. O certo era percorrer todos os pontos de saída
+antecipada do caminho (`processIncomingMessage` e o que ele chama) e listar cada
+condição que impede a resposta — o `agent_mode` estava lá, no passo 3c, antes
+mesmo das guardas que eu já conhecia.
+
+**Regra:** ao escrever uma enumeração fechada sobre código, derivá-la do código,
+não da memória do que você acabou de depurar. Se não der pra varrer, não numerar
+— escrever "entre outras" custa uma palavra e não mente.
+
 ## Capacidade sem call site é capacidade ausente — três vezes na mesma base (2026-09-03)
 
 **O quê:** em uma única sessão, três capacidades implementadas, corretas e

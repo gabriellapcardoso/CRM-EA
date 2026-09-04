@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### chore(ai): `agent_mode` do board Negociação em `respond` — agente atendendo — 2026-09-03
+
+Terceira e última chave que segurava a resposta. `board_ai_config.agent_mode`
+estava em `observe`: o agente gerava o texto, gravava em `ai_conversation_log`
+com `[DRY-RUN]`, e não enviava. O log dizia
+`[AIAgent] DRY-RUN — would have sent: …` com uma resposta perfeitamente boa.
+
+Trocado para `respond` no board Negociação pela fundadora. Pós-venda ficou em
+`observe` de propósito: não tem estágio com IA habilitada, então não muda nada
+hoje, e mantém a trava para quando tiver.
+
+**Verificado ponta a ponta às 23:15 (São Paulo):** mensagem entrou 23:15:50,
+resposta saiu 23:16:15 — `status: sent`, `sent_by_ai: true`, sem erro. 25
+segundos porta a porta, dos quais 5 são o `response_delay_seconds` configurado.
+
+Texto que saiu: *"Oi, Gabriella! Que bom que você chamou a gente. 🙂 Como podemos
+te ajudar hoje?"* — plural, sem marca de gênero, duas frases, uma pergunta
+aberta, um emoji. O `ai_base_system_prompt` escrito hoje está sendo aplicado.
+
+**Ciclo completo, sem intervenção humana:** lead escreve → contato e negócio
+criados → IA acionada → resposta gerada → guard de envio → entregue.
+
 ### chore(ai): `ai_enabled` e `ai_takeover_enabled` ligados — 2026-09-03
 
 Duas mensagens de teste entraram e ninguém respondeu. O webhook estava são, o
