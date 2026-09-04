@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(mensagens): bolha uma letra por linha e badge de não lida que nunca saía — 2026-09-04
+
+Dois defeitos na tela de Mensagens, sem relação entre si, os dois de produção.
+
+**As mensagens do lead apareciam uma letra por linha.** A bolha não era a
+culpada: era a linha que a envolve. Ela era um flex anônimo (`flex items-end
+gap-1`) sem largura, dentro de `.message`, que tem `align-items: flex-start` —
+ou seja, encolhia até o conteúdo. Com isso o `max-width: 62%` da bolha passava a
+ser 62% de uma caixa cuja largura dependia da própria bolha. Percentual com
+referência circular o navegador resolve perto de zero, e o `overflow-wrap` do
+Tailwind (`break-words`) faz o resto: quebra dentro da palavra, uma letra por
+linha. Medido no browser com o CSS real: `teste` ocupava 34×123px antes, 55×42px
+depois.
+
+O limite de largura mudou de lugar. `.message__row` (largura 100%, referência
+definida) e `.message__stack` (`max-width: 62%`, `min-width: 0`) passam a existir
+como classes; a bolha fica com `max-width: 100%`. Guarda:
+`test/messageBubbleLayout.test.ts`.
+
+**Abrir a conversa não zerava o contador de não lidas.** `useMarkConversationRead`
+escrevia otimisticamente com o prefixo `queryKeys.messagingConversations.all`,
+que casa com TODO cache da entidade — inclusive `detail(id)`, que guarda um
+objeto, e `unreadCount()`, que guarda um número. O updater chamava `old.map`
+direto: TypeError dentro do `onMutate`. E `onMutate` que lança **aborta a
+mutation** — a `mutationFn` nunca roda, o `UPDATE unread_count = 0` nunca chega
+ao banco. A badge sumia por um frame e voltava no refetch seguinte, para sempre.
+Sete conversas estavam assim, abertas e ainda marcadas como não lidas.
+
+Todos os outros pontos que escrevem com esse prefixo neste arquivo já tinham a
+guarda `Array.isArray` e um comentário explicando por quê. O único que não tinha
+era este. Guarda: `lib/query/hooks/useMarkConversationRead.test.tsx`, que afirma
+"a mutationFn rodou" em vez de "o cache mudou" — o cache mudava um pouco mesmo
+com o bug.
+
 ### docs: runbook do canal WhatsApp e técnica de sondagem sem expor credencial — 2026-09-03
 
 Auditoria feita com um critério mais duro que as anteriores: a documentação

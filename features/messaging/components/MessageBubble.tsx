@@ -488,7 +488,14 @@ export const MessageBubble = memo(function MessageBubble({
         )}
       </p>
 
-      <div className="flex items-end gap-1" style={{ maxWidth: '100%' }}>
+      {/*
+        `.message__row` ocupa a largura toda da linha DE PROPÓSITO. Enquanto era
+        um flex anônimo sem largura, ele encolhia para caber no conteúdo — e o
+        `max-width: 62%` da bolha passava a ser 62% de uma caixa que dependia da
+        própria bolha para existir. Percentual com referência circular assim o
+        navegador resolve perto de zero, e o texto saía uma letra por linha.
+      */}
+      <div className="message__row">
         {/* Ações (hover) à esquerda quando a bolha é nossa */}
         {isOutbound && (
           <div className="flex items-center gap-0.5 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-row-reverse">
@@ -505,7 +512,7 @@ export const MessageBubble = memo(function MessageBubble({
           </div>
         )}
 
-        <div className="relative">
+        <div className="message__stack relative">
           <div className="message__bubble">
             {/* Citação da mensagem respondida */}
             {repliedToMessage && (

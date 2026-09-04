@@ -371,15 +371,40 @@ export function useMarkConversationRead() {
       await queryClient.cancelQueries({
         predicate: entityCachesExceptDetail('messagingConversations'),
       });
+      // O detail(id) é escrito otimisticamente abaixo e o predicate acima o
+      // exclui de propósito — sem cancelar aqui, uma resposta em voo sobrescreve
+      // a escrita otimista depois. Mesmo cuidado de `useUpdateConversation`.
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.messagingConversations.detail(conversationId),
+      });
 
-      // Optimistically set unread to 0
+      // Zera o não-lido nas listas.
+      //
+      // O prefixo `messagingConversations.all` casa com TODO cache da entidade,
+      // não só com as listas: `detail(id)` guarda um objeto e `unreadCount()`
+      // guarda um número. Sem a guarda de array, `old.map` estourava um
+      // TypeError aqui dentro — e onMutate que lança aborta a mutation inteira,
+      // então o UPDATE no banco nunca chegava a rodar. Resultado em produção:
+      // a badge sumia por um instante (escrita otimista) e voltava no refetch
+      // seguinte, para sempre, porque `unread_count` continuava intacto no
+      // banco. Foi assim que 7 conversas ficaram marcadas como não lidas mesmo
+      // depois de abertas uma por uma.
       queryClient.setQueriesData(
         { queryKey: queryKeys.messagingConversations.all },
-        (old: ConversationView[] | undefined) => {
-          if (!old) return old;
-          return old.map((conv) =>
+        (old: unknown) => {
+          if (!Array.isArray(old)) return old;
+          return (old as ConversationView[]).map((conv) =>
             conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
           );
+        }
+      );
+
+      // E no detalhe, que é objeto — a tela aberta lê daqui.
+      queryClient.setQueryData(
+        queryKeys.messagingConversations.detail(conversationId),
+        (old: ConversationView | null | undefined) => {
+          if (!old) return old;
+          return { ...old, unreadCount: 0 };
         }
       );
     },

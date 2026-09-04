@@ -1106,9 +1106,12 @@ body {
 .message { display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
 .message__meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-faint); }
 .message__channel { font-weight: var(--weight-bold); color: var(--text-muted); }
-.message__bubble { max-width: 62%; border: 1px solid var(--border-subtle); background: #fff; color: var(--ink-900); border-radius: var(--radius-md); padding: 10px var(--space-3); font-size: 13.5px; line-height: 1.5; }
+.message__row { display: flex; align-items: flex-end; gap: var(--space-1); width: 100%; }
+.message__stack { display: flex; flex-direction: column; min-width: 0; max-width: 62%; }
+.message__bubble { max-width: 100%; border: 1px solid var(--border-subtle); background: #fff; color: var(--ink-900); border-radius: var(--radius-md); padding: 10px var(--space-3); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
 .message__time { font-size: 11px; color: var(--text-faint); }
 .message--out { align-items: flex-end; }
+.message--out .message__row, .message--ai .message__row { justify-content: flex-end; }
 .message--out .message__bubble { background: var(--surface-brand); border-color: var(--surface-brand); color: #fff; }
 .message--out .message__time { color: var(--text-faint); }
 .message--ai { align-items: flex-end; }
