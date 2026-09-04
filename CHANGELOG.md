@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### docs: runbook do canal WhatsApp e técnica de sondagem sem expor credencial — 2026-09-03
+
+Auditoria feita com um critério mais duro que as anteriores: a documentação
+precisa bastar sem a conversa que a produziu. Duas lacunas apareceram.
+
+**Não havia nenhuma seção de estado operacional.** Os documentos contam o que
+mudou (CHANGELOG), por que quebrou (DESAFIOS) e o que falta (TODOS) — e ninguém
+que chegasse amanhã saberia como o canal está configurado sem reconstruir de 25
+entradas.
+
+A resposta **não** foi escrever o estado atual: é exatamente o pecado deste
+projeto, e o arquivo do ecossistema afirmou por semanas um estado que não
+existia. O `CLAUDE.md` ganhou um **runbook de verificação** — as consultas que
+respondem "está funcionando?", na ordem do mais barato e decisivo para o mais
+profundo, com o que uma resposta saudável parece. Derivam de dado vivo e não
+envelhecem.
+
+Começa pela pergunta certa: `max(created_at)` em `messaging_webhook_events`
+responde em um segundo o que meia hora de leitura de status não responde. Se o
+último evento é de semanas atrás, o cano está entupido, não importa o que o
+`connectionStatus` diga.
+
+**A técnica de sondar API externa sem expor credencial não estava em lugar
+nenhum**, apesar de ter sido usada umas vinte vezes na sessão: chamar o provider
+de dentro do Postgres com `pg_net`, lendo a credencial por subselect na mesma
+instrução, de modo que ela nunca sai do banco. Junto vai o alerta que custou um
+dia: mascarar precisa preservar a diferença entre **vazio** e **oculto** —
+`left(valor, 6) || '...'` transforma string vazia em `"..."` e foi assim que um
+`ownerJid` vazio passou lido como "redigido".
+
+As duas consultas do runbook foram rodadas contra produção antes do commit.
+
 ### feat(settings): o toggle de IA passa a dizer o que ele desliga — 2026-09-03
 
 O texto era *"Quando desligado, recursos de IA ficam indisponíveis para toda a
