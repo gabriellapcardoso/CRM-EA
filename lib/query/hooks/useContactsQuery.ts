@@ -103,16 +103,30 @@ export const useContacts = (filters?: ContactsFilters, options?: { enabled?: boo
 };
 
 /**
- * Hook to fetch a single contact by ID
+ * Busca UM contato pelo id, direto no banco.
+ *
+ * Antes chamava `getAll()` e dava `.find()` no resultado. `getAll()` tem teto de
+ * 1000 linhas (`lib/supabase/contacts.ts`, "Safety limit"), então um contato
+ * fora desse lote devolvia `null` — indistinguível de "não existe". Só não
+ * mordia porque o hook não tinha nenhum chamador; a partir de
+ * `/contacts/[contactId]` ele passa a servir link que a pessoa recarrega e
+ * manda pra alguém, e "não encontrado" numa URL válida é resposta errada dita
+ * com confiança.
+ *
+ * `getByIds([id])` filtra no servidor (`.in('id', …)` + `deleted_at is null`),
+ * então não tem teto e não trafega a base inteira.
+ *
+ * @param id Id do contato; `undefined` desliga a query.
+ * @returns Query com o contato, ou `null` quando ele realmente não existe.
  */
 export const useContact = (id: string | undefined) => {
   const { user, loading: authLoading } = useAuth();
   return useQuery({
     queryKey: queryKeys.contacts.detail(id || ''),
     queryFn: async () => {
-      const { data, error } = await contactsService.getAll();
+      const { data, error } = await contactsService.getByIds([id as string]);
       if (error) throw error;
-      return (data || []).find(c => c.id === id) || null;
+      return data?.[0] ?? null;
     },
     enabled: !authLoading && !!user && !!id,
   });
@@ -364,6 +378,19 @@ export const useUpdateContact = () => {
     },
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ predicate: entityCachesExceptDetail('contacts') });
+      // `entityCachesExceptDetail` NAO cobre `contacts.detail(id)` — e o que o
+      // nome diz. Desde que `/contacts/[contactId]` passou a ler esse cache,
+      // faltava cancelar e escrever nele: um fetch de detalhe em voo
+      // sobrescreveria o otimismo depois, e o detalhe mostraria o valor antigo
+      // enquanto a lista ja mostrava o novo. Ver CLAUDE.md, "Cuidado ao
+      // cancelar/invalidar com key estreita".
+      await queryClient.cancelQueries({ queryKey: queryKeys.contacts.detail(id) });
+      const previousDetail = queryClient.getQueryData<Contact | null>(
+        queryKeys.contacts.detail(id)
+      );
+      queryClient.setQueryData<Contact | null>(queryKeys.contacts.detail(id), (old) =>
+        old ? { ...old, ...updates } : old
+      );
       const previousContacts = queryClient.getQueryData<Contact[]>(queryKeys.contacts.lists());
       queryClient.setQueryData<Contact[]>(queryKeys.contacts.lists(), (old = []) =>
         old.map(contact => (contact.id === id ? { ...contact, ...updates } : contact))
@@ -385,9 +412,12 @@ export const useUpdateContact = () => {
         });
       }
 
-      return { previousContacts, previousPaginated };
+      return { previousContacts, previousPaginated, previousDetail };
     },
-    onError: (_error, _variables, context) => {
+    onError: (_error, { id }, context) => {
+      if (context?.previousDetail !== undefined) {
+        queryClient.setQueryData(queryKeys.contacts.detail(id), context.previousDetail);
+      }
       if (context?.previousContacts) {
         queryClient.setQueryData(queryKeys.contacts.lists(), context.previousContacts);
       }
@@ -397,8 +427,9 @@ export const useUpdateContact = () => {
         }
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _error, { id }) => {
       queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
+      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.detail(id) });
     },
   });
 };
