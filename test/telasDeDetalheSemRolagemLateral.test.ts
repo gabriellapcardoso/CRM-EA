@@ -157,6 +157,11 @@ describe('empresa longa não engole o badge de estágio', () => {
     expect(co).not.toMatch(/text-overflow/)
     expect(regra('.cell-name__co-text')).toMatch(/text-overflow:\s*ellipsis/)
     expect(contactsList).toContain('cell-name__co-text')
+    // Quem está ao lado do texto não pode encolher junto. Alvo por posição:
+    // `StageBadge` renderiza utilitários do Tailwind, não `.badge-stage` —
+    // mirar aquela classe era regra morta (verificado no DOM de produção).
+    expect(css).toContain('.cell-name__co > :not(.cell-name__co-text)')
+    expect(css).not.toContain('.cell-name__co .badge-stage')
   })
 })
 
