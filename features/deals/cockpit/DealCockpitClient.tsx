@@ -816,6 +816,12 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
   /** Link da proposta já filtrado por esquema — ver o comentário no campo. */
   const linkDaProposta = useMemo(() => sanitizeUrl(selectedDeal?.proposalLink), [selectedDeal?.proposalLink]);
 
+  /**
+   * A barra de saúde mostra a estimativa da IA ou o campo do deal? A tela tem
+   * que dizer qual, porque os dois números divergem e aparecem lado a lado.
+   */
+  const saudeVeioDaIA = aiAnalysis?.probabilityScore != null && !aiAnalysis.error;
+
   /** Nível de risco em uma palavra — usado pela cor do texto e pela barra. */
   const nivelRisco: 'baixo' | 'medio' | 'alto' =
     health.status === 'excellent' || health.status === 'good'
@@ -2363,8 +2369,15 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
         <aside className="cockpit__aside cockpit__aside--right">
           <CockpitBlock title="risco do deal" className="cockpit__sec--risco">
             <div className="risk-row">
-              <p className={`risk risk--${nivelRisco}`}>
-                <span className="risk__level">{nivelRisco === 'medio' ? 'médio' : nivelRisco}</span>
+              {/* Enquanto a IA analisa, `health` cai no campo do deal — que num
+                  deal novo é 0. A barra pintava 0% em vermelho e a palavra "alto"
+                  aparecia, por um instante, como se fossem o diagnóstico; depois
+                  saltava pra 50% laranja. Valor de carregamento com cara de valor
+                  real é pior que ausência de valor. */}
+              <p className={`risk risk--${aiLoading ? 'medio' : nivelRisco}`}>
+                <span className="risk__level">
+                  {aiLoading ? 'analisando…' : nivelRisco === 'medio' ? 'médio' : nivelRisco}
+                </span>
                 <span className="risk__text">{nextBestAction.reason}</span>
               </p>
               <div className="risk-stats">
@@ -2390,18 +2403,29 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
                 meio à frase. A barra dá a leitura de relance que a tela de
                 governança pede, e a cor acompanha o nível — nunca limão, que
                 aqui significa só "precisa da sua decisão". */}
+            {/* Dois números de confiança na mesma linha, a 14px um do outro, sem
+                dizer de quem era cada um: a barra mostrava a estimativa da IA
+                (50%) e o texto ao lado a probabilidade gravada no deal (0%). Quem
+                lê vê dois percentuais que deviam concordar e não concordam, e
+                perde a confiança nos dois. Antes desta revisão eles viviam longe
+                um do outro; foi o layout novo que os encostou.
+
+                Quando a IA não respondeu, `health` já cai pro campo do deal e os
+                dois são o mesmo número — aí a segunda menção só ocuparia linha. */}
             <p className="health section-card__split">
-              <span className="label">saúde do deal</span>
+              <span className="label">
+                saúde do deal{saudeVeioDaIA ? ' (estimativa da IA)' : ''}
+              </span>
               <span className="health__track">
                 <span
                   className={`health__fill health__fill--${nivelRisco}`}
-                  style={{ width: `${Math.min(100, Math.max(0, health.score))}%` }}
+                  style={{ width: aiLoading ? '0%' : `${Math.min(100, Math.max(0, health.score))}%` }}
                 />
               </span>
-              <span className="health__value num">{health.score}%</span>
-              {/* "atividades" já é um dos três números da risk-stats logo acima;
-                  repetir aqui só ocupa a linha. */}
-              <span className="meta">probabilidade {deal.probability ?? 50}%</span>
+              <span className="health__value num">{aiLoading ? '—' : `${health.score}%`}</span>
+              {saudeVeioDaIA && (deal.probability ?? 50) !== health.score ? (
+                <span className="meta">probabilidade gravada no deal: {deal.probability ?? 50}%</span>
+              ) : null}
             </p>
           </CockpitBlock>
 

@@ -236,3 +236,47 @@ describe('o detalhe do contato não afirma o que não sabe', () => {
     expect(corpo).toMatch(/invalidateQueries\(\{\s*queryKey:\s*queryKeys\.contacts\.detail\(id\)/)
   })
 })
+
+describe('a barra de saúde diz de quem é o número', () => {
+  const cockpit = semComentarios('features/deals/cockpit/DealCockpitClient.tsx')
+
+  it('nomeia a fonte quando a IA e o campo do deal divergem', () => {
+    // Achado no /qa em produção: "saúde do deal 50%" e "probabilidade 0%" na
+    // mesma linha, a 14px um do outro. O 50% era a estimativa da IA, o 0% o
+    // campo gravado no deal. Dois percentuais que deviam concordar e não
+    // concordam, sem dizer de quem é cada um, queimam a confiança nos dois.
+    expect(cockpit).toContain('saudeVeioDaIA')
+    expect(cockpit).toMatch(/estimativa da IA/)
+    expect(cockpit).toMatch(/probabilidade gravada no deal/)
+    // A segunda menção só aparece quando os números REALMENTE divergem.
+    expect(cockpit).toMatch(/saudeVeioDaIA && \(deal\.probability \?\? 50\) !== health\.score/)
+  })
+
+  it('não pinta valor de carregamento com cara de diagnóstico', () => {
+    // Enquanto a IA analisa, `health` cai no campo do deal — 0 num deal novo.
+    // A barra pintava 0% em vermelho e "alto" aparecia como se fosse o veredito.
+    expect(cockpit).toMatch(/aiLoading \? '0%'/)
+    expect(cockpit).toMatch(/aiLoading \? '—'/)
+    expect(cockpit).toMatch(/aiLoading \? 'analisando…'/)
+  })
+})
+
+describe('o modal de edição do detalhe não tem campo morto', () => {
+  const page = semComentarios('features/contacts/detail/ContactDetailPage.tsx')
+
+  it('o campo empresa faz o que a legenda dele promete', () => {
+    // Achado no /qa: o modal abria com "Empresa não vinculada" no campo empresa
+    // (texto de estado, não nome), a legenda dizia "Este campo cria a empresa",
+    // e salvar ignorava o valor. Controle que parece inteiro e não faz nada.
+    expect(page).toContain('createCompany')
+    expect(page).toMatch(/companyId,/)
+  })
+
+  it('nunca pré-preenche o campo com o texto de estado da tela', () => {
+    // `companyName` é o TEXTO exibido e vira "Empresa não vinculada" ou
+    // "empresa fora do lote carregado". Pré-preencher com isso criaria uma
+    // empresa com esse nome no primeiro salvamento.
+    expect(page).toMatch(/companyName: empresaDoContato\?\.name \?\? ''/)
+    expect(page).not.toMatch(/companyName: companyName/)
+  })
+})

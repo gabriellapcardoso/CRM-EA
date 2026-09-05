@@ -33,6 +33,7 @@ import {
   useActivities,
   usePendingAdvancesQuery,
   useUpdateContact,
+  useCreateCompany,
 } from '@/lib/query/hooks';
 import { normalizePhoneE164 } from '@/lib/phone';
 import { ContactStage } from '@/types';
@@ -112,6 +113,13 @@ export default function ContactDetailPage({ contactId }: { contactId: string }) 
    * tem empresa" são coisas diferentes — dizer "Empresa não vinculada" pra uma
    * empresa que existe é afirmação errada. Sem o nome, mostra o estado real.
    */
+  /** A empresa de verdade, ou `undefined`. Não confundir com `companyName`,
+   *  que é o TEXTO mostrado na tela e pode ser um estado ("fora do lote"). */
+  const empresaDoContato = React.useMemo(
+    () => (contact?.clientCompanyId ? companies.find((c) => c.id === contact.clientCompanyId) : undefined),
+    [companies, contact?.clientCompanyId]
+  );
+
   const companyName = React.useMemo(() => {
     if (!contact?.clientCompanyId) return 'Empresa não vinculada';
     const achada = companies.find((c) => c.id === contact.clientCompanyId)?.name;
@@ -160,6 +168,7 @@ export default function ContactDetailPage({ contactId }: { contactId: string }) 
    * carrega paginação, filtros e a lista toda de contatos.
    */
   const updateContact = useUpdateContact();
+  const createCompany = useCreateCompany();
   const [editando, setEditando] = React.useState(false);
   const [formData, setFormData] = React.useState({
     name: '',
@@ -177,19 +186,33 @@ export default function ContactDetailPage({ contactId }: { contactId: string }) 
       email: contact.email,
       phone: contact.phone,
       role: contact.role || '',
-      companyName: companyName,
+      // O nome REAL da empresa, nunca o texto de estado. `companyName` acima
+      // vira "Empresa não vinculada" / "empresa fora do lote carregado" quando
+      // não há empresa — pré-preencher com isso criaria uma empresa com esse
+      // nome no primeiro salvamento.
+      companyName: empresaDoContato?.name ?? '',
       stage: (contact.stage as ContactStage) || ContactStage.LEAD,
     });
     setEditando(true);
-  }, [contact, companyName]);
+  }, [contact, empresaDoContato]);
 
   const salvarEdicao = React.useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!contact) return;
-      // `companyName` fica de fora de propósito: vincular contato a empresa
-      // cria/associa registro em `crm_companies`, o que é trabalho do
-      // controller da lista. Aqui só os campos do próprio contato.
+      // O campo "empresa" do modal diz "Este campo cria a empresa. Deixe em
+      // branco para desvincular" — e antes desta correção ele não fazia nem uma
+      // coisa nem outra aqui: era controle morto num modal que parecia inteiro.
+      // Mesma resolução do controller da lista: acha por nome, cria se não
+      // existir, string vazia desvincula.
+      const nomeEmpresa = (formData.companyName || '').trim();
+      let companyId: string | undefined = '';
+      if (nomeEmpresa) {
+        const existente = companies.find(
+          (c) => (c.name || '').toLowerCase() === nomeEmpresa.toLowerCase()
+        );
+        companyId = existente ? existente.id : (await createCompany.mutateAsync({ name: nomeEmpresa }))?.id;
+      }
       await updateContact.mutateAsync({
         id: contact.id,
         updates: {
@@ -198,11 +221,12 @@ export default function ContactDetailPage({ contactId }: { contactId: string }) 
           phone: normalizePhoneE164(formData.phone) || formData.phone,
           role: formData.role,
           stage: formData.stage,
+          companyId,
         },
       });
       setEditando(false);
     },
-    [contact, formData, updateContact]
+    [contact, formData, updateContact, companies, createCompany]
   );
 
   const dono = React.useMemo(
