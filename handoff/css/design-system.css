@@ -1,0 +1,12 @@
+/* design-system.css — tela de referência das decisões. Usada só em decisoes-design-system.html */
+
+.ds-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); align-items: start; }
+.ds-card { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px; display: flex; flex-direction: column; gap: var(--space-3); }
+.ds-card__desc { font-size: 12.5px; color: var(--text-muted); }
+.ds-demo { background: var(--surface-subtle); border-radius: var(--radius-cta); padding: var(--space-3); }
+.ds-row { display: flex; align-items: center; gap: var(--space-3); }
+.ds-row__note { font-size: 12px; color: var(--text-muted); }
+.ds-channels { display: flex; gap: 22px; align-items: flex-start; }
+.ds-channel { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: var(--text-meta); color: var(--ink-600); }
+.ds-rules { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-6); font-size: 13px; color: rgba(255,255,255,.8); line-height: 1.5; }
+.ds-rules b { color: #fff; }

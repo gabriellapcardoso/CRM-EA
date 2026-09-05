@@ -19,7 +19,9 @@ import { useContacts } from '@/lib/query/hooks/useContactsQuery';
 import { useBoards } from '@/lib/query/hooks/useBoardsQuery';
 import { useActivities, useCreateActivity } from '@/lib/query/hooks/useActivitiesQuery';
 import { useMoveDealSimple } from '@/lib/query/hooks';
+import { resolverOrigem } from '@/lib/navigation/origem';
 import { normalizePhoneE164 } from '@/lib/phone';
+import { sanitizeUrl } from '@/lib/utils/sanitize';
 import { buildStageGroupMap } from '@/features/boards/stageGroups';
 import { getInitials } from '@/features/boards/cardFormat';
 
@@ -586,6 +588,13 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
+  // Voltar contextual: o rótulo e o destino saem do `?from=` da própria URL.
+  // Ver lib/navigation/origem.ts.
+  const origem = useMemo(
+    () => resolverOrigem(searchParams?.get('from'), searchParams?.get('fromId')),
+    [searchParams]
+  );
+
   const { profile, user } = useAuth();
 
   const { data: deals = [], isLoading: crmLoading, error: crmErrorRaw, refetch: refreshCRM } = useDealsView();
@@ -773,6 +782,47 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
     const probability = aiAnalysis?.probabilityScore ?? selectedDeal?.probability ?? 50;
     return deriveHealthFromProbability(probability);
   }, [aiAnalysis?.probabilityScore, selectedDeal?.probability]);
+
+  /**
+   * Três números que sustentam o nível de risco. Todos derivam de dado do CRM
+   * que já está em memória — nada de estimativa: um número inventado ao lado da
+   * palavra "alto" faz a pessoa confiar no diagnóstico pelo motivo errado.
+   *
+   * `null` quando não há de onde tirar (deal sem atividade nenhuma, por
+   * exemplo) e a tela mostra "—", que é diferente de zero.
+   */
+  const riskStats = useMemo(() => {
+    const agora = Date.now();
+    const emDias = (iso?: string | null) => {
+      if (!iso) return null;
+      const t = new Date(iso).getTime();
+      if (Number.isNaN(t)) return null;
+      return Math.max(0, Math.floor((agora - t) / 86_400_000));
+    };
+    let ultimaAtividade: string | null = null;
+    for (const a of dealActivities ?? []) {
+      if (!a.date) continue;
+      if (!ultimaAtividade || new Date(a.date).getTime() > new Date(ultimaAtividade).getTime()) {
+        ultimaAtividade = a.date;
+      }
+    }
+    return {
+      semResposta: emDias(ultimaAtividade ?? selectedDeal?.updatedAt),
+      atividades: (dealActivities ?? []).length,
+      noFunil: emDias(selectedDeal?.createdAt),
+    };
+  }, [dealActivities, selectedDeal?.createdAt, selectedDeal?.updatedAt]);
+
+  /** Link da proposta já filtrado por esquema — ver o comentário no campo. */
+  const linkDaProposta = useMemo(() => sanitizeUrl(selectedDeal?.proposalLink), [selectedDeal?.proposalLink]);
+
+  /** Nível de risco em uma palavra — usado pela cor do texto e pela barra. */
+  const nivelRisco: 'baixo' | 'medio' | 'alto' =
+    health.status === 'excellent' || health.status === 'good'
+      ? 'baixo'
+      : health.status === 'warning'
+        ? 'medio'
+        : 'alto';
 
   const nextBestAction = useMemo(() => {
     if (aiAnalysis?.action && !aiAnalysis.error) {
@@ -1116,7 +1166,11 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
       // Rota V2: /deals/[dealId]/cockpit-v2
       if (pathname?.includes('/deals/') && pathname.endsWith('/cockpit-v2')) {
         if (!nextDealId) return;
-        router.replace(`/deals/${nextDealId}/cockpit-v2`);
+        // Carrega `from`/`fromId` pra frente: sem isto, trocar de deal pelo
+        // seletor apaga a origem e o voltar contextual degrada pro padrão
+        // `/boards` sem nada mudar de aparência.
+        const query = searchParams?.toString();
+        router.replace(`/deals/${nextDealId}/cockpit-v2${query ? `?${query}` : ''}`);
         return;
       }
 
@@ -1549,8 +1603,13 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
 
       <header className="cockpit__head">
         <div className="cockpit__head-top">
-          <button type="button" className="btn btn--quiet" onClick={() => router.push('/boards')}>
-            ← negociação
+          <button
+            type="button"
+            className="back-link"
+            onClick={() => router.push(origem.href)}
+            title={origem.label}
+          >
+            {origem.label}
           </button>
           <h2 className="cockpit__title" title={humanizeTestLabel(deal.title) || deal.title}>{humanizeTestLabel(deal.title) || deal.title}</h2>
           <p className="cockpit__value num">{formatCurrencyBRL(deal.value ?? 0)}</p>
@@ -1654,6 +1713,16 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
                 </p>
                 <p className="contact-head__role">{contact?.role || companyName}</p>
               </div>
+              <span className="spacer" />
+              {contact?.id ? (
+                <button
+                  type="button"
+                  className="btn btn--outline"
+                  onClick={() => router.push(`/contacts/${contact.id}?from=deal&fromId=${deal.id}`)}
+                >
+                  ver contato completo
+                </button>
+              ) : null}
             </div>
             <div className="channel-actions">
               <button
@@ -1746,10 +1815,16 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
                 {sendingWhatsappProposal ? 'enviando...' : 'enviar proposta'}
               </button>
             </div>
-            <dl className="data-list">
-              <div className="data-list__row">
-                <dt>telefone</dt>
-                <dd>
+            {/* Grade de campos: os dados do contato E os do deal na mesma
+                seção. Antes eram dois blocos (`contato principal` e `dados do
+                deal`) com `.data-list` — rótulo à esquerda, valor à direita.
+                Em coluna única de 900px aquilo abria um vão de ~700px no meio
+                de cada linha e obrigava o olho a atravessar a tela por campo.
+                `.field-grid` põe rótulo e valor juntos e reflui sozinha. */}
+            <dl className="field-grid section-card__split">
+              <div className="field">
+                <dt className="field__label">WhatsApp</dt>
+                <dd className="field__value">
                   <span className="num">{phoneE164 ?? '—'}</span>
                   {phoneE164 ? (
                     <button
@@ -1764,9 +1839,9 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
                   ) : null}
                 </dd>
               </div>
-              <div className="data-list__row">
-                <dt>e-mail</dt>
-                <dd style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div className="field">
+                <dt className="field__label">e-mail</dt>
+                <dd className="field__value">
                   {contact?.email || '—'}
                   {contact?.email ? (
                     <button
@@ -1781,35 +1856,53 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
                   ) : null}
                 </dd>
               </div>
-            </dl>
-          </CockpitBlock>
-
-          <CockpitBlock title="dados do deal" className="cockpit__sec--deal">
-            <dl className="data-list">
-              <div className="data-list__row">
-                <dt>empresa</dt>
-                <dd>{companyName}</dd>
+              <div className="field">
+                <dt className="field__label">empresa</dt>
+                <dd className="field__value">{companyName}</dd>
               </div>
-              <div className="data-list__row">
-                <dt>board</dt>
-                <dd>{board.name ?? 'Pipeline'}</dd>
+              <div className="field">
+                <dt className="field__label">board</dt>
+                <dd className="field__value">{board.name ?? 'Pipeline'}</dd>
               </div>
-              <div className="data-list__row">
-                <dt>origem</dt>
-                <dd>{contact?.source ?? '—'}</dd>
+              <div className="field">
+                <dt className="field__label">valor</dt>
+                <dd className="field__value num">{formatCurrencyBRL(deal.value ?? 0)}</dd>
               </div>
-              <div className="data-list__row">
-                <dt>dono</dt>
-                <dd>{deal.owner?.name ?? '—'}</dd>
+              <div className="field">
+                <dt className="field__label">origem</dt>
+                <dd className="field__value">{contact?.source ?? '—'}</dd>
               </div>
-              <div className="data-list__row">
-                <dt>probabilidade</dt>
-                <dd className="num">{deal.probability ?? 50}%</dd>
+              <div className="field">
+                <dt className="field__label">dono</dt>
+                <dd className="field__value">{deal.owner?.name ?? '—'}</dd>
               </div>
-              <div className="data-list__row">
-                <dt>última mudança</dt>
-                <dd>{latestMove ? latestMove.at : formatAtISO(deal.updatedAt)}</dd>
+              <div className="field">
+                <dt className="field__label">probabilidade</dt>
+                <dd className="field__value num">{deal.probability ?? 50}%</dd>
               </div>
+              <div className="field">
+                <dt className="field__label">última mudança</dt>
+                <dd className="field__value">
+                  {latestMove ? latestMove.at : formatAtISO(deal.updatedAt)}
+                </dd>
+              </div>
+              {/* `deals.proposal_link` chega de OUTRO sistema: o webhook-in grava
+                  `payload.link_publico` sem checar esquema
+                  (supabase/functions/webhook-in/index.ts:252). Este é o primeiro
+                  ponto que transforma esse valor em `href` — sem o filtro, um
+                  `javascript:` ali executa no clique. `sanitizeUrl` devolve ''
+                  pra esquema fora da lista, e aí o campo simplesmente não
+                  aparece. Ver CLAUDE.md, "Sanitize". */}
+              {linkDaProposta ? (
+                <div className="field">
+                  <dt className="field__label">proposta</dt>
+                  <dd className="field__value field__value--link">
+                    <a href={linkDaProposta} target="_blank" rel="noreferrer">
+                      abrir proposta
+                    </a>
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           </CockpitBlock>
 
@@ -1849,7 +1942,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
 
         {/* ------- contêiner 2 (era o centro) ------- */}
         <div className="cockpit__center">
-          <section className="card-hitl cockpit__sec--decidir" aria-labelledby="cockpit-next-action">
+          <section className="card-hitl cockpit__sec--hitl" aria-labelledby="cockpit-next-action">
             <div className="card-hitl__head">
               <span className="dot dot--pulse" />
               <h3 className="card-hitl__title" id="cockpit-next-action">
@@ -2268,31 +2361,52 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
 
         {/* ------- contêiner 3 (era a coluna direita) ------- */}
         <aside className="cockpit__aside cockpit__aside--right">
-          <CockpitBlock title="risco do deal" className="cockpit__sec--decidir">
-            <p
-              className={`risk risk--${
-                health.status === 'excellent' || health.status === 'good'
-                  ? 'baixo'
-                  : health.status === 'warning'
-                    ? 'medio'
-                    : 'alto'
-              }`}
-            >
-              <span className="risk__level">
-                {health.status === 'excellent' || health.status === 'good'
-                  ? 'baixo'
-                  : health.status === 'warning'
-                    ? 'médio'
-                    : 'alto'}
+          <CockpitBlock title="risco do deal" className="cockpit__sec--risco">
+            <div className="risk-row">
+              <p className={`risk risk--${nivelRisco}`}>
+                <span className="risk__level">{nivelRisco === 'medio' ? 'médio' : nivelRisco}</span>
+                <span className="risk__text">{nextBestAction.reason}</span>
+              </p>
+              <div className="risk-stats">
+                <div>
+                  <p className="risk-stat__value num">
+                    {riskStats.semResposta === null ? '—' : `${riskStats.semResposta} d`}
+                  </p>
+                  <p className="risk-stat__label">sem movimento</p>
+                </div>
+                <div>
+                  <p className="risk-stat__value num">{riskStats.atividades}</p>
+                  <p className="risk-stat__label">atividades</p>
+                </div>
+                <div>
+                  <p className="risk-stat__value num">
+                    {riskStats.noFunil === null ? '—' : `${riskStats.noFunil} d`}
+                  </p>
+                  <p className="risk-stat__label">no funil</p>
+                </div>
+              </div>
+            </div>
+            {/* Barra de saúde: o número já aparecia no texto do risco, mas em
+                meio à frase. A barra dá a leitura de relance que a tela de
+                governança pede, e a cor acompanha o nível — nunca limão, que
+                aqui significa só "precisa da sua decisão". */}
+            <p className="health section-card__split">
+              <span className="label">saúde do deal</span>
+              <span className="health__track">
+                <span
+                  className={`health__fill health__fill--${nivelRisco}`}
+                  style={{ width: `${Math.min(100, Math.max(0, health.score))}%` }}
+                />
               </span>
-              <span className="risk__text">
-                saúde {health.score}% · {nextBestAction.reason}
-              </span>
+              <span className="health__value num">{health.score}%</span>
+              {/* "atividades" já é um dos três números da risk-stats logo acima;
+                  repetir aqui só ocupa a linha. */}
+              <span className="meta">probabilidade {deal.probability ?? 50}%</span>
             </p>
           </CockpitBlock>
 
           <CockpitBlock
-            className="cockpit__sec--decidir"
+            className="cockpit__sec--passos"
             title="próximos passos"
             right={
               <button
@@ -2309,7 +2423,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             {checklist.length === 0 ? (
               <p className="meta">Sem itens ainda. Adicione abaixo.</p>
             ) : (
-              <ul className="checklist">
+              <ul className="checklist checklist--grid">
                 {checklist.map((it) => (
                   <li
                     key={it.id}

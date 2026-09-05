@@ -7,6 +7,145 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(layout): telas de detalhe viram página inteira, sem rolagem lateral — 2026-09-05
+
+Revisão de layout sobre o pacote `handoff/` (5 mudanças + 1 bônus). Nada de cor,
+tipografia, copy, regra de confiança da IA ou os 13 estágios foi tocado.
+
+**Cockpit do deal.** Os dados do deal deixaram de ser um bloco à parte e foram
+absorvidos pela grade de campos do bloco de contato (`.field-grid`, `auto-fit`
+de 180px). O `.data-list` fazia sentido numa coluna de 288px; em coluna única de
+900px ele abre um vão de ~700px entre rótulo e valor, e o olho atravessa a tela
+por campo.
+
+A ordem das seções mudou: contato → risco → decisão da IA → próximos passos →
+linha do tempo → escrever/registrar → agente → referência. Antes, `--decidir`
+cobria risco, HITL e próximos passos com a mesma `order`, e blocos empatados
+caem na ordem do DOM — que punha a decisão **antes** do risco que a justifica.
+Agora são três classes (`--risco`, `--hitl`, `--passos`), e o teste falha se a
+classe agrupada voltar.
+
+O bloco de risco ganhou a barra de saúde e três números de apoio (sem movimento,
+atividades, no funil), todos derivados de dado que já estava em memória. A cor da
+barra acompanha o nível e **nunca é limão** — limão aqui significa só "precisa da
+sua decisão".
+
+**Detalhe do contato.** Rota nova `/contacts/[contactId]`, tela cheia. A gaveta
+de 340px (`.detail-pane`) saiu da lista: ela roubava largura da tabela, tinha
+rolagem própria dentro da rolagem da página, e guardava o contato aberto num
+`useState` — recarregar ou mandar o link pra alguém devolvia a lista sem nada
+aberto. `.detail-pane` continua no CSS porque o inbox ainda usa.
+
+**Lista de contatos.** `.table-list` perdeu o `min-width: 840px`, que era o que
+fazia a lista rolar pro lado. Só deu pra tirar porque a coluna "empresa" virou
+segunda linha do nome (`.cell-name__stack`), junto com o estágio. Seis colunas de
+dado: contato, canal, dono, último toque, deals, em aberto. A célula do nome é um
+link de verdade pra `/contacts/[id]` — `onClick` na linha não abre em nova aba
+nem aparece como destino pro leitor de tela.
+
+"Dono" não existe no schema de contato: vem do primeiro deal do contato que tem
+dono. Sem deal, mostra "—", que é diferente de "ninguém é dono".
+
+**Voltar contextual.** `resolverOrigem()` (`lib/navigation/origem.ts`) lê `?from=`
+e devolve destino **e** rótulo do mesmo lugar, pra os dois não divergirem. O
+histórico do navegador não serviria: não é legível por script, e
+`document.referrer` vem vazio em navegação client-side do App Router.
+
+**IA · aprovações.** `.card-approval` trocou `grid-template-columns: 1fr 268px`
+por `repeat(auto-fit, minmax(320px, 1fr))`; a borda esquerda da coluna de
+confiança vira borda de topo quando ela desce, via container query na largura do
+próprio card (a barra lateral e o painel de IA encolhem a área útil sem mexer no
+viewport, então `@media` não dispararia).
+
+**Medido no browser**, com o CSS compilado do build, não inferido. Em 1280px com
+a barra lateral aberta (1044px úteis) e no pior caso com a barra **e** o painel
+de IA abertos (660px úteis): nenhuma rolagem horizontal em nenhum container do
+cockpit nem do detalhe do contato; stepper dos 13 estágios em 2 linhas (61px) e
+3 linhas (90px), sem rolagem interna; `.field-grid` em 4 e 3 colunas.
+
+Limite conhecido e medido: a tabela de contatos tem piso de 648px + 40px de
+padding do `.table-list__scroll`. Cabe em 1280px com a barra lateral; com a barra
+**e** o painel de IA abertos ao mesmo tempo num monitor de 1280 ainda sobram ~28px
+de rolagem. Antes desta revisão o mesmo caso estourava 220px.
+
+Guardas: `test/telasDeDetalheSemRolagemLateral.test.ts` (14 asserções) e
+`test/cockpitLayout.test.ts` atualizado. Todas provadas por injeção de
+regressão, com o conserto removido.
+
+**O `/review` sobre este próprio diff achou seis coisas**, todas corrigidas antes
+do PR:
+
+- `?from=toString` derrubava o botão de voltar. `from in MAPA` percorre a cadeia
+  de protótipos, então `toString`, `constructor`, `hasOwnProperty` e `valueOf`
+  passavam na guarda e devolviam uma função — `href` e `label` saíam `undefined`.
+  O valor vem da URL, que qualquer pessoa edita. Agora `Object.hasOwn`.
+- `deals.proposal_link` ia cru pro `href`. O `webhook-in` grava
+  `payload.link_publico` sem checar esquema, e este era o primeiro ponto que
+  transformava o valor em link — um `javascript:` ali executaria no clique.
+  Passa por `sanitizeUrl()`, que o repositório já tinha.
+- **O badge de estágio sumia** quando o nome da empresa era longo.
+  `text-overflow: ellipsis` não se aplica a container flex: o texto cortava seco
+  e empurrava o badge pra fora da caixa. Como o estágio perdeu a coluna própria
+  nesta mesma revisão, a informação desaparecia sem deixar rastro. O truncamento
+  passou pro filho.
+- Cmd+clique no nome abria aba nova **e** levava a aba atual junto: o `<Link>` e o
+  `onClick` da linha disparavam os dois. `stopPropagation` na célula, mesmo padrão
+  das células de seleção e de ações.
+- `useContact()` chamava `getAll()`, com teto de 1000 linhas, e dava `.find()`.
+  Contato fora do lote devolvia `null` — indistinguível de "não existe", numa URL
+  feita pra ser recarregada e compartilhada. Agora `getByIds([id])`, que filtra no
+  servidor. O hook não tinha nenhum chamador antes desta tela.
+- `sufixoOrigem()` nasceu exportada e sem nenhum call site — exatamente a
+  armadilha que o `CLAUDE.md` registra três vezes. Removida.
+
+Mais dois ajustes de medição: a container query do `.card-approval` disparava em
+698px enquanto o grid só empilhava em 695, deixando 3px com a coluna de confiança
+ao lado sem separador (agora 657, alinhado); e "atividades" aparecia duas vezes
+no mesmo card de risco.
+
+**A revisão adversarial (Codex) sobre o mesmo diff achou mais sete**, também
+corrigidas antes do PR:
+
+- Trocar de deal pelo seletor do cockpit **apagava o `?from=`** — o voltar
+  contextual degradava pro padrão `/boards` sem nada mudar de aparência. A query
+  agora viaja junto no `router.replace`.
+- "Ver contato completo" não passava origem, e o detalhe do contato tinha o
+  voltar fixo em `/contacts`. Quem vinha de um deal era despejado na lista.
+  Origem nova `deal`, e `resolverOrigemDoContato()` com padrão na lista em vez do
+  kanban.
+- **O detalhe do contato descartava todo estado de erro.** Falha de rede virava
+  "contato não encontrado", "nenhum deal vinculado" e "nada registrado ainda" —
+  três afirmações sobre o dado, feitas sem saber. Agora carregando, erro e vazio
+  são textos distintos, e o nome da empresa diz "fora do lote carregado" em vez
+  de "Empresa não vinculada".
+- `minmax(320px, 1fr)` no `.card-approval` mantinha piso de 320px, que sobrepõe a
+  largura do container: em tela estreita o card voltaria a rolar pro lado, que é
+  o bug que esta revisão foi consertar. Agora `minmax(min(320px, 100%), 1fr)`,
+  mesmo padrão do `.channel-actions`. Medido em 375/414/600/768/1024px de
+  container: uma coluna até 600, duas a partir de 768, nada estourando.
+- **Tirar o `min-width` do `.table-list` global mexia em três tabelas**, não só na
+  de contatos: o pipeline (KanbanList) e o catálogo de produtos usam a mesma
+  classe e não foram medidos. O piso de 840px voltou; contatos usa
+  `.table-list--fit`.
+- `useContact()` chamava `getAll()` (teto de 1000) — o hook não tinha chamador
+  antes desta tela. Agora `getByIds([id])`.
+- **O botão "editar" existia na gaveta e se perdeu na mudança pra página.**
+  Voltou, reusando o `ContactFormModal` (que é apresentacional) sem arrastar o
+  `useContactsController` inteiro.
+
+E uma consequência que só apareceu ao devolver o editar: `useUpdateContact`
+cancelava e invalidava com `entityCachesExceptDetail('contacts')`, que por
+definição **não** cobre `contacts.detail(id)`. Enquanto ninguém lia esse cache,
+não importava. Com `/contacts/[contactId]` lendo, um fetch de detalhe em voo
+sobrescreveria a escrita otimista e o detalhe ficaria no valor velho enquanto a
+lista já mostrava o novo. É a race já documentada no `CLAUDE.md` para
+`useUpdateDeal`/`useMoveDeal`, agora fechada também aqui.
+
+Guardas subiram de 14 para 20 asserções; as seis novas provadas por injeção.
+
+O teto de 1000 linhas em empresas, deals e atividades continua de pé e está
+registrado no `TODOS.md` como P3 — a tela mostra menos, mas não afirma errado.
+
 ### docs: aprendizados da sessão de QA, e o título do DESAFIOS que o #68 apagou — 2026-09-04
 
 **Correção:** o `# DESAFIOS — …` sumiu do topo do arquivo no #68 e foi mergeado

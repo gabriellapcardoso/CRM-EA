@@ -1,5 +1,57 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## `x in objeto` aceita `toString` e `constructor` (2026-09-05)
+
+Escrevi um mapa de origens de navegação e validei a entrada do usuário com
+`from && from in MAPA ? MAPA[from] : PADRAO`. Parece uma checagem de allowlist.
+Não é: `in` percorre a cadeia de protótipos, e todo objeto literal herda
+`Object.prototype`.
+
+```
+?from=inbox      → { href: '/inbox' }   ✓
+?from=toString   → Function.prototype.toString   → href undefined
+?from=constructor, hasOwnProperty, valueOf, __proto__ → idem
+```
+
+O botão de voltar renderizava vazio e o `router.push` ia com `undefined`. O valor
+vem da query string, que qualquer pessoa edita.
+
+`Object.hasOwn(MAPA, from)` resolve. `Map` também (`.has` não olha protótipo), e
+`Object.create(null)` idem. O que NÃO resolve é `MAPA[from] || PADRAO`: a função
+herdada é truthy, então o `||` não dispara.
+
+**Regra:** allowlist com objeto literal usa `Object.hasOwn`, nunca `in`. Vale pra
+qualquer valor que venha de URL, payload ou formulário.
+
+## `text-overflow: ellipsis` não funciona em container flex (2026-09-05)
+
+Movi a empresa e o estágio pra segunda linha do nome na lista de contatos. Pra
+pôr o badge ao lado do texto, a caixa virou `display: flex` — e ela já carregava
+`overflow: hidden; text-overflow: ellipsis; white-space: nowrap` de quando era
+uma caixa de bloco. As três propriedades continuaram lá, computadas, visíveis no
+DevTools. Sem efeito nenhum: `text-overflow` só se aplica a container de bloco,
+e o texto solto num flex vira item anônimo, que a propriedade não alcança.
+
+O sintoma não foi "faltou reticências". Foi pior: o texto cortava seco E
+**empurrava o badge de estágio inteiro pra fora da caixa**. O estágio, que tinha
+acabado de perder a coluna própria naquela mesma revisão, simplesmente sumia da
+tela para toda empresa de nome longo.
+
+Duas coisas que este caso ensina:
+
+1. **Propriedade computada não é propriedade aplicada.** `getComputedStyle`
+   devolvia `ellipsis` alegremente. Só a comparação lado a lado — duas caixas
+   idênticas, uma com o texto solto e outra com o texto num filho, num
+   screenshot — mostrou a diferença.
+2. **A primeira sonda mediu nada e eu quase acreditei nela.** Setei
+   `table.style.width = '170px'` pra forçar o transbordo; o `clientWidth` do
+   elemento continuou 295 nas duas leituras, porque a largura não propagava por
+   aquela cadeia. É o mesmo erro do `flex: 1` já registrado aqui — conferir que a
+   variável independente MUDOU, antes de ler o resultado.
+
+O conserto é o truncamento morar num filho (`min-width: 0; overflow: hidden;
+text-overflow: ellipsis`), com o container flex só distribuindo.
+
 ## Minhas próprias medições mentiram cinco vezes numa sessão (2026-09-04)
 
 **O quê:** durante o `/qa` da tela de Mensagens, cinco medições produziram

@@ -256,7 +256,9 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
   const router = useRouter();
   useEffect(() => {
     if (selectedDealId) {
-      router.push(`/deals/${selectedDealId}/cockpit-v2`);
+      // `from=board` faz o voltar do cockpit trazer a pessoa de volta pro kanban
+      // com o rótulo certo, em vez do genérico "negociação". Ver lib/navigation/origem.ts.
+      router.push(`/deals/${selectedDealId}/cockpit-v2?from=board`);
       setSelectedDealId(null);
     }
   }, [selectedDealId, router, setSelectedDealId]);

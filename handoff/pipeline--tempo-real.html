@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Negociação — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/board.css">
+  <link rel="stylesheet" href="css/card-deal.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item nav__item--active" href="pipeline.html" aria-current="page">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Negociação</h1><p class="topbar__sub">kanban · 14 estágios · chegando agora</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen screen--board">
+      <div class="board-toolbar">
+        <div class="board-toolbar__title">
+          <h2 class="title-lg">negociação</h2>
+          <span class="badge-stage badge-stage--proposta">14 estágios</span>
+        </div>
+        <div class="filter-group" role="group" aria-label="Filtros de deal">
+          <button class="filter-group__item filter-group__item--active" type="button">todos os deals <span class="filter-group__count num">37</span></button>
+          <button class="filter-group__item" type="button">meus <span class="filter-group__count num">12</span></button>
+          <button class="filter-group__item filter-group__item--hitl" type="button">aguardando você <span class="filter-group__count num">3</span></button>
+        </div>
+        <span class="spacer"></span>
+          <nav class="states" aria-label="Estados desta tela">
+            <a class="states__link" href="pipeline.html">normal</a>
+            <a class="states__link states__link--current" href="pipeline--tempo-real.html">tempo real</a>
+            <a class="states__link" href="pipeline--carregando.html">carregando</a>
+            <a class="states__link" href="pipeline--vazio.html">vazio</a>
+          </nav>
+        <button class="btn btn--primary" type="button">novo deal</button>
+      </div>
+      <p class="banner banner--realtime">
+        <span class="dot dot--pulse"></span>
+        <span class="banner__text"><strong class="banner__title">2 leads entraram agora</strong><br>webhook · formulário do site</span>
+      </p>
+      <div class="board">
+          <section class="board__col" aria-label="Novo">
+            <header class="col-head col-head--frio">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--frio" aria-hidden="true"></span>
+                <h3 class="col-head__name">Novo</h3>
+                <span class="col-head__count num">3</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 7.400</span>
+                <span class="tag-pending">1 p/ aprovar</span>
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <article class="card-deal card-deal--new card-deal--frio">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Ateliê Nara</h4>
+                    <p class="card-deal__value num">—</p>
+                  </div>
+                  <p class="card-deal__contact-name">chegou agora · aguardando enriquecimento</p>
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>webhook</span>
+                  </div>
+                </article>
+              </li>
+              <li>
+                <a class="card-deal card-deal--frio" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Padaria Vila Rica</h4>
+                    <p class="card-deal__value num">R$ 2.400</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">MT</span>
+                    <p class="card-deal__contact-name">Marcos Tibério</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">8 min</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--frio" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Odonto Sorriso Bom</h4>
+                    <p class="card-deal__value num">R$ 3.200</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">DE</span>
+                    <p class="card-deal__contact-name">Dra. Elaine Cruz</p>
+                    <span class="badge-channel badge-channel--instagram badge-channel--sm" title="Instagram">I</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">41 min</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--pending" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Studio Kaya</h4>
+                    <p class="card-deal__value num">R$ 1.800</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm">NL</span>
+                    <p class="card-deal__contact-name">Nayara Lopes</p>
+                    <span class="badge-channel badge-channel--instagram badge-channel--sm" title="Instagram">I</span>
+                  </div>
+                  <p class="badge-pending">
+                    <span class="badge-pending__title"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                    <span class="badge-pending__text">IA quer responder o direct (conf. 0.78)</span>
+                  </p>
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                    <span class="card-deal__age">1 h</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Contato">
+            <header class="col-head col-head--frio">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--frio" aria-hidden="true"></span>
+                <h3 class="col-head__name">Contato</h3>
+                <span class="col-head__count num">3</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 19.400</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--frio" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Mandato Vitório Jr.</h4>
+                    <p class="card-deal__value num">R$ 12.000</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">A</span>
+                    <p class="card-deal__contact-name">Assessoria</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">3 h</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--frio" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Hortifruti Bonanza</h4>
+                    <p class="card-deal__value num">R$ 2.900</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm">SJ</span>
+                    <p class="card-deal__contact-name">Seu Jorge</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                    <span class="card-deal__age">5 h</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--frio" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Clínica Vitalis</h4>
+                    <p class="card-deal__value num">R$ 4.500</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">RP</span>
+                    <p class="card-deal__contact-name">Renan Prado</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">ontem</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Negociando">
+            <header class="col-head col-head--frio">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--frio" aria-hidden="true"></span>
+                <h3 class="col-head__name">Negociando</h3>
+                <span class="col-head__count num">3</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 16.200</span>
+                <span class="tag-pending">1 p/ aprovar</span>
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--frio" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Imobiliária Sul Real</h4>
+                    <p class="card-deal__value num">R$ 8.600</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">CD</span>
+                    <p class="card-deal__contact-name">Camila Duarte</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">2 d</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--pending" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Academia Pulse</h4>
+                    <p class="card-deal__value num">R$ 5.400</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm">DR</span>
+                    <p class="card-deal__contact-name">Diego Ramalho</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+                  <p class="badge-pending">
+                    <span class="badge-pending__title"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                    <span class="badge-pending__text">IA quer enviar tabela de preços (conf. 0.81)</span>
+                  </p>
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                    <span class="card-deal__age">4 h</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--frio" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Pet Shop Amigo Fiel</h4>
+                    <p class="card-deal__value num">R$ 2.200</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">LM</span>
+                    <p class="card-deal__contact-name">Larissa Muniz</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">3 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Topou receber proposta">
+            <header class="col-head col-head--proposta">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--proposta" aria-hidden="true"></span>
+                <h3 class="col-head__name">Topou receber proposta</h3>
+                <span class="col-head__count num">2</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 17.100</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--proposta" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Buffet Aurora</h4>
+                    <p class="card-deal__value num">R$ 7.300</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">PS</span>
+                    <p class="card-deal__contact-name">Paulo Serra</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">1 d</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--proposta" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Escola Semear</h4>
+                    <p class="card-deal__value num">R$ 9.800</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm">VT</span>
+                    <p class="card-deal__contact-name">Vânia Torres</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                    <span class="card-deal__age">2 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Proposta enviada">
+            <header class="col-head col-head--proposta">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--proposta" aria-hidden="true"></span>
+                <h3 class="col-head__name">Proposta enviada</h3>
+                <span class="col-head__count num">3</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 43.600</span>
+                <span class="tag-pending">1 p/ aprovar</span>
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--proposta" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Rede Farma+</h4>
+                    <p class="card-deal__value num">R$ 16.500</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm">ÍB</span>
+                    <p class="card-deal__contact-name">Ítalo Bezerra</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                    <span class="card-deal__age">2 d</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--proposta" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Barbearia Nobre</h4>
+                    <p class="card-deal__value num">R$ 3.100</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">TA</span>
+                    <p class="card-deal__contact-name">Tiago Alencar</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">4 d</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a class="card-deal card-deal--pending" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Construtora Meridiano</h4>
+                    <p class="card-deal__value num">R$ 24.000</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">SF</span>
+                    <p class="card-deal__contact-name">Sérgio Fontes</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+                  <p class="badge-pending">
+                    <span class="badge-pending__title"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                    <span class="badge-pending__text">IA sugere follow-up 3º toque (conf. 0.74)</span>
+                  </p>
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">6 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Proposta aceita">
+            <header class="col-head col-head--proposta">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--proposta" aria-hidden="true"></span>
+                <h3 class="col-head__name">Proposta aceita</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 6.200</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--proposta" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Sabor da Terra</h4>
+                    <p class="card-deal__value num">R$ 6.200</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">MA</span>
+                    <p class="card-deal__contact-name">Márcia Antunes</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">1 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Rodar contrato">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Rodar contrato</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 4.800</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--contrato" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Ótica Visão Clara</h4>
+                    <p class="card-deal__value num">R$ 4.800</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm">BS</span>
+                    <p class="card-deal__contact-name">Bruno Sampaio</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                    <span class="card-deal__age">9 h</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Enviar contrato">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Enviar contrato</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 5.600</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--contrato" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Auto Center Vetor</h4>
+                    <p class="card-deal__value num">R$ 5.600</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">RN</span>
+                    <p class="card-deal__contact-name">Ricardo Naves</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">2 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Contrato aprovado">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Contrato aprovado</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 3.900</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--contrato" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Café Matinal</h4>
+                    <p class="card-deal__value num">R$ 3.900</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">HV</span>
+                    <p class="card-deal__contact-name">Helena Vidal</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">1 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Contrato assinado">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Contrato assinado</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 2.700</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--contrato" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Lava Rápido Jato</h4>
+                    <p class="card-deal__value num">R$ 2.700</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">WP</span>
+                    <p class="card-deal__contact-name">Wesley Pinho</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">3 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Pagamento recebido">
+            <header class="col-head col-head--ganho">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--ganho" aria-hidden="true"></span>
+                <h3 class="col-head__name">Pagamento recebido</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 7.400</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--ganho" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Estética Lumen</h4>
+                    <p class="card-deal__value num">R$ 7.400</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--muted">PR</span>
+                    <p class="card-deal__contact-name">Priscila Rocha</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--auto"><span class="badge-origin__icon" aria-hidden="true">⚡</span>automação</span>
+                    <span class="card-deal__age">5 d</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Ganho">
+            <header class="col-head col-head--ganho">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--ganho" aria-hidden="true"></span>
+                <h3 class="col-head__name">Ganho</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 11.200</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--ganho" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Mercado Bom Preço</h4>
+                    <p class="card-deal__value num">R$ 11.200</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">AF</span>
+                    <p class="card-deal__contact-name">Antônio Ferraz</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">1 sem</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Onboarding">
+            <header class="col-head col-head--ganho">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--ganho" aria-hidden="true"></span>
+                <h3 class="col-head__name">Onboarding</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 9.600</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--ganho" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Turismo Rota Livre</h4>
+                    <p class="card-deal__value num">R$ 9.600</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm">FS</span>
+                    <p class="card-deal__contact-name">Fernanda Sales</p>
+                    <span class="badge-channel badge-channel--email badge-channel--sm" title="E-mail">E</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                    <span class="card-deal__age">2 sem</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Perdido">
+            <header class="col-head col-head--perdido">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--perdido" aria-hidden="true"></span>
+                <h3 class="col-head__name">Perdido</h3>
+                <span class="col-head__count num">1</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">R$ 4.300</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li>
+                <a class="card-deal card-deal--perdido" href="cockpit-deal.html">
+                  <div class="card-deal__head">
+                    <h4 class="card-deal__title">Restaurante Tempero</h4>
+                    <p class="card-deal__value num">R$ 4.300</p>
+                  </div>
+                  <div class="card-deal__contact">
+                    <span class="avatar avatar--sm avatar--purple">CR</span>
+                    <p class="card-deal__contact-name">Cléber Rios</p>
+                    <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                  </div>
+
+                  <div class="card-deal__foot">
+                    <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>bruna</span>
+                    <span class="card-deal__age">2 sem</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

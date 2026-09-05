@@ -1047,7 +1047,27 @@ body {
 .card-create:hover { border-color: var(--purple-400); background: var(--purple-50); }
 
 /* ---- table-list.css ---- */
+/* O piso de 840px continua valendo pro resto: `.table-list` também veste a lista
+ * do pipeline (KanbanList) e o catálogo de produtos, que têm outras colunas e
+ * não passaram por esta revisão. Tirar o piso de todas de uma vez espremeria
+ * tabelas que ninguém mediu. */
 .table-list { width: 100%; border-collapse: collapse; min-width: 840px; }
+/* Só a lista de contatos dispensa o piso, e só porque a coluna "empresa" virou
+ * a 2ª linha do nome (`.cell-name__stack`): as 6 colunas restantes cabem em
+ * 1280px com a barra lateral aberta. Medido. */
+.table-list--fit { min-width: 0; }
+.table-list__link { display: flex; align-items: center; gap: 9px; min-width: 0; color: inherit; }
+.table-list__link:hover { color: inherit; }
+.cell-name__stack { min-width: 0; display: flex; flex-direction: column; }
+.cell-name__top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+/* O truncamento vive no FILHO, não nesta caixa: `text-overflow: ellipsis` não
+ * se aplica a container flex, então com o texto solto aqui o nome da empresa
+ * cortava seco (sem reticências) e ainda empurrava o badge de estágio pra
+ * fora da caixa — o estágio desaparecia da tela, e ele perdeu a coluna própria
+ * nesta mesma revisão. Medido lado a lado no browser. */
+.cell-name__co { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); min-width: 0; }
+.cell-name__co-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-name__co .badge-stage { flex: none; }
 .table-list th { text-align: left; font-size: 11px; font-weight: var(--weight-bold); letter-spacing: .08em; color: var(--text-faint); padding: var(--space-3) var(--space-2) var(--space-2) 0; border-bottom: 1px solid var(--border-subtle); background: var(--surface-subtle); position: sticky; top: 0; z-index: 2; }
 .table-list td { padding: 9px var(--space-2) 9px 0; border-bottom: 1px solid var(--ink-100); font-size: 12.5px; height: var(--row-height); }
 .table-list tbody tr:hover { background: var(--surface-card); }
@@ -1155,7 +1175,14 @@ body {
   border-left: 5px solid var(--hitl-surface);
   border-radius: var(--radius-md);
   padding: 15px var(--space-4);
-  display: grid; grid-template-columns: 1fr 268px; gap: 18px;
+  /* `1fr 268px` fixava a coluna de confiança: abaixo de ~600px de largura
+   * útil o lado esquerdo ficava sem espaço e o card estourava pra fora.
+   * `auto-fit` desce a confiança pra baixo do conteúdo em vez de espremer. */
+  /* `min(320px, 100%)` e não `320px` puro: a faixa mínima de um track sobrepõe
+   * a largura do container, então em viewport estreito o card voltaria a rolar
+   * pro lado — que é o bug que esta revisão foi consertar. Mesmo padrão do
+   * `.channel-actions` logo abaixo. */
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 18px;
   box-shadow: 0 2px 0 0 rgba(191,242,8,.35);
 }
 .card-approval__main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
@@ -1167,6 +1194,17 @@ body {
 .card-approval__why dt { font-weight: var(--weight-bold); color: var(--ink-900); white-space: nowrap; }
 .card-approval__actions { display: flex; gap: 7px; flex-wrap: wrap; }
 .card-approval__side { border-left: 1px solid var(--ink-100); padding-left: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+/* Quando o `auto-fit` acima empilha, a borda esquerda vira um traço solto no
+ * meio do card. Container query na largura do próprio card resolve sem
+ * breakpoint de viewport (a barra lateral e o painel de IA mudam a largura
+ * útil sem mexer no viewport — ver CLAUDE.md). */
+.card-approval { container-type: inline-size; }
+/* 657, não 660: medido no browser, o card perdia a borda esquerda em 698px de
+ * largura mas só empilhava em 695px — 3px em que a coluna de confiança ficava
+ * ao lado sem separador nenhum. */
+@container (max-width: 657px) {
+  .card-approval__side { border-left: 0; border-top: 1px solid var(--ink-100); padding-left: 0; padding-top: var(--space-3); }
+}
 .approval-list { display: flex; flex-direction: column; gap: 11px; }
 .section-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: 11px; }
 .section-head__swatch { width: 11px; height: 11px; border-radius: 3px; }
@@ -1243,22 +1281,29 @@ body {
  * casaria com os containers (que não têm caixa nenhuma) e não pintaria nada. */
 .cockpit__body .cockpit__block,
 .cockpit__body .card-hitl,
+.cockpit__body .section-head,
+.cockpit__body .section-card,
+.cockpit__body .deal-grid,
 .cockpit__body .panel { width: 100%; max-width: 900px; margin-inline: auto; }
 
-/* Ordem da governança: identificar → decidir → entender → consultar.
- * Os blocos ficam onde estão no JSX (esquerda/centro/direita do layout antigo);
- * só a ordem visual muda. `order` só funciona porque os containers são
- * `display: contents` e todos os blocos são irmãos diretos deste flex.
+/* Ordem da governança: quem é → o quanto arrisca → o que decidir → o que fazer
+ * → o que já aconteceu → consultar. `order` só funciona porque os containers
+ * são `display: contents` e todos os blocos são irmãos diretos deste flex.
  *
- * `--deal` e `--contato` são separados em vez de um grupo só porque blocos com
- * o mesmo `order` caem na ordem do DOM, e ali o contato vem antes (JSX :1611 vs
- * :1752) — o inverso do que a tela pede. */
-.cockpit__sec--deal { order: 1; }       /* dados do deal */
-.cockpit__sec--contato { order: 2; }    /* contato principal + botões de canal */
-.cockpit__sec--decidir { order: 3; }    /* próxima ação, risco, próximos passos */
-.cockpit__sec--historico { order: 4; }  /* linha do tempo, escrever nota, registrar */
-.cockpit__sec--assistente { order: 5; } /* agente IA (chat/notas/scripts/arquivos) */
-.cockpit__sec--ref { order: 6; }        /* sinais, etiquetas, contexto */
+ * `--decidir` foi quebrado em três (`--risco`, `--hitl`, `--passos`): os três
+ * blocos dividiam a mesma ordem e caíam na ordem do DOM (HITL, risco, passos),
+ * que é o inverso do que a revisão de 2026-09-04 pede — o risco enquadra a
+ * decisão, então vem antes dela.
+ *
+ * `--deal` saiu porque os dados do deal foram absorvidos pela grade de campos
+ * do bloco de contato; não há mais um bloco só deles pra ordenar. */
+.cockpit__sec--contato { order: 1; }    /* contato principal + campos do deal */
+.cockpit__sec--risco { order: 2; }      /* risco + barra de saúde */
+.cockpit__sec--hitl { order: 3; }       /* decisão da IA aguardando aprovação */
+.cockpit__sec--passos { order: 4; }     /* próximos passos */
+.cockpit__sec--historico { order: 5; }  /* linha do tempo, escrever nota, registrar */
+.cockpit__sec--assistente { order: 6; } /* agente IA (chat/notas/scripts/arquivos) */
+.cockpit__sec--ref { order: 7; }        /* sinais, etiquetas, contexto */
 
 /* Os blocos que vinham dos painéis laterais não tinham cara de card: o fundo e
  * a borda eram do `<aside>`, que agora não existe mais. Sem isto eles flutuam
@@ -1320,6 +1365,66 @@ body {
 .stepper__step--done { background: var(--purple-200); color: var(--purple-800); }
 .stepper__step--current { background: var(--surface-brand); color: #fff; font-weight: var(--weight-bold); }
 .stepper__n { opacity: .6; font-variant-numeric: tabular-nums; }
+
+/* ── revisão 2026-09-04: telas de detalhe como página única ──────────────────
+ * Componentes vindos do pacote `handoff/css/cockpit.css`. Todos os valores são
+ * tokens já existentes; nenhuma cor, fonte ou raio novo. Usados pelo cockpit do
+ * deal e pelo detalhe do contato (/contacts/[contactId]). */
+
+/* Voltar contextual: o rótulo diz de ONDE a pessoa veio, não pra onde o botão
+ * costuma ir. Ver `resolverOrigem()` em features/deals/cockpit. */
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: var(--weight-bold); color: var(--purple-700); background: var(--purple-50); border: 1px solid var(--purple-100); padding: 6px 11px; border-radius: 9px; white-space: nowrap; }
+.back-link:hover { background: var(--purple-100); color: var(--purple-800); }
+
+/* Cartão de seção — mesma caixa do `.cockpit__block`, sem depender do
+ * `CockpitBlock` (o detalhe do contato não usa aquele componente). */
+.section-card { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-4) 18px; display: flex; flex-direction: column; gap: 14px; }
+.section-card--flush { padding: 6px 18px var(--space-3); gap: 0; }
+.section-card__split { border-top: 1px solid var(--ink-100); padding-top: 14px; }
+
+/* Grade de campos: reflui e nunca estoura. Substitui o `.data-list` (rótulo à
+ * esquerda, valor à direita) onde há muitos campos curtos — em coluna única o
+ * data-list deixa um vão enorme no meio de cada linha. */
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px var(--space-5); }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.field__label { font-size: 11px; font-weight: var(--weight-bold); letter-spacing: .06em; color: var(--text-faint); }
+.field__value { font-size: 13.5px; font-weight: var(--weight-semibold); color: var(--ink-900); overflow-wrap: anywhere; }
+.field__value--link { color: var(--purple-700); }
+
+/* Risco + saúde do deal */
+.risk-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+/* Escopado à risk-row: `.risk` sozinho continua servindo o card do inbox, que
+ * não tem estatísticas ao lado e não deve ganhar largura mínima. */
+.risk-row .risk { flex: 1; min-width: 230px; }
+.risk-row .risk__text { line-height: 1.45; text-wrap: pretty; }
+.risk-stats { display: flex; gap: 26px; flex-wrap: wrap; border-left: 1px solid var(--ink-100); padding-left: 22px; }
+.risk-stat__value { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 19px; color: var(--text-strong); }
+.risk-stat__label { font-size: var(--text-meta); color: var(--text-muted); }
+.health { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* `display: block` nos dois spans: eles vivem dentro de um `<p>`, onde o
+ * default inline ignoraria altura e o preenchimento não teria o que pintar. */
+.health__track { flex: 1; min-width: 180px; height: 7px; border-radius: var(--radius-pill); background: var(--ink-100); overflow: hidden; display: block; }
+.health__fill { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--warning); }
+.health__fill--baixo { background: var(--success); }
+.health__fill--medio { background: var(--warning); }
+.health__fill--alto { background: var(--danger); }
+.health__value { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 17px; color: var(--text-strong); }
+
+/* Checklist em grade — em coluna única de 900px uma lista vertical de itens
+ * curtos desperdiça a linha inteira. */
+.checklist--grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px var(--space-5); }
+
+/* Deals do contato (detalhe do contato) */
+.deal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 11px; }
+.card-deal-open { background: var(--surface-card); border: 1px solid var(--border-subtle); border-left: 4px solid var(--stage-proposta); border-radius: 13px; padding: 14px var(--space-4); display: flex; flex-direction: column; gap: 7px; }
+.card-deal-open:hover { border-color: var(--purple-300); }
+.card-deal-open--ganho { border-left-color: var(--stage-ganho); }
+.card-deal-open--perdido { border-left-color: var(--stage-perdido); opacity: .8; }
+.card-deal-open__head { display: flex; align-items: baseline; gap: 10px; }
+.card-deal-open__title { font-family: var(--font-display-rd); font-weight: var(--weight-heavy); font-size: 15.5px; color: var(--text-strong); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.card-deal-open__value { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 15.5px; color: var(--text-strong); }
+.card-deal-open__meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font-size: 12px; color: var(--text-muted); }
+.card-deal-open__cta { font-size: 12px; font-weight: var(--weight-bold); color: var(--purple-700); }
 
 /* ---- report.css ---- */
 .funnel { display: flex; flex-direction: column; gap: 9px; }

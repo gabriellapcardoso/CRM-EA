@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boards — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/board.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item nav__item--active" href="boards.html" aria-current="page">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Boards</h1><p class="topbar__sub">quadros configuráveis da operação</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="screen__inner screen__inner--wide">
+        <div class="panel__head">
+          <h2 class="title-lg">seus boards</h2>
+          <span class="spacer"></span>
+        <nav class="states" aria-label="Estados desta tela">
+          <a class="states__link states__link--current" href="boards.html">normal</a>
+          <a class="states__link" href="boards--vazio.html">vazio</a>
+        </nav>
+        </div>
+        <section class="boards-grid">
+          <a class="card-board card-board--primary" href="pipeline.html">
+            <div class="card-board__head">
+              <span class="card-board__spine" aria-hidden="true"></span>
+              <div>
+                <h3 class="card-board__name">Negociação</h3>
+                <p class="card-board__desc">do lead novo ao contrato assinado</p>
+              </div>
+              <p class="status"><span class="dot dot--pulse dot--success"></span>ao vivo</p>
+            </div>
+            <div class="card-board__figures">
+              <div>
+                <p class="card-board__value num">R$ 184.500</p>
+                <p class="meta">em aberto</p>
+              </div>
+              <span class="spacer"></span>
+              <div class="avatar-stack"><span class="avatar avatar--sm">BA</span><span class="avatar avatar--sm">LF</span><span class="avatar avatar--sm">TM</span></div>
+            </div>
+            <div class="card-board__foot">
+              <span class="tag">14 estágios</span>
+              <span class="tag">37 deals</span>
+              <span class="tag tag--ia">9 automações</span>
+              <span class="spacer"></span>
+              <span class="meta">movido agora</span>
+            </div>
+          </a>
+          <a class="card-board" href="boards.html">
+            <div class="card-board__head">
+              <span class="card-board__spine" aria-hidden="true"></span>
+              <div>
+                <h3 class="card-board__name">Onboarding de cliente</h3>
+                <p class="card-board__desc">primeiros 30 dias depois do ganho</p>
+              </div>
+
+            </div>
+            <div class="card-board__figures">
+              <div>
+                <p class="card-board__value num">R$ 71.200</p>
+                <p class="meta">em aberto</p>
+              </div>
+              <span class="spacer"></span>
+              <div class="avatar-stack"><span class="avatar avatar--sm">LF</span><span class="avatar avatar--sm">TM</span></div>
+            </div>
+            <div class="card-board__foot">
+              <span class="tag">6 estágios</span>
+              <span class="tag">8 deals</span>
+              <span class="tag tag--ia">5 automações</span>
+              <span class="spacer"></span>
+              <span class="meta">movido 12 min</span>
+            </div>
+          </a>
+          <a class="card-board" href="boards.html">
+            <div class="card-board__head">
+              <span class="card-board__spine" aria-hidden="true"></span>
+              <div>
+                <h3 class="card-board__name">Renovação & upsell</h3>
+                <p class="card-board__desc">contratos vencendo nos próximos 60 dias</p>
+              </div>
+
+            </div>
+            <div class="card-board__figures">
+              <div>
+                <p class="card-board__value num">R$ 96.800</p>
+                <p class="meta">em aberto</p>
+              </div>
+              <span class="spacer"></span>
+              <div class="avatar-stack"><span class="avatar avatar--sm">BA</span><span class="avatar avatar--sm">TM</span></div>
+            </div>
+            <div class="card-board__foot">
+              <span class="tag">5 estágios</span>
+              <span class="tag">14 deals</span>
+              <span class="tag tag--ia">3 automações</span>
+              <span class="spacer"></span>
+              <span class="meta">movido 2 h</span>
+            </div>
+          </a>
+          <a class="card-board" href="boards.html">
+            <div class="card-board__head">
+              <span class="card-board__spine" aria-hidden="true"></span>
+              <div>
+                <h3 class="card-board__name">Suporte & pedidos</h3>
+                <p class="card-board__desc">demandas do dia a dia dos clientes</p>
+              </div>
+
+            </div>
+            <div class="card-board__figures">
+              <div>
+                <p class="card-board__value num">—</p>
+                <p class="meta">em aberto</p>
+              </div>
+              <span class="spacer"></span>
+              <div class="avatar-stack"><span class="avatar avatar--sm">LF</span></div>
+            </div>
+            <div class="card-board__foot">
+              <span class="tag">4 estágios</span>
+              <span class="tag">23 deals</span>
+              <span class="tag tag--ia">2 automações</span>
+              <span class="spacer"></span>
+              <span class="meta">movido 38 min</span>
+            </div>
+          </a>
+          <a class="card-create" href="#">+ criar board</a>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

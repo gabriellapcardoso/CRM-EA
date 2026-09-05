@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurações · Integrações — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item nav__item--active" href="configuracoes-geral.html" aria-current="page">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Configurações · Integrações</h1><p class="topbar__sub">canais e webhooks</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="screen__inner screen__inner--narrow">
+        <nav class="tabs" aria-label="Seções de configuração">
+          <a class="tab" href="configuracoes-geral.html">geral</a>
+          <a class="tab" href="configuracoes-ia.html">configuração de IA</a>
+          <a class="tab tab--active" href="configuracoes-integracoes.html" aria-current="page">integrações</a>
+          <a class="tab" href="configuracoes-produtos.html">produtos & catálogo</a>
+        </nav>
+        <ul class="panel__body">
+          <li class="panel setting-row">
+            <span class="dot dot--success"></span>
+            <span class="setting-row__text">
+              <span class="setting-row__title">WhatsApp Business <span class="status-chip status-chip--on">conectado</span></span>
+              <span class="setting-row__desc">API oficial · +55 27 99xxx-4410</span>
+              <span class="meta">sincronizado agora · 1.842 mensagens no mês</span>
+            </span>
+            <button class="btn btn--ghost" type="button">gerenciar</button>
+          </li>
+          <li class="panel setting-row">
+            <span class="dot dot--success"></span>
+            <span class="setting-row__text">
+              <span class="setting-row__title">E-mail <span class="status-chip status-chip--on">conectado</span></span>
+              <span class="setting-row__desc">contato@aaagencia.com.br · Google Workspace</span>
+              <span class="meta">sincronizado 2 min atrás · 318 e-mails no mês</span>
+            </span>
+            <button class="btn btn--ghost" type="button">gerenciar</button>
+          </li>
+          <li class="panel setting-row">
+            <span class="dot dot--danger"></span>
+            <span class="setting-row__text">
+              <span class="setting-row__title">Instagram Direct <span class="status-chip status-chip--off">desconectado</span></span>
+              <span class="setting-row__desc">@aaagencia</span>
+              <span class="meta">token expirou em 28 jul · 3 dias sem receber mensagens</span>
+            </span>
+            <button class="btn btn--danger" type="button">reconectar agora</button>
+          </li>
+          <li class="panel setting-row">
+            <span class="dot dot--warning"></span>
+            <span class="setting-row__text">
+              <span class="setting-row__title">Asaas (pagamentos) <span class="status-chip status-chip--warn">atenção</span></span>
+              <span class="setting-row__desc">webhooks de cobrança e baixa</span>
+              <span class="meta">2 webhooks falharam nas últimas 24 h</span>
+            </span>
+            <button class="btn btn--ghost" type="button">ver falhas</button>
+          </li>
+        </ul>
+        <p class="banner banner--info">enquanto o Instagram estiver desconectado, os directs não entram no inbox e o agente não responde por lá. as conversas antigas continuam salvas.</p>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

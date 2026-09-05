@@ -1,0 +1,68 @@
+/* shell.css — sidebar + topbar. Presente em todas as telas internas. */
+
+.sidebar {
+  width: 236px; flex: 0 0 236px;
+  background: var(--surface-inverse);
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: 18px var(--space-3) var(--space-3);
+  overflow: hidden;
+}
+.sidebar__brand { padding: 0 var(--space-2); }
+.sidebar__brand .logo { height: 26px; width: auto; }
+.nav { display: flex; flex-direction: column; gap: var(--space-4); flex: 1; overflow-y: auto; }
+.nav__group { display: flex; flex-direction: column; gap: 2px; }
+.nav__label { font-size: 11px; font-weight: var(--weight-bold); letter-spacing: var(--tracking-label); color: rgba(255,255,255,.34); padding: var(--space-1) var(--space-2) 6px; }
+.nav__item {
+  position: relative; display: flex; align-items: center; gap: var(--space-2);
+  padding: 7px var(--space-3) 7px var(--space-3);
+  border-radius: 9px; color: rgba(255,255,255,.74);
+  font-weight: var(--weight-medium); transition: background var(--dur-fast);
+}
+.nav__item:hover { background: rgba(255,255,255,.08); color: #fff; }
+.nav__item::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 16px; border-radius: var(--radius-pill); background: transparent; }
+.nav__item--active { color: #fff; font-weight: var(--weight-bold); background: rgba(255,255,255,.08); }
+.nav__item--active::before { background: var(--lime-500); }
+.nav__item .badge-count { margin-left: auto; }
+
+.sidebar__user { display: flex; align-items: center; gap: 9px; padding: var(--space-2) var(--space-2) var(--space-1); border-top: 1px solid rgba(255,255,255,.1); }
+.sidebar__user-text { min-width: 0; }
+.sidebar__user-name { display: block; color: #fff; font-weight: var(--weight-semibold); font-size: 12.5px; }
+.sidebar__user-role { display: block; color: rgba(255,255,255,.4); font-size: 11px; }
+
+.topbar {
+  min-height: 56px; flex: 0 0 auto; background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; gap: var(--space-4); padding: 0 var(--space-5);
+}
+.topbar__title { display: flex; flex-direction: column; }
+.topbar__heading { font-family: var(--font-display); font-weight: var(--weight-heavy); font-size: 16px; letter-spacing: var(--tracking-tight); color: var(--text-strong); white-space: nowrap; }
+.topbar__sub { font-size: var(--text-meta); color: var(--text-muted); }
+
+.search { display: flex; align-items: center; gap: var(--space-2); width: 260px; min-width: 0; flex-shrink: 1; padding: 6px var(--space-3); background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-button); color: var(--text-faint); }
+.search__input { flex: 1; border: 0; background: none; outline: none; }
+.search__kbd { font-size: 11px; color: var(--text-faint); background: #fff; border: 1px solid var(--border-subtle); border-radius: 5px; padding: 0 5px; }
+
+.status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-600); border-left: 1px solid var(--border-subtle); padding-left: var(--space-3); }
+.status--on { color: var(--ink-600); }
+.status--on .dot { color: var(--success); }
+
+/* botão de ocultar/mostrar o menu lateral (paridade com o sistema em produção) */
+.nav-toggle {
+  width: 34px; height: 34px; flex: 0 0 34px;
+  display: grid; place-items: center;
+  background: var(--surface-card); border: 1px solid var(--border-subtle);
+  border-radius: 9px; padding: 0;
+}
+.nav-toggle:hover { background: var(--surface-subtle); border-color: var(--purple-200); }
+.nav-toggle__glyph { width: 17px; height: 14px; border: 1.6px solid var(--ink-600); border-radius: 3px; position: relative; display: block; }
+.nav-toggle__glyph::before { content: ""; position: absolute; top: -1px; bottom: -1px; left: -1px; width: 6px; background: var(--ink-600); border-radius: 2px 0 0 2px; }
+.app--nav-collapsed .sidebar { display: none; }
+
+/* topbar estreito: some o que é redundante em vez de cortar o conteúdo */
+@media (max-width: 1120px) {
+  .topbar { gap: var(--space-3); }
+  .search { width: 180px; }
+}
+@media (max-width: 940px) {
+  .search__kbd, .status { display: none; }
+}

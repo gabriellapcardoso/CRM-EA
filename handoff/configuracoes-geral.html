@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurações — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item nav__item--active" href="configuracoes-geral.html" aria-current="page">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Configurações</h1><p class="topbar__sub">organização aaagência</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="screen__inner screen__inner--narrow">
+        <nav class="tabs" aria-label="Seções de configuração">
+          <a class="tab tab--active" href="configuracoes-geral.html" aria-current="page">geral</a>
+          <a class="tab" href="configuracoes-ia.html">configuração de IA</a>
+          <a class="tab" href="configuracoes-integracoes.html">integrações</a>
+          <a class="tab" href="configuracoes-produtos.html">produtos & catálogo</a>
+        </nav>
+        <section class="panel">
+          <h2 class="panel__title title-md">organização</h2>
+          <dl class="form-grid">
+            <dt>nome</dt><dd><input class="input" value="aaagência"></dd>
+            <dt>fuso horário</dt><dd><input class="input" value="América/São_Paulo (GMT-3)"></dd>
+            <dt>moeda</dt><dd><input class="input" value="Real (R$)"></dd>
+            <dt>horário comercial</dt><dd><input class="input" value="08:00 – 18:00 · seg a sex"><p class="meta">fora disso, só o agente responde</p></dd>
+          </dl>
+        </section>
+        <section class="panel">
+          <h2 class="panel__title title-md">time</h2>
+          <ul>
+            <li class="setting-row">
+              <span class="avatar avatar--pink avatar--md">BA</span>
+              <span class="setting-row__text"><span class="setting-row__title">Bruna Alcântara</span><span class="setting-row__desc">bruna@aaagencia.com.br</span></span>
+              <span class="status-chip status-chip--ia">dona</span>
+            </li>
+            <li class="setting-row">
+              <span class="avatar avatar--md">LF</span>
+              <span class="setting-row__text"><span class="setting-row__title">Lucas Ferrari</span><span class="setting-row__desc">lucas@aaagencia.com.br</span></span>
+              <span class="status-chip status-chip--muted">closer</span>
+            </li>
+            <li class="setting-row">
+              <span class="avatar avatar--md">TM</span>
+              <span class="setting-row__text"><span class="setting-row__title">Thaís Moreira</span><span class="setting-row__desc">thais@aaagencia.com.br</span></span>
+              <span class="status-chip status-chip--muted">atendimento</span>
+            </li>
+          </ul>
+          <p><button class="btn btn--primary" type="button">convidar pessoa</button></p>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

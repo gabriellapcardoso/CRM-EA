@@ -234,7 +234,7 @@ export const DecisionQueuePage: React.FC = () => {
                   <p className="auto-log__note">{decision.description}</p>
                 </div>
                 <span className="meta nowrap">{historyTimeLabel(decision.decidedAt)}</span>
-                {decision.dealId && <a href={`/deals/${decision.dealId}/cockpit-v2`}>ver</a>}
+                {decision.dealId && <a href={`/deals/${decision.dealId}/cockpit-v2?from=decisoes`}>ver</a>}
               </li>
             ))}
           </ul>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+<div class="auth">
+  <a class="auth__back" href="dashboard.html">← voltar pro app</a>
+  <aside class="auth__aside">
+    <img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência">
+    <div>
+      <p class="auth__claim">o pós-venda inteiro num lugar<span class="dot-lime">.</span></p>
+      <p class="auth__sub">negociação, conversas dos três canais e um agente de IA que só te chama quando a decisão é sua.</p>
+    </div>
+    <p class="auth__signature">marketing · tráfego pago · inteligência artificial</p>
+  </aside>
+  <section class="auth__panel">
+    <form class="auth__form" action="dashboard.html">
+      <div>
+        <h1 class="auth__title">bem-vinda de volta</h1>
+        <p class="auth__text">entre pra ver o que rolou enquanto você não estava.</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="email">e-mail</label>
+        <input class="input" id="email" type="email" value="bruna@aaagencia.com.br">
+      </div>
+      <div class="field">
+        <label class="field__label" for="senha">senha</label>
+        <input class="input input--error" id="senha" type="password" value="0000000000" aria-describedby="erro-login">
+      </div>
+      <p class="banner banner--error" id="erro-login"><span class="banner__text"><strong>senha incorreta.</strong> tentativa 1 de 5 — depois disso a conta trava por 10 min.</span></p>
+      <button class="btn btn--primary btn--lg btn--block" type="submit">entrar</button>
+      <p class="auth__divider">ou</p>
+      <button class="btn btn--ghost btn--lg btn--block" type="button">continuar com Google</button>
+      <p class="auth__links"><a href="#">esqueci a senha</a><a href="onboarding-install-start.html">criar organização</a></p>
+    </form>
+  </section>
+</div>
+</body>
+</html>

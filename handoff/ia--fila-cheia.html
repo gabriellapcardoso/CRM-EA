@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IA · decisões — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/approval.css">
+  <link rel="stylesheet" href="css/timeline.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item nav__item--active" href="ia.html" aria-current="page">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">IA · decisões</h1><p class="topbar__sub">11 decisões acumuladas</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="screen__inner screen__inner--wide">
+        <div class="panel__head">
+          <div>
+            <h2 class="title-xl">decisões da IA</h2>
+            <p class="muted">o agente executa sozinho acima de 0.85 e arquiva abaixo de 0.70. no meio disso, ele para e te chama — é o que aparece em verde-limão.</p>
+          </div>
+          <span class="spacer"></span>
+        <nav class="states" aria-label="Estados desta tela">
+          <a class="states__link" href="ia.html">normal</a>
+          <a class="states__link states__link--current" href="ia--fila-cheia.html">fila cheia</a>
+          <a class="states__link" href="ia--vazio.html">em dia</a>
+        </nav>
+        </div>
+
+        <section class="panel ai-summary" aria-label="Como o agente decide">
+          <div class="ai-summary__bands">
+            <h3 class="label">como o agente decide</h3>
+            <div class="confidence-bands">
+              <span class="confidence-bands__band--low"></span>
+              <span class="confidence-bands__band--hitl"></span>
+              <span class="confidence-bands__band--auto"></span>
+            </div>
+            <p class="confidence-legend">
+              <span class="confidence-legend__item"><span class="confidence-legend__swatch stage-swatch--frio"></span>&lt; 0.70 arquiva sozinho</span>
+              <span class="confidence-legend__item confidence-legend__item--hitl"><span class="confidence-legend__swatch confidence-legend__swatch--hitl"></span>0.70–0.85 você decide</span>
+              <span class="confidence-legend__item"><span class="confidence-legend__swatch confidence-legend__swatch--auto"></span>&gt; 0.85 executa</span>
+            </p>
+          </div>
+          <div class="ai-summary__stat"><p class="ai-summary__value num">11</p><p class="ai-summary__label">na sua fila</p></div>
+          <div class="ai-summary__stat"><p class="ai-summary__value num">128</p><p class="ai-summary__label">executadas em agosto</p></div>
+          <div class="ai-summary__stat"><p class="ai-summary__value num">94%</p><p class="ai-summary__label">aprovadas sem edição</p></div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--hitl" aria-hidden="true"></span>
+            <h2 class="section-head__title">aguardando você</h2>
+            <span class="badge-count">11</span>
+            <span class="spacer"></span>
+            <p class="chip-row">
+              <span class="meta">fila acumulou hoje</span>
+              <button class="btn btn--primary" type="button">aprovar as 6 de baixo risco</button>
+              <button class="btn btn--ghost" type="button">revisar uma a uma</button>
+            </p>
+          </div>
+          <ul class="approval-list">
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 12 min</span>
+                <span class="badge-channel badge-channel--email" aria-hidden="true">E</span>
+                <span class="meta">E-mail</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar 3º follow-up da proposta</h3>
+                <p class="card-approval__who">Construtora Meridiano · Sérgio Fontes</p>
+              </div>
+              <blockquote class="card-approval__preview">Sérgio, tudo certo por aí? Passando pra saber se o conselho conseguiu olhar a proposta. Se ajudar, consigo abrir o item 3 numa call de 15 min.</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o contato pediu revisão de escopo e ainda não respondeu — não dá pra saber se o silêncio é falta de tempo ou perda de interesse.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.74</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c74"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 34 min</span>
+                <span class="badge-channel badge-channel--whatsapp" aria-hidden="true">W</span>
+                <span class="meta">WhatsApp</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar tabela de preços</h3>
+                <p class="card-approval__who">Academia Pulse · Diego Ramalho</p>
+              </div>
+              <blockquote class="card-approval__preview">Oi Diego! Nossos pacotes começam em R$ 2.400/mês (gestão + criativos). Te mando o detalhado?</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o valor do pacote pedido está acima da faixa histórica desse segmento — decisão comercial.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.81</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c81"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 1 h</span>
+                <span class="badge-channel badge-channel--instagram" aria-hidden="true">I</span>
+                <span class="meta">Instagram</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">responder direct e agendar call</h3>
+                <p class="card-approval__who">Studio Kaya · Nayara Lopes</p>
+              </div>
+              <blockquote class="card-approval__preview">Oi Nayara! Que bom que o reels te achou. Quer marcar 20 min pra eu entender o momento do studio?</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>primeiro contato pelo Instagram sem histórico — o agente não tem contexto suficiente pra qualificar sozinho.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.78</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c78"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 12 min</span>
+                <span class="badge-channel badge-channel--email" aria-hidden="true">E</span>
+                <span class="meta">E-mail</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar 3º follow-up da proposta</h3>
+                <p class="card-approval__who">Construtora Meridiano · Sérgio Fontes</p>
+              </div>
+              <blockquote class="card-approval__preview">Sérgio, tudo certo por aí? Passando pra saber se o conselho conseguiu olhar a proposta. Se ajudar, consigo abrir o item 3 numa call de 15 min.</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o contato pediu revisão de escopo e ainda não respondeu — não dá pra saber se o silêncio é falta de tempo ou perda de interesse.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.74</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c74"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 34 min</span>
+                <span class="badge-channel badge-channel--whatsapp" aria-hidden="true">W</span>
+                <span class="meta">WhatsApp</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar tabela de preços</h3>
+                <p class="card-approval__who">Academia Pulse · Diego Ramalho</p>
+              </div>
+              <blockquote class="card-approval__preview">Oi Diego! Nossos pacotes começam em R$ 2.400/mês (gestão + criativos). Te mando o detalhado?</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o valor do pacote pedido está acima da faixa histórica desse segmento — decisão comercial.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.81</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c81"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 1 h</span>
+                <span class="badge-channel badge-channel--instagram" aria-hidden="true">I</span>
+                <span class="meta">Instagram</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">responder direct e agendar call</h3>
+                <p class="card-approval__who">Studio Kaya · Nayara Lopes</p>
+              </div>
+              <blockquote class="card-approval__preview">Oi Nayara! Que bom que o reels te achou. Quer marcar 20 min pra eu entender o momento do studio?</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>primeiro contato pelo Instagram sem histórico — o agente não tem contexto suficiente pra qualificar sozinho.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.78</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c78"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 12 min</span>
+                <span class="badge-channel badge-channel--email" aria-hidden="true">E</span>
+                <span class="meta">E-mail</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar 3º follow-up da proposta</h3>
+                <p class="card-approval__who">Construtora Meridiano · Sérgio Fontes</p>
+              </div>
+              <blockquote class="card-approval__preview">Sérgio, tudo certo por aí? Passando pra saber se o conselho conseguiu olhar a proposta. Se ajudar, consigo abrir o item 3 numa call de 15 min.</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o contato pediu revisão de escopo e ainda não respondeu — não dá pra saber se o silêncio é falta de tempo ou perda de interesse.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.74</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c74"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 34 min</span>
+                <span class="badge-channel badge-channel--whatsapp" aria-hidden="true">W</span>
+                <span class="meta">WhatsApp</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar tabela de preços</h3>
+                <p class="card-approval__who">Academia Pulse · Diego Ramalho</p>
+              </div>
+              <blockquote class="card-approval__preview">Oi Diego! Nossos pacotes começam em R$ 2.400/mês (gestão + criativos). Te mando o detalhado?</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o valor do pacote pedido está acima da faixa histórica desse segmento — decisão comercial.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.81</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c81"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 1 h</span>
+                <span class="badge-channel badge-channel--instagram" aria-hidden="true">I</span>
+                <span class="meta">Instagram</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">responder direct e agendar call</h3>
+                <p class="card-approval__who">Studio Kaya · Nayara Lopes</p>
+              </div>
+              <blockquote class="card-approval__preview">Oi Nayara! Que bom que o reels te achou. Quer marcar 20 min pra eu entender o momento do studio?</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>primeiro contato pelo Instagram sem histórico — o agente não tem contexto suficiente pra qualificar sozinho.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.78</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c78"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 12 min</span>
+                <span class="badge-channel badge-channel--email" aria-hidden="true">E</span>
+                <span class="meta">E-mail</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar 3º follow-up da proposta</h3>
+                <p class="card-approval__who">Construtora Meridiano · Sérgio Fontes</p>
+              </div>
+              <blockquote class="card-approval__preview">Sérgio, tudo certo por aí? Passando pra saber se o conselho conseguiu olhar a proposta. Se ajudar, consigo abrir o item 3 numa call de 15 min.</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o contato pediu revisão de escopo e ainda não respondeu — não dá pra saber se o silêncio é falta de tempo ou perda de interesse.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.74</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c74"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          <li class="card-approval">
+            <div class="card-approval__main">
+              <div class="card-approval__head">
+                <span class="tag-pending"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                <span class="meta">há 34 min</span>
+                <span class="badge-channel badge-channel--whatsapp" aria-hidden="true">W</span>
+                <span class="meta">WhatsApp</span>
+              </div>
+              <div>
+                <h3 class="card-approval__what">enviar tabela de preços</h3>
+                <p class="card-approval__who">Academia Pulse · Diego Ramalho</p>
+              </div>
+              <blockquote class="card-approval__preview">Oi Diego! Nossos pacotes começam em R$ 2.400/mês (gestão + criativos). Te mando o detalhado?</blockquote>
+              <dl class="card-approval__why"><dt>por que parou:</dt><dd>o valor do pacote pedido está acima da faixa histórica desse segmento — decisão comercial.</dd></dl>
+              <p class="card-approval__actions">
+                <button class="btn btn--primary" type="button">aprovar e executar</button>
+                <button class="btn btn--ghost" type="button">editar antes</button>
+                <button class="btn btn--ghost" type="button">recusar</button>
+                <button class="btn btn--quiet" type="button">adiar 2 h</button>
+              </p>
+            </div>
+            <div class="card-approval__side">
+              <h4 class="label">confiança do agente</h4>
+              <p class="confidence"><span class="confidence__value">0.81</span> <span class="confidence__of">de 1.00</span></p>
+              <div class="confidence__track"><span class="confidence__marker confidence__marker--c81"></span></div>
+              <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              <p class="confidence__note">está na <strong>faixa de decisão humana</strong>. o agente não envia nada sem o seu toque.</p>
+              <p class="meta">se você aprovar 3 casos parecidos, o agente sugere subir o limite desse tipo de ação.</p>
+            </div>
+          </li>
+          </ul>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--auto" aria-hidden="true"></span>
+            <h2 class="section-head__title">feito automaticamente</h2>
+            <p class="meta">não precisa da sua ação — só do seu olho, se quiser</p>
+          </div>
+          <ul class="auto-log panel panel--flush">
+            <li class="auto-log__item">
+              <span class="badge-confidence badge-confidence--executada">0.94</span>
+              <div class="auto-log__body"><p class="auto-log__what">classificou objeção de preço · <span class="muted">Construtora Meridiano</span></p><p class="auto-log__note">acima de 0.85 · executado sozinho</p></div>
+              <span class="meta nowrap">09:41</span>
+              <a href="cockpit-deal.html">ver</a>
+            </li>
+            <li class="auto-log__item">
+              <span class="badge-confidence badge-confidence--executada">0.91</span>
+              <div class="auto-log__body"><p class="auto-log__what">respondeu WhatsApp com prazo de entrega · <span class="muted">Construtora Meridiano</span></p><p class="auto-log__note">acima de 0.85 · executado sozinho</p></div>
+              <span class="meta nowrap">08:23</span>
+              <a href="cockpit-deal.html">ver</a>
+            </li>
+            <li class="auto-log__item">
+              <span class="badge-confidence badge-confidence--executada">0.96</span>
+              <div class="auto-log__body"><p class="auto-log__what">moveu deal pra Pagamento recebido · <span class="muted">Estética Lumen</span></p><p class="auto-log__note">acima de 0.85 · executado sozinho</p></div>
+              <span class="meta nowrap">07:10</span>
+              <a href="cockpit-deal.html">ver</a>
+            </li>
+            <li class="auto-log__item">
+              <span class="badge-confidence badge-confidence--executada">0.88</span>
+              <div class="auto-log__body"><p class="auto-log__what">agendou lembrete de follow-up · <span class="muted">Buffet Aurora</span></p><p class="auto-log__note">acima de 0.85 · executado sozinho</p></div>
+              <span class="meta nowrap">ontem 16:40</span>
+              <a href="cockpit-deal.html">ver</a>
+            </li>
+            <li class="auto-log__item">
+              <span class="badge-confidence badge-confidence--arquivada">0.63</span>
+              <div class="auto-log__body"><p class="auto-log__what">arquivou lead fora de perfil · <span class="muted">Loja Só Vidro</span></p><p class="auto-log__note">abaixo de 0.70 · arquivado sem te incomodar</p></div>
+              <span class="meta nowrap">ontem 11:02</span>
+              <a href="cockpit-deal.html">ver</a>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

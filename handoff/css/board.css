@@ -1,0 +1,44 @@
+/* board.css — kanban. Usado em: pipeline (+ estados) e board de qualquer sistema. */
+
+.board { display: flex; gap: var(--space-3); align-items: flex-start; min-height: 100%; padding: var(--space-3) var(--space-6) var(--space-6); overflow-x: auto; background: var(--surface-subtle); }
+.board__col { width: 274px; flex: 0 0 274px; display: flex; flex-direction: column; gap: 9px; }
+.board__cards { display: flex; flex-direction: column; gap: 9px; }
+
+.col-head { display: flex; flex-direction: column; gap: 7px; padding: 2px 2px 0; }
+.col-head__top { display: flex; align-items: center; gap: 7px; }
+.col-head__name { font-size: 12.5px; font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); color: var(--ink-900); flex: 1; }
+.col-head__count { font-size: var(--text-meta); font-weight: var(--weight-bold); color: var(--text-muted); background: var(--ink-100); padding: 1px 7px; border-radius: var(--radius-pill); }
+.col-head__meta { display: flex; align-items: center; justify-content: space-between; font-size: var(--text-meta); color: var(--text-muted); }
+.col-head__rule { height: 3px; border-radius: var(--radius-pill); opacity: .35; background: var(--stage-frio); }
+.col-head--frio .col-head__rule { background: var(--stage-frio); }
+.col-head--proposta .col-head__rule { background: var(--stage-proposta); }
+.col-head--contrato .col-head__rule { background: var(--stage-contrato); }
+.col-head--ganho .col-head__rule { background: var(--stage-ganho); }
+.col-head--perdido .col-head__rule { background: var(--stage-perdido); }
+
+.col-empty { border: 1px dashed var(--border-default); border-radius: var(--radius-cta); padding: var(--space-4) var(--space-3); text-align: center; color: var(--text-faint); font-size: 12px; background: rgba(255,255,255,.55); }
+.col-empty__action { display: block; color: var(--purple-600); font-weight: var(--weight-bold); margin-top: 5px; }
+
+.board-toolbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-4) var(--space-6) var(--space-3); background: var(--surface-card); border-bottom: 1px solid var(--border-subtle); }
+.board-toolbar__title { display: flex; align-items: center; gap: var(--space-2); }
+.filter-group { display: flex; gap: var(--space-1); background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-button); padding: 3px; }
+.filter-group__item { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border: 0; border-radius: 7px; background: none; font-size: 12px; font-weight: var(--weight-semibold); color: var(--ink-600); white-space: nowrap; }
+.filter-group__item--active { background: #fff; }
+.filter-group__item--hitl { background: var(--hitl-surface); color: var(--hitl-ink); }
+.filter-group__count { font-weight: var(--weight-heavy); color: var(--ink-900); }
+.filter-group__item--hitl .filter-group__count { color: var(--hitl-ink); }
+
+/* cards de board (tela Boards) */
+.boards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: var(--space-3); }
+.card-board { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 15px var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.card-board:hover { box-shadow: 0 12px 28px -14px rgba(33,0,50,.3); }
+.card-board__head { display: flex; align-items: flex-start; gap: 9px; }
+.card-board__spine { width: 4px; align-self: stretch; border-radius: var(--radius-pill); background: var(--purple-300); }
+.card-board--primary .card-board__spine { background: var(--lime-500); }
+.card-board__name { font-family: var(--font-display); font-weight: var(--weight-heavy); font-size: 16px; letter-spacing: var(--tracking-tight); color: var(--text-strong); }
+.card-board__desc { font-size: 12.5px; color: var(--text-muted); }
+.card-board__figures { display: flex; align-items: baseline; gap: var(--space-4); }
+.card-board__value { font-family: var(--font-display); font-weight: var(--weight-black); font-size: 19px; letter-spacing: -.03em; color: var(--text-strong); }
+.card-board__foot { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--ink-100); padding-top: var(--space-2); }
+.card-create { border: 1px dashed var(--border-default); border-radius: var(--radius-md); display: grid; place-items: center; min-height: 150px; color: var(--purple-700); font-weight: var(--weight-bold); font-size: 13.5px; background: rgba(255,255,255,.5); }
+.card-create:hover { border-color: var(--purple-400); background: var(--purple-50); }

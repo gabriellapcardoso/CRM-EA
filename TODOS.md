@@ -1,5 +1,29 @@
 # TODOS
 
+## Telas de detalhe
+
+### Empresas, deals e atividades param em 1000 linhas — P3
+
+`contactsService.getAll()`, `companies` (`contacts.ts:683`), `dealsService`
+(`deals.ts:279`) e `activitiesService` (`activities.ts:173`) carregam no máximo
+1000 linhas cada e o filtro acontece no cliente. Quem depende disso:
+
+- `/contacts/[contactId]` — nome da empresa, deals do contato, histórico;
+- qualquer tela que faça `.find()` sobre uma dessas listas.
+
+**Por que é P3 e não P1:** a base hoje está muito abaixo do teto, e a tela já
+distingue os três casos em vez de afirmar o errado — mostra "empresa fora do
+lote carregado" em vez de "Empresa não vinculada", e separa "carregando" de
+"erro" de "não existe". Ela não mente; ela mostra menos.
+
+**O que resolve:** três queries filtradas no servidor — empresa por id, deals por
+`contact_id`, atividades por `contact_id` mais os deals dele. O padrão já existe
+em `contactsService.getByIds()`, que foi como o próprio contato deixou de
+depender do teto (o `useContact` chamava `getAll()` e dava `.find()`).
+
+**Como perceber que virou P1:** contato válido abrindo com "empresa fora do lote
+carregado", ou histórico de um contato antigo aparecendo vazio.
+
 ## Mensageria
 
 ### Mídia recebida no WhatsApp nunca chega ao CRM — P1

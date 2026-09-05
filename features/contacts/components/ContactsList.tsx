@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { Plus, Pencil, Trash2, Globe, ArrowUpDown, ArrowUp, ArrowDown, GitMerge } from 'lucide-react';
 import { Contact, Company, ContactSortableColumn } from '@/types';
 import { StageBadge } from './ContactsStageTabs';
@@ -106,17 +107,22 @@ interface ContactsListProps {
     duplicateContactIds?: Set<string>;
     // Empty state action
     onAddContact?: () => void;
-    // Detail pane selection (redesign 2026-08)
-    selectedContactId?: string | null;
+    /** Clique na linha — hoje navega pro detalhe do contato (`/contacts/[id]`). */
     onSelectContact?: (contact: Contact) => void;
     channelByContactId?: Map<string, ContactChannel>;
     pendingContactIds?: Set<string>;
     dealsSummaryByContact?: Map<string, ContactDealsSummary>;
+    /** Dono derivado dos deals do contato — o contato não tem dono no schema. */
+    ownerByContactId?: Map<string, string>;
 }
 
 /**
  * Lista de contatos/empresas — tabela `.table-list` (redesign 2026-08).
- * Clicar numa linha (fora dos controles) seleciona o contato pro painel de detalhe.
+ *
+ * Seis colunas de dado: contato (com empresa e estágio na segunda linha), canal,
+ * dono, último toque, deals, em aberto — mais a caixa de seleção e as ações.
+ * Clicar na linha (fora dos controles) abre `/contacts/[contactId]`; a célula do
+ * nome é um link de verdade, pra abrir em nova aba e pra leitor de tela.
  */
 export const ContactsList: React.FC<ContactsListProps> = ({
     viewMode,
@@ -137,11 +143,11 @@ export const ContactsList: React.FC<ContactsListProps> = ({
     sortOrder = 'desc',
     onSort,
     duplicateContactIds,
-    selectedContactId,
     onSelectContact,
     channelByContactId,
     pendingContactIds,
     dealsSummaryByContact,
+    ownerByContactId,
 }) => {
     const activeListIds = viewMode === 'people'
         ? filteredContacts.map(c => c.id)
@@ -167,7 +173,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({
 
     if (viewMode === 'people') {
         return (
-            <table className="table-list">
+            <table className="table-list table-list--fit">
                 <thead>
                     <tr>
                         <th scope="col" style={{ width: 32 }}>
@@ -184,9 +190,8 @@ export const ContactsList: React.FC<ContactsListProps> = ({
                         ) : (
                             <th scope="col">contato</th>
                         )}
-                        <th scope="col">empresa</th>
-                        <th scope="col">estágio</th>
                         <th scope="col">canal</th>
+                        <th scope="col">dono</th>
                         {onSort ? (
                             <SortableHeader label="último toque" column="updated_at" currentSort={sortBy} sortOrder={sortOrder} onSort={onSort} />
                         ) : (
@@ -200,7 +205,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({
                 <tbody>
                     {filteredContacts.length === 0 ? (
                         <tr>
-                            <td colSpan={9} style={{ height: 'auto' }}>
+                            <td colSpan={8} style={{ height: 'auto' }}>
                                 <div className="state-empty">
                                     <h3 className="state-empty__title">nenhum contato encontrado</h3>
                                     <p className="state-empty__text">tente ajustar os filtros ou adicione um novo contato.</p>
@@ -211,16 +216,15 @@ export const ContactsList: React.FC<ContactsListProps> = ({
                         const dealsSummary = dealsSummaryByContact?.get(contact.id);
                         const channel = channelByContactId?.get(contact.id);
                         const isPending = pendingContactIds?.has(contact.id) ?? false;
-                        const isRowSelected = selectedContactId === contact.id;
+                        const owner = ownerByContactId?.get(contact.id) ?? null;
 
                         return (
                             <tr
                                 key={contact.id}
                                 onClick={() => onSelectContact?.(contact)}
-                                aria-selected={isRowSelected}
                                 style={{
                                     cursor: onSelectContact ? 'pointer' : undefined,
-                                    background: isRowSelected ? 'var(--surface-card)' : selectedIds.has(contact.id) ? 'var(--purple-50)' : undefined,
+                                    background: selectedIds.has(contact.id) ? 'var(--purple-50)' : undefined,
                                 }}
                             >
                                 <td onClick={(e) => e.stopPropagation()}>
@@ -231,20 +235,37 @@ export const ContactsList: React.FC<ContactsListProps> = ({
                                         aria-label={`Selecionar ${contact.name}`}
                                     />
                                 </td>
-                                <td>
-                                    <span className="cell-name">
+                                {/* `stopPropagation`: o <Link> abaixo já navega. Sem isto o
+                                    onClick da linha dispara junto — e num cmd+clique o Link
+                                    abre a aba nova enquanto a linha leva a aba atual junto.
+                                    Mesmo padrão das células de seleção e de ações. */}
+                                <td onClick={(e) => e.stopPropagation()}>
+                                    {/* A empresa era coluna própria e, junto com "estágio",
+                                        era o que empurrava a tabela além da largura da tela
+                                        (o `min-width: 840px` do `.table-list`). Como segunda
+                                        linha do nome ela continua legível e a lista para de
+                                        rolar pro lado. O estágio vai junto, ao lado dela. */}
+                                    <Link className="table-list__link" href={`/contacts/${contact.id}`}>
                                         <span className="avatar">{getInitials(contact.name)}</span>
-                                        <span className="cell-name__text">
-                                            {contact.name}
-                                            {duplicateContactIds?.has(contact.id) && (
-                                                <GitMerge size={11} style={{ display: 'inline', marginLeft: 5, verticalAlign: 'middle', color: 'var(--warning)' }} aria-label="Duplicado" />
-                                            )}
+                                        <span className="cell-name__stack">
+                                            <span className="cell-name__top">
+                                                <span className="cell-name__text">
+                                                    {contact.name}
+                                                    {duplicateContactIds?.has(contact.id) && (
+                                                        <GitMerge size={11} style={{ display: 'inline', marginLeft: 5, verticalAlign: 'middle', color: 'var(--warning)' }} aria-label="Duplicado" />
+                                                    )}
+                                                </span>
+                                                {isPending && <span className="flag-pending" title="tem pendência de IA" />}
+                                            </span>
+                                            <span className="cell-name__co">
+                                                <span className="cell-name__co-text">
+                                                    {getCompanyName(contact.clientCompanyId)}
+                                                </span>
+                                                <StageBadge stage={contact.stage} />
+                                            </span>
                                         </span>
-                                        {isPending && <span className="flag-pending" title="tem pendência de IA" />}
-                                    </span>
+                                    </Link>
                                 </td>
-                                <td className="muted">{getCompanyName(contact.clientCompanyId)}</td>
-                                <td><StageBadge stage={contact.stage} /></td>
                                 <td>
                                     {channel ? (
                                         <span
@@ -257,6 +278,10 @@ export const ContactsList: React.FC<ContactsListProps> = ({
                                         <span className="muted">—</span>
                                     )}
                                 </td>
+                                {/* Contato não tem dono próprio no schema — o dono vem dos
+                                    deals dele (ver `ownerByContactId` em ContactsPage). Sem
+                                    deal, é "—", que é diferente de "sem dono". */}
+                                <td className={owner ? 'muted' : 'cell-owner--none'}>{owner ?? '—'}</td>
                                 <td className="muted" title={contact.updatedAt ? PT_BR_DATE_TIME_FORMATTER.format(new Date(contact.updatedAt)) : undefined}>
                                     {formatRelativeTouch(contact.updatedAt || contact.createdAt, now)}
                                 </td>
@@ -302,7 +327,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({
     }
 
     return (
-        <table className="table-list">
+        <table className="table-list table-list--fit">
             <thead>
                 <tr>
                     <th scope="col" style={{ width: 32 }}>

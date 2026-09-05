@@ -1,0 +1,28 @@
+/* card-deal.css — card de negociação. Usado em: pipeline, cockpit (aside), decisoes-design-system. */
+
+.card-deal {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--stage-frio);
+  border-radius: var(--radius-cta);
+  padding: 11px var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  box-shadow: 0 1px 2px rgba(33,0,50,.05);
+  transition: box-shadow var(--dur-fast), border-color var(--dur-fast);
+}
+.card-deal:hover { box-shadow: 0 10px 22px -12px rgba(33,0,50,.3); }
+.card-deal--frio { border-left-color: var(--stage-frio); }
+.card-deal--proposta { border-left-color: var(--stage-proposta); }
+.card-deal--contrato { border-left-color: var(--stage-contrato); }
+.card-deal--ganho { border-left-color: var(--stage-ganho); }
+.card-deal--perdido { border-left-color: var(--stage-perdido); }
+.card-deal--pending { border-left-color: var(--hitl-surface); }
+.card-deal--new { border-color: var(--lime-500); box-shadow: 0 0 0 3px rgba(191,242,8,.35); animation: rise-in var(--dur-base) ease-out; }
+
+.card-deal__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.card-deal__title { font-weight: var(--weight-bold); font-size: 13.5px; letter-spacing: var(--tracking-tight); line-height: 1.25; color: var(--text-strong); }
+.card-deal__value { font-weight: var(--weight-heavy); font-size: 13px; color: var(--text-strong); white-space: nowrap; }
+.card-deal__contact { display: flex; align-items: center; gap: 7px; }
+.card-deal__contact-name { font-size: 12px; color: var(--ink-600); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-deal__foot { display: flex; align-items: center; gap: 6px; }
+.card-deal__age { font-size: 11px; color: var(--text-faint); margin-left: auto; }
