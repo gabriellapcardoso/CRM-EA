@@ -1067,7 +1067,11 @@ body {
  * nesta mesma revisão. Medido lado a lado no browser. */
 .cell-name__co { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); min-width: 0; }
 .cell-name__co-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cell-name__co .badge-stage { flex: none; }
+/* Alvo por posição, não por classe: o `StageBadge` renderiza utilitários do
+ * Tailwind, não `.badge-stage` — a regra anterior mirava uma classe que aquele
+ * componente nunca emite e não alcançava nada. Verificado no DOM de produção.
+ * Só o texto encolhe; o que estiver ao lado dele mantém o tamanho. */
+.cell-name__co > :not(.cell-name__co-text) { flex: none; }
 .table-list th { text-align: left; font-size: 11px; font-weight: var(--weight-bold); letter-spacing: .08em; color: var(--text-faint); padding: var(--space-3) var(--space-2) var(--space-2) 0; border-bottom: 1px solid var(--border-subtle); background: var(--surface-subtle); position: sticky; top: 0; z-index: 2; }
 .table-list td { padding: 9px var(--space-2) 9px 0; border-bottom: 1px solid var(--ink-100); font-size: 12.5px; height: var(--row-height); }
 .table-list tbody tr:hover { background: var(--surface-card); }
