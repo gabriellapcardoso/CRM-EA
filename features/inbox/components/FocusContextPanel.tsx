@@ -751,24 +751,24 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
 
     return (
         <>
-            <div className={`fixed inset-0 flex flex-col bg-slate-950 ${className || ''}`}>
+            <div className={`fixed inset-0 flex flex-col bg-[var(--surface-subtle)] ${className || ''}`}>
                 {/* === HEADER with Pipeline Progress === */}
-                <header className="shrink-0 border-b border-dark-border">
+                <header className="shrink-0 border-b border-[var(--border-subtle)]">
                     {/* Top Row: Title + Board Name (center) + Value */}
                     <div className="flex items-center justify-between px-6 py-3">
                         <div>
-                            <h1 className="text-lg font-semibold text-white tracking-tight">
-                                {deal.title} <span className="text-slate-500 font-normal">|</span> <span className="text-slate-400 font-normal">{(deal as any).companyName || 'Empresa'}</span>
+                            <h1 className="text-lg font-semibold text-[var(--text-strong)] tracking-tight">
+                                {deal.title} <span className="text-[var(--text-muted)] font-normal">|</span> <span className="text-[var(--text-muted)] font-normal">{(deal as any).companyName || 'Empresa'}</span>
                             </h1>
                         </div>
                         <div className="absolute left-1/2 -translate-x-1/2">
-                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
+                            <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
                                 {board?.name || 'Board'}
                             </span>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="text-right">
-                                <p className="text-lg font-bold text-emerald-400 font-mono tracking-tight">
+                                <p className="text-lg font-bold text-[var(--success)] font-mono tracking-tight">
                                     R$ {deal.value?.toLocaleString('pt-BR') || '0'}
                                 </p>
                             </div>
@@ -776,7 +776,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                 type="button"
                                 onClick={onClose}
                                 aria-label="Fechar e voltar ao inbox"
-                                className="shrink-0 rounded-lg p-2 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                                className="shrink-0 rounded-lg p-2 text-[var(--text-muted)] hover:text-[var(--text-strong)] hover:bg-[var(--ink-100)] transition-colors"
                             >
                                 <X size={20} aria-hidden="true" />
                             </button>
@@ -827,7 +827,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             <div
                                                 className={`relative w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 
                                                 ${isActive ? 'ring-4' : isPassed ? 'hover:scale-110 opacity-80' : 'hover:scale-110'}
-                                                ${!isActive && !isPassed ? 'bg-slate-700/80 hover:bg-slate-600' : ''}`}
+                                                ${!isActive && !isPassed ? 'bg-[var(--ink-200)] hover:bg-[var(--ink-300)]' : ''}`}
                                                 style={{
                                                     backgroundColor: (isActive || isPassed) ? hexColor : undefined,
                                                     boxShadow: isActive ? `0 0 15px ${hexColor}80` : undefined,
@@ -849,7 +849,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             {/* Label */}
                                             <span
                                                 className={`text-[10px] font-medium whitespace-nowrap transition-all duration-200 
-                                                ${isActive ? 'font-bold' : isPassed ? 'opacity-70' : 'text-slate-500 group-hover:text-slate-300'}`}
+                                                ${isActive ? 'font-bold' : isPassed ? 'opacity-70' : 'text-[var(--text-muted)] group-hover:text-[var(--text-body)]'}`}
                                                 style={{
                                                     color: (isActive || isPassed) ? hexColor : undefined,
                                                 }}
@@ -861,7 +861,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                         {/* Connecting Line */}
                                         {!isLast && (
                                             <div className="flex-1 mx-3 relative h-0.5 -mt-6">
-                                                <div className="absolute inset-0 bg-slate-800 rounded-full" />
+                                                <div className="absolute inset-0 bg-[var(--ink-100)] rounded-full" />
                                                 <div
                                                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
                                                     style={{
@@ -883,19 +883,19 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                 <div className="flex-1 flex min-h-0 overflow-hidden">
 
                     {/* LEFT: Contact */}
-                    <aside className="w-[400px] shrink-0 border-r border-white/5 flex flex-col">
+                    <aside className="w-[400px] shrink-0 border-r border-[var(--border-subtle)] flex flex-col">
 
-                        <div className="p-6 border-b border-white/5">
+                        <div className="p-6 border-b border-[var(--border-subtle)]">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
                                     {isAILoading ? (
-                                        <Loader2 size={16} className="text-primary-400 animate-spin" />
+                                        <Loader2 size={16} className="text-[var(--purple-600)] animate-spin" />
                                     ) : (
                                         <Heart size={16} className={healthScore.color} />
                                     )}
-                                    <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">Health</span>
+                                    <span className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-bold">Health</span>
                                     {aiAnalysis && !aiAnalysis.error && (
-                                        <span className="text-[9px] bg-primary-500/20 text-primary-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <span className="text-[9px] bg-primary-500/20 text-[var(--purple-600)] px-1.5 py-0.5 rounded flex items-center gap-1">
                                             <Sparkles size={10} /> AI
                                         </span>
                                     )}
@@ -904,14 +904,14 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                     <span className={`font-mono font-bold text-2xl ${healthScore.color}`}>{healthScore.score}%</span>
                                     <button
                                         onClick={() => refetchAI()}
-                                        className="p-1 hover:bg-white/5 rounded text-slate-500 hover:text-slate-300 transition-colors"
+                                        className="p-1 hover:bg-[var(--ink-50)] rounded text-[var(--text-muted)] hover:text-[var(--text-body)] transition-colors"
                                         title="Reanalisar com IA"
                                     >
                                         <RefreshCw size={12} />
                                     </button>
                                 </div>
                             </div>
-                            <div className="h-1.5 bg-slate-800/50 rounded-full overflow-hidden">
+                            <div className="h-1.5 bg-[var(--ink-100)] rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-500 ${healthScore.status === 'excellent' ? 'bg-emerald-500' :
                                         healthScore.status === 'good' ? 'bg-green-500' :
@@ -924,20 +924,20 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                         </div>
 
                         {/* NBA - Full Width Layout */}
-                        <div className={`p-4 border-b border-dark-border ${nextBestAction.urgency === 'high' ? 'bg-red-950/20' : nextBestAction.urgency === 'medium' ? 'bg-yellow-950/20' : 'bg-slate-900/30'}`}>
+                        <div className={`p-4 border-b border-[var(--border-subtle)] ${nextBestAction.urgency === 'high' ? 'bg-[var(--danger-soft)]' : nextBestAction.urgency === 'medium' ? 'bg-[var(--warning-soft)]' : 'bg-[var(--surface-subtle)]'}`}>
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
-                                    <Zap size={14} className={`${nextBestAction.urgency === 'high' ? 'text-red-400' : nextBestAction.urgency === 'medium' ? 'text-yellow-400' : 'text-primary-400'}`} />
-                                    <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">Próxima Ação</span>
+                                    <Zap size={14} className={`${nextBestAction.urgency === 'high' ? 'text-[var(--danger)]' : nextBestAction.urgency === 'medium' ? 'text-[var(--warning)]' : 'text-[var(--purple-600)]'}`} />
+                                    <span className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-bold">Próxima Ação</span>
                                     {nextBestAction.isAI && (
-                                        <span className="text-[10px] bg-primary-500/20 text-primary-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <span className="text-[10px] bg-primary-500/20 text-[var(--purple-600)] px-1.5 py-0.5 rounded flex items-center gap-1">
                                             <Sparkles size={9} /> AI
                                         </span>
                                     )}
                                 </div>
                                 <button
                                     onClick={() => refetchAI()}
-                                    className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-slate-300 transition-colors"
+                                    className="p-1.5 hover:bg-[var(--ink-50)] rounded text-[var(--text-muted)] hover:text-[var(--text-body)] transition-colors"
                                     title="Reanalisar"
                                 >
                                     <RefreshCw size={12} />
@@ -947,13 +947,13 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             {/* Icon + Text Block */}
                             <div className="flex gap-3 mb-4">
                                 <div className={`p-3 rounded-xl shrink-0 ${nextBestAction.urgency === 'high' ? 'bg-red-500/15' : nextBestAction.urgency === 'medium' ? 'bg-yellow-500/15' : 'bg-primary-500/15'}`}>
-                                    <nextBestAction.icon size={24} className={`${nextBestAction.urgency === 'high' ? 'text-red-400' : nextBestAction.urgency === 'medium' ? 'text-yellow-400' : 'text-primary-400'}`} />
+                                    <nextBestAction.icon size={24} className={`${nextBestAction.urgency === 'high' ? 'text-[var(--danger)]' : nextBestAction.urgency === 'medium' ? 'text-[var(--warning)]' : 'text-[var(--purple-600)]'}`} />
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-base font-semibold text-slate-100 leading-snug mb-1">
+                                    <p className="text-base font-semibold text-[var(--text-strong)] leading-snug mb-1">
                                         {nextBestAction.action}
                                     </p>
-                                    <p className="text-sm text-slate-500 leading-relaxed">
+                                    <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                                         {nextBestAction.reason}
                                     </p>
                                 </div>
@@ -961,14 +961,14 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
 
                             {/* Action Icons Bar */}
                             <div className="flex items-center justify-between gap-2 mb-3">
-                                <span className="text-[10px] text-slate-600 uppercase tracking-wider">Executar como:</span>
+                                <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider">Executar como:</span>
                                 <div className="flex items-center gap-1">
                                     {[
-                                        { type: 'WHATSAPP', icon: MessageCircle, label: 'WhatsApp', color: 'text-green-400 hover:bg-green-500/20' },
-                                        { type: 'CALL', icon: Phone, label: 'Ligar', color: 'text-yellow-400 hover:bg-yellow-500/20' },
-                                        { type: 'EMAIL', icon: Mail, label: 'Email', color: 'text-blue-400 hover:bg-blue-500/20' },
-                                        { type: 'MEETING', icon: Calendar, label: 'Reunião', color: 'text-purple-400 hover:bg-purple-500/20' },
-                                        { type: 'TASK', icon: Target, label: 'Tarefa', color: 'text-slate-400 hover:bg-slate-500/20' },
+                                        { type: 'WHATSAPP', icon: MessageCircle, label: 'WhatsApp', color: 'text-[var(--success)] hover:bg-green-500/20' },
+                                        { type: 'CALL', icon: Phone, label: 'Ligar', color: 'text-[var(--warning)] hover:bg-yellow-500/20' },
+                                        { type: 'EMAIL', icon: Mail, label: 'Email', color: 'text-blue-600 hover:bg-blue-500/20' },
+                                        { type: 'MEETING', icon: Calendar, label: 'Reunião', color: 'text-[var(--purple-600)] hover:bg-purple-500/20' },
+                                        { type: 'TASK', icon: Target, label: 'Tarefa', color: 'text-[var(--text-muted)] hover:bg-[var(--ink-100)]' },
                                     ].map(({ type, icon: Icon, label, color }) => (
                                         <button
                                             key={type}
@@ -983,7 +983,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                         : 'execute'
                                                 )
                                             }
-                                            className={`p-2 rounded-lg transition-all ${color} ${nextBestAction.actionType === type ? 'bg-white/10 ring-1 ring-current' : ''}`}
+                                            className={`p-2 rounded-lg transition-all ${color} ${nextBestAction.actionType === type ? 'bg-[var(--ink-100)] ring-1 ring-current' : ''}`}
                                             title={label}
                                         >
                                             <Icon size={16} />
@@ -1009,26 +1009,26 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                         </div>
 
                         {/* Stats - Single section */}
-                        <div className="p-4 border-b border-dark-border">
+                        <div className="p-4 border-b border-[var(--border-subtle)]">
                             <div className="grid grid-cols-3 gap-3">
                                 <div className="text-center">
-                                    <span className="text-[10px] text-slate-600 uppercase tracking-wider font-semibold block">Dias</span>
-                                    <p className={`text-lg font-mono font-bold ${daysInStage > 7 ? 'text-orange-400' : 'text-slate-300'}`}>{daysInStage}</p>
+                                    <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-semibold block">Dias</span>
+                                    <p className={`text-lg font-mono font-bold ${daysInStage > 7 ? 'text-[var(--warning)]' : 'text-[var(--text-body)]'}`}>{daysInStage}</p>
                                 </div>
                                 <div className="text-center">
-                                    <span className="text-[10px] text-slate-600 uppercase tracking-wider font-semibold block">Prob</span>
-                                    <p className="text-lg font-mono font-bold text-emerald-400">{deal.probability || 50}%</p>
+                                    <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-semibold block">Prob</span>
+                                    <p className="text-lg font-mono font-bold text-[var(--success)]">{deal.probability || 50}%</p>
                                 </div>
                                 <div className="text-center">
-                                    <span className="text-[10px] text-slate-600 uppercase tracking-wider font-semibold block">Ativ</span>
-                                    <p className="text-lg font-mono font-bold text-blue-400">{activities.length}</p>
+                                    <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-semibold block">Ativ</span>
+                                    <p className="text-lg font-mono font-bold text-blue-600">{activities.length}</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Contact Info Card */}
                         {contact && (
-                            <div className="p-4 border-b border-dark-border">
+                            <div className="p-4 border-b border-[var(--border-subtle)]">
                                 <div className="flex items-start gap-3">
                                     {/* Avatar */}
                                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-semibold text-lg shrink-0">
@@ -1038,9 +1038,9 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <h4 className="text-sm font-semibold text-white truncate">{contact.name}</h4>
+                                            <h4 className="text-sm font-semibold text-[var(--text-strong)] truncate">{contact.name}</h4>
                                             {contact.role && (
-                                                <span className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">{contact.role}</span>
+                                                <span className="text-[10px] px-1.5 py-0.5 bg-[var(--ink-100)] text-[var(--text-muted)] rounded">{contact.role}</span>
                                             )}
                                         </div>
 
@@ -1049,9 +1049,9 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             {contact.phone && (
                                                 <button
                                                     onClick={() => navigator.clipboard.writeText(contact.phone || '')}
-                                                    className="flex items-center gap-2 text-xs text-slate-400 hover:text-green-400 transition-colors group"
+                                                    className="flex items-center gap-2 text-xs text-[var(--text-muted)] hover:text-[var(--success)] transition-colors group"
                                                 >
-                                                    <Phone size={12} className="text-slate-600 group-hover:text-green-400 shrink-0" />
+                                                    <Phone size={12} className="text-[var(--text-faint)] group-hover:text-[var(--success)] shrink-0" />
                                                     <span className="truncate">{contact.phone}</span>
                                                     <Copy size={10} className="opacity-0 group-hover:opacity-100 ml-auto shrink-0" />
                                                 </button>
@@ -1060,9 +1060,9 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             {contact.email && (
                                                 <button
                                                     onClick={() => navigator.clipboard.writeText(contact.email || '')}
-                                                    className="flex items-center gap-2 text-xs text-slate-400 hover:text-cyan-400 transition-colors group"
+                                                    className="flex items-center gap-2 text-xs text-[var(--text-muted)] hover:text-cyan-700 transition-colors group"
                                                 >
-                                                    <Mail size={12} className="text-slate-600 group-hover:text-cyan-400 shrink-0" />
+                                                    <Mail size={12} className="text-[var(--text-faint)] group-hover:text-cyan-700 shrink-0" />
                                                     <span className="truncate">{contact.email}</span>
                                                     <Copy size={10} className="opacity-0 group-hover:opacity-100 ml-auto shrink-0" />
                                                 </button>
@@ -1072,20 +1072,20 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                         {/* Extra info */}
                                         <div className="mt-2 flex flex-wrap gap-2">
                                             {contact.source && (
-                                                <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">
+                                                <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-600 rounded border border-blue-500/20">
                                                     {contact.source}
                                                 </span>
                                             )}
                                             {contact.status && (
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${contact.status === 'ACTIVE' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                                    contact.status === 'INACTIVE' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
-                                                        'bg-red-500/10 text-red-400 border-red-500/20'
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${contact.status === 'ACTIVE' ? 'bg-green-500/10 text-[var(--success)] border-green-500/20' :
+                                                    contact.status === 'INACTIVE' ? 'bg-[var(--ink-100)] text-[var(--text-muted)] border-[var(--border-subtle)]' :
+                                                        'bg-red-500/10 text-[var(--danger)] border-red-500/20'
                                                     }`}>
                                                     {contact.status === 'ACTIVE' ? 'Ativo' : contact.status === 'INACTIVE' ? 'Inativo' : 'Churned'}
                                                 </span>
                                             )}
                                             {contact.totalValue && contact.totalValue > 0 && (
-                                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20">
+                                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/10 text-[var(--success)] rounded border border-emerald-500/20">
                                                     LTV: R$ {contact.totalValue.toLocaleString('pt-BR')}
                                                 </span>
                                             )}
@@ -1093,7 +1093,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
 
                                         {/* Notes preview */}
                                         {contact.notes && (
-                                            <p className="mt-2 text-[11px] text-slate-500 line-clamp-2 italic">
+                                            <p className="mt-2 text-[11px] text-[var(--text-muted)] line-clamp-2 italic">
                                                 "{contact.notes}"
                                             </p>
                                         )}
@@ -1103,39 +1103,39 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                         )}
 
                         {/* Deal Info Card */}
-                        <div className="p-4 border-b border-dark-border">
+                        <div className="p-4 border-b border-[var(--border-subtle)]">
                             <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] text-slate-600 uppercase tracking-wider font-semibold">Negócio</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${deal.priority === 'high' ? 'bg-red-500/10 text-red-400' :
-                                    deal.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
-                                        'bg-slate-500/10 text-slate-400'
+                                <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-semibold">Negócio</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${deal.priority === 'high' ? 'bg-red-500/10 text-[var(--danger)]' :
+                                    deal.priority === 'medium' ? 'bg-yellow-500/10 text-[var(--warning)]' :
+                                        'bg-[var(--ink-100)] text-[var(--text-muted)]'
                                     }`}>
                                     {deal.priority === 'high' ? '🔥 Alta' : deal.priority === 'medium' ? 'Média' : 'Baixa'}
                                 </span>
                             </div>
 
-                            <h4 className="text-sm font-semibold text-white mb-2">{deal.title}</h4>
+                            <h4 className="text-sm font-semibold text-[var(--text-strong)] mb-2">{deal.title}</h4>
 
                             <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                    <span className="text-slate-600">Valor</span>
-                                    <p className="text-emerald-400 font-semibold">
+                                    <span className="text-[var(--text-faint)]">Valor</span>
+                                    <p className="text-[var(--success)] font-semibold">
                                         R$ {deal.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-slate-600">Probabilidade</span>
-                                    <p className="text-slate-300 font-semibold">{deal.probability || 50}%</p>
+                                    <span className="text-[var(--text-faint)]">Probabilidade</span>
+                                    <p className="text-[var(--text-body)] font-semibold">{deal.probability || 50}%</p>
                                 </div>
                                 <div>
-                                    <span className="text-slate-600">Criado em</span>
-                                    <p className="text-slate-400">
+                                    <span className="text-[var(--text-faint)]">Criado em</span>
+                                    <p className="text-[var(--text-muted)]">
                                         {new Date(deal.createdAt).toLocaleDateString('pt-BR')}
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-slate-600">Atualizado</span>
-                                    <p className="text-slate-400">
+                                    <span className="text-[var(--text-faint)]">Atualizado</span>
+                                    <p className="text-[var(--text-muted)]">
                                         {new Date(deal.updatedAt).toLocaleDateString('pt-BR')}
                                     </p>
                                 </div>
@@ -1145,31 +1145,31 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             {deal.tags && deal.tags.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-1">
                                     {deal.tags.slice(0, 4).map((tag, i) => (
-                                        <span key={i} className="text-[10px] px-1.5 py-0.5 bg-primary-500/10 text-primary-400 rounded">
+                                        <span key={i} className="text-[10px] px-1.5 py-0.5 bg-primary-500/10 text-[var(--purple-600)] rounded">
                                             #{tag}
                                         </span>
                                     ))}
                                     {deal.tags.length > 4 && (
-                                        <span className="text-[10px] text-slate-500">+{deal.tags.length - 4}</span>
+                                        <span className="text-[10px] text-[var(--text-muted)]">+{deal.tags.length - 4}</span>
                                     )}
                                 </div>
                             )}
 
                             {/* AI Summary */}
                             {deal.aiSummary && (
-                                <div className="mt-2 p-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                                <div className="mt-2 p-2 bg-[var(--ink-100)] rounded-lg border border-[var(--border-subtle)]">
                                     <div className="flex items-center gap-1 mb-1">
-                                        <Sparkles size={10} className="text-primary-400" />
-                                        <span className="text-[10px] text-primary-400 font-medium">Resumo IA</span>
+                                        <Sparkles size={10} className="text-[var(--purple-600)]" />
+                                        <span className="text-[10px] text-[var(--purple-600)] font-medium">Resumo IA</span>
                                     </div>
-                                    <p className="text-[11px] text-slate-400 line-clamp-2">{deal.aiSummary}</p>
+                                    <p className="text-[11px] text-[var(--text-muted)] line-clamp-2">{deal.aiSummary}</p>
                                 </div>
                             )}
                         </div>
 
                         {/* Move to Stage (Sidebar) - With Semantic Colors & Days */}
-                        <div className="p-4 border-t border-white/5">
-                            <p className="text-[9px] uppercase tracking-[0.1em] text-slate-600 font-medium mb-3">Pipeline</p>
+                        <div className="p-4 border-t border-[var(--border-subtle)]">
+                            <p className="text-[9px] uppercase tracking-[0.1em] text-[var(--text-faint)] font-medium mb-3">Pipeline</p>
                             <div className="space-y-2">
                                 {board?.stages.map((stage, idx) => {
                                     const isActive = idx === currentIdx;
@@ -1209,7 +1209,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             key={stage.id}
                                             onClick={() => onMoveStage(stage.id)}
                                             className={`w-full px-3 py-2 rounded-lg flex items-center justify-between transition-all duration-200 group
-                                                ${!isActive && !isPassed ? 'bg-slate-800/30 text-slate-500 border border-transparent hover:bg-slate-800/50 hover:text-slate-400' : ''}`}
+                                                ${!isActive && !isPassed ? 'bg-[var(--surface-subtle)] text-[var(--text-muted)] border border-transparent hover:bg-[var(--ink-100)] hover:text-[var(--text-muted)]' : ''}`}
                                             style={{
                                                 backgroundColor: isActive ? `${hexColor}15` : isPassed ? `${hexColor}10` : undefined,
                                                 color: (isActive || isPassed) ? hexColor : undefined,
@@ -1256,10 +1256,10 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             </div>
 
                             {/* Journey Summary */}
-                            <div className="mt-4 pt-3 border-t border-white/5">
+                            <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
                                 <div className="flex items-center justify-between text-[10px]">
-                                    <span className="text-slate-600 uppercase tracking-wider">Tempo no funil</span>
-                                    <span className="text-slate-400 font-mono font-medium">
+                                    <span className="text-[var(--text-faint)] uppercase tracking-wider">Tempo no funil</span>
+                                    <span className="text-[var(--text-muted)] font-mono font-medium">
                                         {(() => {
                                             const totalDays = board?.stages.reduce((acc, _, idx) => {
                                                 if (idx < currentIdx) return acc + ([3, 12, 38][idx] || 5);
@@ -1275,20 +1275,20 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                     </aside>
 
                     {/* RIGHT: Split View (Timeline + Workspace) */}
-                    <main className="flex-1 flex min-w-0 bg-slate-900/10">
+                    <main className="flex-1 flex min-w-0 bg-[var(--surface-subtle)]">
 
                         {/* COL 1: Timeline & Interaction (Flexible Width) */}
-                        <div className="flex-1 flex flex-col min-w-0 border-r border-dark-border">
+                        <div className="flex-1 flex flex-col min-w-0 border-r border-[var(--border-subtle)]">
                             {/* Header - Simple */}
-                            <div className="shrink-0 h-12 flex items-center justify-between px-6 border-b border-white/5">
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <div className="shrink-0 h-12 flex items-center justify-between px-6 border-b border-[var(--border-subtle)]">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                                     Atividades
                                 </h3>
                                 <div className="flex items-center gap-1">
-                                    <button className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-white transition-colors">
+                                    <button className="p-1.5 hover:bg-[var(--ink-50)] rounded text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors">
                                         <Filter size={14} />
                                     </button>
-                                    <button className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-white transition-colors">
+                                    <button className="p-1.5 hover:bg-[var(--ink-50)] rounded text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors">
                                         <Search size={14} />
                                     </button>
                                 </div>
@@ -1298,20 +1298,20 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 p-6">
                                 {activities.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center p-12 text-center h-full">
-                                        <div className="w-12 h-12 bg-slate-800/50 rounded-xl flex items-center justify-center mb-4 border border-slate-700/50">
-                                            <ArrowUpRight size={24} className="text-slate-500" />
+                                        <div className="w-12 h-12 bg-[var(--ink-100)] rounded-xl flex items-center justify-center mb-4 border border-[var(--border-subtle)]">
+                                            <ArrowUpRight size={24} className="text-[var(--text-muted)]" />
                                         </div>
-                                        <p className="text-sm font-medium text-white mb-1">
+                                        <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
                                             Nenhuma atividade
                                         </p>
-                                        <p className="text-sm text-slate-500 max-w-[200px]">
+                                        <p className="text-sm text-[var(--text-muted)] max-w-[200px]">
                                             Comece adicionando uma nota ou agendando uma ação.
                                         </p>
                                     </div>
                                 ) : (
                                     <div className="relative pl-0 py-2">
                                         {/* Timeline line */}
-                                        <div className="absolute left-[27px] top-0 bottom-0 w-px bg-slate-800/50" />
+                                        <div className="absolute left-[27px] top-0 bottom-0 w-px bg-[var(--ink-100)]" />
 
                                         {activities.slice(0, 50).map((activity, idx) => {
                                             const isLast = idx === activities.length - 1;
@@ -1324,15 +1324,15 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             return (
                                                 <div
                                                     key={activity.id}
-                                                    className="relative pl-[54px] pr-6 py-4 group hover:bg-white/[0.02] transition-colors border-b border-white/5"
+                                                    className="relative pl-[54px] pr-6 py-4 group hover:bg-white/[0.02] transition-colors border-b border-[var(--border-subtle)]"
                                                 >
                                                     {/* Timeline Node */}
                                                     <div className={`absolute left-[18px] top-[18px] w-[20px] h-[20px] rounded-full flex items-center justify-center z-10 
                                                     border transition-all shadow-[0_0_10px_-3px_rgba(0,0,0,0.5)]
-                                                    ${activity.type === 'CALL' ? 'bg-blue-950/30 border-blue-500/30 text-blue-400 group-hover:border-blue-500 group-hover:shadow-blue-500/20' :
-                                                            activity.type === 'EMAIL' ? 'bg-purple-950/30 border-purple-500/30 text-purple-400 group-hover:border-purple-500 group-hover:shadow-purple-500/20' :
-                                                                activity.type === 'MEETING' ? 'bg-orange-950/30 border-orange-500/30 text-orange-400 group-hover:border-orange-500 group-hover:shadow-orange-500/20' :
-                                                                    'bg-slate-900 border-slate-700 text-slate-500 group-hover:border-slate-500'
+                                                    ${activity.type === 'CALL' ? 'bg-[var(--purple-50)] border-blue-500/30 text-blue-600 group-hover:border-blue-500 group-hover:shadow-blue-500/20' :
+                                                            activity.type === 'EMAIL' ? 'bg-[var(--purple-50)] border-purple-500/30 text-[var(--purple-600)] group-hover:border-purple-500 group-hover:shadow-purple-500/20' :
+                                                                activity.type === 'MEETING' ? 'bg-[var(--warning-soft)] border-orange-500/30 text-[var(--warning)] group-hover:border-orange-500 group-hover:shadow-orange-500/20' :
+                                                                    'bg-[var(--surface-card)] border-[var(--border-subtle)] text-[var(--text-muted)] group-hover:border-[var(--border-default)]'
                                                         }`}
                                                     >
                                                         <Icon size={10} strokeWidth={2.5} />
@@ -1346,19 +1346,19 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                                     // For STATUS_CHANGE, use gray
                                                                     if (activity.type === 'STATUS_CHANGE' || activity.title.includes('Moveu para')) {
                                                                         return (
-                                                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shrink-0 bg-slate-700/50 text-slate-400">
+                                                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shrink-0 bg-[var(--ink-100)] text-[var(--text-muted)]">
                                                                                 Status
                                                                             </span>
                                                                         );
                                                                     }
                                                                     // Regular activity types
                                                                     const typeColor =
-                                                                        activity.type === 'CALL' ? 'bg-blue-500/20 text-blue-400' :
-                                                                            activity.type === 'EMAIL' ? 'bg-purple-500/20 text-purple-400' :
-                                                                                activity.type === 'MEETING' ? 'bg-orange-500/20 text-orange-400' :
-                                                                                    activity.type === 'NOTE' ? 'bg-emerald-500/20 text-emerald-400' :
-                                                                                        activity.type === 'TASK' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                                                            'bg-slate-700/50 text-slate-400';
+                                                                        activity.type === 'CALL' ? 'bg-blue-500/20 text-blue-600' :
+                                                                            activity.type === 'EMAIL' ? 'bg-purple-500/20 text-[var(--purple-600)]' :
+                                                                                activity.type === 'MEETING' ? 'bg-orange-500/20 text-[var(--warning)]' :
+                                                                                    activity.type === 'NOTE' ? 'bg-emerald-500/20 text-[var(--success)]' :
+                                                                                        activity.type === 'TASK' ? 'bg-yellow-500/20 text-[var(--warning)]' :
+                                                                                            'bg-[var(--ink-100)] text-[var(--text-muted)]';
                                                                     const typeLabel =
                                                                         activity.type === 'CALL' ? 'Ligação' :
                                                                             activity.type === 'EMAIL' ? 'Email' :
@@ -1373,7 +1373,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                                     );
                                                                 })()}
                                                                 {/* Activity Title */}
-                                                                <span className={`text-sm font-medium transition-colors ${activity.completed ? 'text-slate-300' : 'text-white'}`}>
+                                                                <span className={`text-sm font-medium transition-colors ${activity.completed ? 'text-[var(--text-body)]' : 'text-[var(--text-strong)]'}`}>
                                                                     {activity.title.includes('Moveu para') ? (() => {
                                                                         // Extract stage name from title and find matching stage in board
                                                                         const stageName = activity.title.replace('Moveu para', '').trim();
@@ -1425,12 +1425,12 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                                 </span>
                                                             </div>
                                                             {activity.description && (
-                                                                <p className="text-sm text-slate-500 leading-relaxed group-hover:text-slate-400 transition-colors">
+                                                                <p className="text-sm text-[var(--text-muted)] leading-relaxed group-hover:text-[var(--text-muted)] transition-colors">
                                                                     {activity.description}
                                                                 </p>
                                                             )}
                                                         </div>
-                                                        <span className="text-[11px] text-slate-600 font-mono shrink-0 self-center">
+                                                        <span className="text-[11px] text-[var(--text-faint)] font-mono shrink-0 self-center">
                                                             {new Date(activity.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} - {new Date(activity.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
@@ -1442,7 +1442,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             </div>
 
                             {/* Input Area */}
-                            <div className="shrink-0 p-4 border-t border-white/5">
+                            <div className="shrink-0 p-4 border-t border-[var(--border-subtle)]">
                                 {/* Quick Actions - Agendamento */}
                                 <div className="flex flex-wrap gap-2 mb-3">
                                     <button
@@ -1452,9 +1452,9 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             })
                                         }
                                         disabled={!contact?.phone}
-                                        className="px-3 py-1.5 hover:bg-green-500/10 text-slate-500 hover:text-green-400 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
+                                        className="px-3 py-1.5 hover:bg-green-500/10 text-[var(--text-muted)] hover:text-[var(--success)] disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
                                     >
-                                        <MessageCircle size={14} className="group-hover:text-green-400 transition-colors" /> WhatsApp
+                                        <MessageCircle size={14} className="group-hover:text-[var(--success)] transition-colors" /> WhatsApp
                                     </button>
                                     <button
                                         onClick={() =>
@@ -1464,28 +1464,28 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             })
                                         }
                                         disabled={!contact?.email}
-                                        className="px-3 py-1.5 hover:bg-cyan-500/10 text-slate-500 hover:text-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
+                                        className="px-3 py-1.5 hover:bg-cyan-500/10 text-[var(--text-muted)] hover:text-cyan-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
                                     >
-                                        <Mail size={14} className="group-hover:text-cyan-400 transition-colors" /> Email
+                                        <Mail size={14} className="group-hover:text-cyan-700 transition-colors" /> Email
                                     </button>
-                                    <span className="w-px h-6 bg-slate-800 self-center" />
+                                    <span className="w-px h-6 bg-[var(--ink-100)] self-center" />
                                     <button
                                         onClick={() => handleQuickAction('CALL')}
-                                        className="px-3 py-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
+                                        className="px-3 py-1.5 hover:bg-blue-500/10 text-[var(--text-muted)] hover:text-blue-600 text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
                                     >
-                                        <Phone size={14} className="group-hover:text-blue-400 transition-colors" /> Ag. Ligação
+                                        <Phone size={14} className="group-hover:text-blue-600 transition-colors" /> Ag. Ligação
                                     </button>
                                     <button
                                         onClick={() => handleQuickAction('MEETING')}
-                                        className="px-3 py-1.5 hover:bg-purple-500/10 text-slate-500 hover:text-purple-400 text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
+                                        className="px-3 py-1.5 hover:bg-purple-500/10 text-[var(--text-muted)] hover:text-[var(--purple-600)] text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
                                     >
-                                        <Calendar size={14} className="group-hover:text-purple-400 transition-colors" /> Ag. Reunião
+                                        <Calendar size={14} className="group-hover:text-[var(--purple-600)] transition-colors" /> Ag. Reunião
                                     </button>
                                     <button
                                         onClick={() => handleQuickAction('TASK')}
-                                        className="px-3 py-1.5 hover:bg-orange-500/10 text-slate-500 hover:text-orange-400 text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
+                                        className="px-3 py-1.5 hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-[var(--warning)] text-xs font-medium rounded-md transition-colors flex items-center gap-2 group"
                                     >
-                                        <Clock size={14} className="group-hover:text-orange-400 transition-colors" /> Ag. Tarefa
+                                        <Clock size={14} className="group-hover:text-[var(--warning)] transition-colors" /> Ag. Tarefa
                                     </button>
                                 </div>
 
@@ -1494,7 +1494,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                         value={note}
                                         onChange={(e) => setNote(e.target.value)}
                                         placeholder="Escreva..."
-                                        className="w-full min-h-[120px] bg-slate-900/50 border border-slate-600 ring-1 ring-slate-500/30 focus:border-primary-500 focus:ring-primary-500/40 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none transition-all resize-none"
+                                        className="w-full min-h-[120px] bg-[var(--surface-subtle)] border border-[var(--border-default)] ring-1 ring-[var(--border-subtle)] focus:border-primary-500 focus:ring-primary-500/40 rounded-lg px-3 py-2 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-muted)] focus:outline-none transition-all resize-none"
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && e.metaKey && note.trim()) {
                                                 onAddActivity({
@@ -1509,7 +1509,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                         }}
                                     />
                                     <div className="absolute right-2 bottom-2 flex items-center gap-2">
-                                        <span className="text-[10px] text-slate-700 border border-slate-800 rounded px-1.5 py-0.5">
+                                        <span className="text-[10px] text-[var(--text-body)] border border-[var(--border-subtle)] rounded px-1.5 py-0.5">
                                             ⌘ + Enter
                                         </span>
                                     </div>
@@ -1518,16 +1518,16 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                         </div>
 
                         {/* COL 2: Workspace (Fixed Width) */}
-                        <div className="w-[400px] flex flex-col min-h-0 bg-slate-900/20 border-l border-white/5 relative">
+                        <div className="w-[400px] flex flex-col min-h-0 bg-[var(--surface-subtle)] border-l border-[var(--border-subtle)] relative">
                             {/* Workspace Tabs */}
-                            <div className="shrink-0 flex items-center px-4 h-14 border-b border-white/5 gap-4">
+                            <div className="shrink-0 flex items-center px-4 h-14 border-b border-[var(--border-subtle)] gap-4">
                                 {['chat', 'notas', 'scripts', 'files'].map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
                                         className={`relative h-full flex items-center justify-center text-xs font-semibold uppercase tracking-wider transition-all ${activeTab === tab
-                                            ? 'text-primary-400 shadow-[0_4px_20px_-10px_rgba(var(--primary-500),0.3)]'
-                                            : 'text-slate-500 hover:text-slate-300'
+                                            ? 'text-[var(--purple-600)] shadow-[0_4px_20px_-10px_rgba(var(--primary-500),0.3)]'
+                                            : 'text-[var(--text-muted)] hover:text-[var(--text-body)]'
                                             }`}
                                     >
                                         {tab === 'notas' ? 'Notas' : tab === 'chat' ? 'Chat IA' : tab === 'scripts' ? 'Scripts' : 'Arquivos'}
@@ -1542,21 +1542,21 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             {/* Notes - Real persistence */}
                             {activeTab === 'notas' && (
                                 <div className="flex-1 flex flex-col bg-[#1A1A1A]">
-                                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Notas do Deal</span>
+                                    <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Notas do Deal</span>
                                         {createNote.isPending && (
-                                            <span className="text-[10px] text-primary-400 flex items-center gap-1">
+                                            <span className="text-[10px] text-[var(--purple-600)] flex items-center gap-1">
                                                 <Loader2 size={10} className="animate-spin" /> Salvando...
                                             </span>
                                         )}
                                     </div>
 
                                     {/* New note input */}
-                                    <div className="p-4 border-b border-white/5">
+                                    <div className="p-4 border-b border-[var(--border-subtle)]">
                                         <textarea
                                             value={note}
                                             onChange={(e) => setNote(e.target.value)}
-                                            className="w-full bg-slate-900/50 border border-white/5 rounded-lg p-3 text-sm text-slate-300 placeholder:text-slate-600 resize-none focus:outline-none focus:border-primary-500/50 min-h-[160px]"
+                                            className="w-full bg-[var(--surface-subtle)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-[var(--text-body)] placeholder:text-[var(--text-faint)] resize-none focus:outline-none focus:border-primary-500/50 min-h-[160px]"
                                             placeholder="Escreva uma nota..."
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && e.metaKey) {
@@ -1565,7 +1565,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             }}
                                         />
                                         <div className="flex justify-between items-center mt-2">
-                                            <span className="text-[10px] text-slate-600">⌘+Enter para salvar</span>
+                                            <span className="text-[10px] text-[var(--text-faint)]">⌘+Enter para salvar</span>
                                             <button
                                                 onClick={handleNoteSubmit}
                                                 disabled={!note.trim() || createNote.isPending}
@@ -1580,21 +1580,21 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                         {isNotesLoading ? (
                                             <div className="flex items-center justify-center py-8">
-                                                <Loader2 size={20} className="text-slate-500 animate-spin" />
+                                                <Loader2 size={20} className="text-[var(--text-muted)] animate-spin" />
                                             </div>
                                         ) : notes.length === 0 ? (
-                                            <p className="text-sm text-slate-600 text-center py-8">Nenhuma nota ainda</p>
+                                            <p className="text-sm text-[var(--text-faint)] text-center py-8">Nenhuma nota ainda</p>
                                         ) : (
                                             notes.map((n) => (
-                                                <div key={n.id} className="p-3 bg-slate-800/30 rounded-lg border border-white/5 group">
-                                                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{n.content}</p>
+                                                <div key={n.id} className="p-3 bg-[var(--surface-subtle)] rounded-lg border border-[var(--border-subtle)] group">
+                                                    <p className="text-sm text-[var(--text-body)] whitespace-pre-wrap">{n.content}</p>
                                                     <div className="flex justify-between items-center mt-2">
-                                                        <span className="text-[10px] text-slate-600">
+                                                        <span className="text-[10px] text-[var(--text-faint)]">
                                                             {new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                         <button
                                                             onClick={() => deleteNote.mutate(n.id)}
-                                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded text-slate-500 hover:text-red-400 transition-all"
+                                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded text-[var(--text-muted)] hover:text-[var(--danger)] transition-all"
                                                         >
                                                             <Trash2 size={12} />
                                                         </button>
@@ -1610,7 +1610,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             {activeTab === 'scripts' && (
                                 <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-800">
                                     <div className="flex items-center justify-between mb-4 px-1">
-                                        <p className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+                                        <p className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-2">
                                             Templates de Venda
                                             {isScriptsLoading && <Loader2 size={12} className="animate-spin" />}
                                         </p>
@@ -1619,7 +1619,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                 setEditingScript(null);
                                                 setIsScriptEditorOpen(true);
                                             }}
-                                            className="flex items-center gap-1 text-[10px] px-2 py-1 bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 rounded-md transition-colors"
+                                            className="flex items-center gap-1 text-[10px] px-2 py-1 bg-primary-500/20 text-[var(--purple-600)] hover:bg-primary-500/30 rounded-md transition-colors"
                                         >
                                             <Plus size={12} />
                                             Criar
@@ -1629,8 +1629,8 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                     {/* AI Script Generator */}
                                     <div className="mb-4 p-3 bg-gradient-to-br from-primary-500/10 to-purple-500/10 rounded-lg border border-primary-500/20">
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Sparkles size={14} className="text-primary-400" />
-                                            <span className="text-xs font-medium text-white">Gerar Script com IA</span>
+                                            <Sparkles size={14} className="text-[var(--purple-600)]" />
+                                            <span className="text-xs font-medium text-[var(--text-strong)]">Gerar Script com IA</span>
                                         </div>
                                         <div className="flex gap-2">
                                             {(['followup', 'closing', 'objection', 'rescue'] as ScriptCategory[]).map((type) => (
@@ -1652,7 +1652,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                             console.error('AI Script error:', err);
                                                         }
                                                     }}
-                                                    className="flex-1 text-[9px] px-2 py-1.5 bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-white rounded transition-colors capitalize"
+                                                    className="flex-1 text-[9px] px-2 py-1.5 bg-[var(--ink-100)] hover:bg-[var(--ink-200)] text-[var(--text-muted)] hover:text-[var(--text-strong)] rounded transition-colors capitalize"
                                                 >
                                                     {type === 'followup' ? 'Follow-up' : type === 'closing' ? 'Fechamento' : type === 'objection' ? 'Objeção' : 'Resgate'}
                                                 </button>
@@ -1665,7 +1665,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                             return (
                                                 <div
                                                     key={script.id}
-                                                    className={`p-4 bg-slate-800/40 rounded-xl border border-white/5 hover:border-slate-600 hover:bg-slate-800/80 transition-all cursor-pointer group ${copiedScript === script.id ? 'ring-2 ring-emerald-500/50' : ''
+                                                    className={`p-4 bg-[var(--ink-100)] rounded-xl border border-[var(--border-subtle)] hover:border-[var(--border-default)] hover:bg-[var(--ink-100)] transition-all cursor-pointer group ${copiedScript === script.id ? 'ring-2 ring-emerald-500/50' : ''
                                                         }`}
                                                     onClick={() => {
                                                         copyScript(script.template, script.id);
@@ -1677,16 +1677,16 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                             <div className={`px-2 py-0.5 rounded text-[10px] font-medium bg-${categoryInfo.color}-500/20 text-${categoryInfo.color}-400`}>
                                                                 {categoryInfo.label}
                                                             </div>
-                                                            <span className="text-sm font-semibold text-white">
+                                                            <span className="text-sm font-semibold text-[var(--text-strong)]">
                                                                 {script.title}
                                                             </span>
                                                             {script.is_system && (
-                                                                <span className="text-[9px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">Sistema</span>
+                                                                <span className="text-[9px] text-[var(--text-muted)] bg-[var(--ink-100)] px-1.5 py-0.5 rounded">Sistema</span>
                                                             )}
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             {copiedScript === script.id && (
-                                                                <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                                                                <span className="text-[10px] text-[var(--success)] flex items-center gap-1">
                                                                     <CheckCircle2 size={10} /> Copiado!
                                                                 </span>
                                                             )}
@@ -1705,7 +1705,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                                             });
                                                                             setIsScriptEditorOpen(true);
                                                                         }}
-                                                                        className="p-1 text-slate-500 hover:text-primary-400 hover:bg-primary-500/10 rounded transition-colors"
+                                                                        className="p-1 text-[var(--text-muted)] hover:text-[var(--purple-600)] hover:bg-primary-500/10 rounded transition-colors"
                                                                         title="Editar"
                                                                     >
                                                                         <FileText size={12} />
@@ -1717,7 +1717,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                                                 deleteScript.mutate(script.id);
                                                                             }
                                                                         }}
-                                                                        className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                                        className="p-1 text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 rounded transition-colors"
                                                                         title="Excluir"
                                                                     >
                                                                         <Trash2 size={12} />
@@ -1726,7 +1726,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 group-hover:text-slate-300">
+                                                    <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3 group-hover:text-[var(--text-body)]">
                                                         {applyVariables(script.template, { nome: contact?.name?.split(' ')[0] || 'Cliente' })}
                                                     </p>
                                                 </div>
@@ -1750,53 +1750,53 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                         onClick={() => fileInputRef.current?.click()}
                                         className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center mb-6 transition-all cursor-pointer ${uploadFile.isPending
                                             ? 'border-primary-500 bg-primary-500/10'
-                                            : 'border-slate-800 hover:border-slate-700 hover:bg-slate-800/30'
+                                            : 'border-[var(--border-subtle)] hover:border-[var(--border-subtle)] hover:bg-[var(--surface-subtle)]'
                                             }`}
                                     >
-                                        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center mb-2">
+                                        <div className="w-10 h-10 bg-[var(--ink-100)] rounded-full flex items-center justify-center mb-2">
                                             {uploadFile.isPending ? (
-                                                <Loader2 size={20} className="text-primary-400 animate-spin" />
+                                                <Loader2 size={20} className="text-[var(--purple-600)] animate-spin" />
                                             ) : (
-                                                <Plus size={20} className="text-slate-400" />
+                                                <Plus size={20} className="text-[var(--text-muted)]" />
                                             )}
                                         </div>
-                                        <p className="text-sm font-medium text-white">
+                                        <p className="text-sm font-medium text-[var(--text-strong)]">
                                             {uploadFile.isPending ? 'Enviando...' : 'Adicionar arquivo'}
                                         </p>
-                                        <p className="text-xs text-slate-500">Clique ou arraste (máx 10MB)</p>
+                                        <p className="text-xs text-[var(--text-muted)]">Clique ou arraste (máx 10MB)</p>
                                     </div>
 
-                                    <p className="text-xs font-semibold text-slate-500 mb-3 px-1 flex items-center gap-2">
+                                    <p className="text-xs font-semibold text-[var(--text-muted)] mb-3 px-1 flex items-center gap-2">
                                         Arquivos do Deal
                                         {isFilesLoading && <Loader2 size={12} className="animate-spin" />}
                                     </p>
 
                                     <div className="space-y-2">
                                         {files.length === 0 && !isFilesLoading ? (
-                                            <p className="text-sm text-slate-600 text-center py-4">Nenhum arquivo ainda</p>
+                                            <p className="text-sm text-[var(--text-faint)] text-center py-4">Nenhum arquivo ainda</p>
                                         ) : (
                                             files.map((file) => {
                                                 const ext = file.file_name.split('.').pop()?.toUpperCase() || 'FILE';
                                                 return (
-                                                    <div key={file.id} className="flex items-center p-3 rounded-lg bg-slate-800/20 border border-white/5 hover:bg-slate-800/40 transition-colors group">
-                                                        <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center text-xs font-bold text-slate-400 border border-white/5 uppercase shrink-0">
+                                                    <div key={file.id} className="flex items-center p-3 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-subtle)] hover:bg-[var(--ink-100)] transition-colors group">
+                                                        <div className="w-10 h-10 rounded-lg bg-[var(--surface-card)] flex items-center justify-center text-xs font-bold text-[var(--text-muted)] border border-[var(--border-subtle)] uppercase shrink-0">
                                                             {ext.slice(0, 3)}
                                                         </div>
                                                         <div className="ml-3 flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-white truncate">{file.file_name}</p>
-                                                            <p className="text-xs text-slate-500">
+                                                            <p className="text-sm font-medium text-[var(--text-strong)] truncate">{file.file_name}</p>
+                                                            <p className="text-xs text-[var(--text-muted)]">
                                                                 {formatFileSize(file.file_size)} • {new Date(file.created_at).toLocaleDateString('pt-BR')}
                                                             </p>
                                                         </div>
                                                         <button
                                                             onClick={() => downloadFile(file)}
-                                                            className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors"
+                                                            className="p-2 hover:bg-[var(--ink-100)] rounded-lg text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors"
                                                         >
                                                             <Download size={16} />
                                                         </button>
                                                         <button
                                                             onClick={() => deleteFile.mutate({ fileId: file.id, filePath: file.file_path })}
-                                                            className="p-2 hover:bg-red-500/10 rounded-lg text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                                            className="p-2 hover:bg-red-500/10 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors opacity-0 group-hover:opacity-100"
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -1810,7 +1810,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
 
                             {/* Chat - AI Assistant Embedded */}
                             {activeTab === 'chat' && (
-                                <div className="flex-1 min-h-0 bg-slate-950 overflow-hidden">
+                                <div className="flex-1 min-h-0 bg-[var(--surface-subtle)] overflow-hidden">
                                     <React.Suspense
                                         fallback={
                                             <div className="flex items-center justify-center h-full">
