@@ -1,0 +1,71 @@
+/* base.css — reset curto, shell da aplicação e utilitários */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-ui);
+  line-height: 1.45;
+  color: var(--text-body);
+  background: var(--surface-subtle);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, p, dl, dd, dt, figure { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+a { color: var(--purple-600); text-decoration: none; }
+a:hover { color: var(--pink-500); }
+button { font: inherit; cursor: pointer; }
+img { display: block; max-width: 100%; }
+input, textarea { font: inherit; color: inherit; }
+
+/* shell */
+.app { display: flex; height: 100vh; overflow: hidden; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.screen { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.screen__inner { padding: var(--space-5) var(--space-6) var(--space-11); display: flex; flex-direction: column; gap: var(--space-4); }
+.screen__inner--narrow { max-width: 920px; }
+.screen__inner--wide { max-width: 1480px; }
+.screen--split { display: flex; }
+
+/* utilitários mínimos */
+.spacer { flex: 1; }
+.num { font-variant-numeric: tabular-nums; }
+.meta { font-size: var(--text-meta); color: var(--text-faint); }
+.muted { color: var(--text-muted); }
+.nowrap { white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; flex: none; }
+.dot--pulse { animation: pulse-lime 2.4s infinite; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+@keyframes pulse-lime {
+  0% { box-shadow: 0 0 0 0 rgba(191, 242, 8, .85); }
+  70% { box-shadow: 0 0 0 10px rgba(191, 242, 8, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(191, 242, 8, 0); }
+}
+@keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 320px 0; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* títulos */
+.title-xl { font-family: var(--font-display); font-weight: var(--weight-black); font-size: 30px; letter-spacing: var(--tracking-tighter); line-height: 1.05; color: var(--text-strong); }
+.title-lg { font-family: var(--font-display); font-weight: var(--weight-black); font-size: 24px; letter-spacing: var(--tracking-tighter); line-height: 1.06; color: var(--text-strong); }
+.title-md { font-family: var(--font-display); font-weight: var(--weight-heavy); font-size: 16px; letter-spacing: var(--tracking-tight); color: var(--text-strong); }
+.title-sm { font-family: var(--font-display); font-weight: var(--weight-heavy); font-size: 15px; letter-spacing: var(--tracking-tight); color: var(--text-strong); }
+.eyebrow { font-size: 12px; font-weight: var(--weight-bold); letter-spacing: var(--tracking-wide); color: var(--pink-500); }
+.label { font-size: 11px; font-weight: var(--weight-bold); letter-spacing: var(--tracking-label); color: var(--text-faint); }
+.dot-accent { color: var(--pink-500); }  /* ponto final colorido — 1 por tela */
+
+/* scrollbars discretos (uso prolongado) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #d6d0e2; border-radius: var(--radius-pill); border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* modificadores de dado (largura/altura de barra e marcador de confiança).
+   Na implementação, ligue o valor real via inline style ou custom property —
+   estas classes existem para o mock ficar 100% sem style="". */
+.dot--success { color: var(--success); }
+.screen--split { height: 100%; }
+.dot--danger { color: var(--danger); }
+.dot--warning { color: var(--warning); }
+.dot--muted { color: var(--ink-300); }

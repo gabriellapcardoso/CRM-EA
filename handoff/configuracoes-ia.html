@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurações · IA — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/approval.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item nav__item--active" href="configuracoes-geral.html" aria-current="page">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Configurações · IA</h1><p class="topbar__sub">limites de confiança e autonomia</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="screen__inner screen__inner--narrow">
+        <nav class="tabs" aria-label="Seções de configuração">
+          <a class="tab" href="configuracoes-geral.html">geral</a>
+          <a class="tab tab--active" href="configuracoes-ia.html" aria-current="page">configuração de IA</a>
+          <a class="tab" href="configuracoes-integracoes.html">integrações</a>
+          <a class="tab" href="configuracoes-produtos.html">produtos & catálogo</a>
+        </nav>
+        <section class="panel">
+          <h2 class="panel__title title-md">limites de confiança</h2>
+          <p class="muted">abaixo do 1º limite o agente arquiva sozinho; entre os dois ele te pergunta; acima do 2º ele executa.</p>
+          <div class="confidence">
+            <div class="confidence-bands">
+              <span class="confidence-bands__band--low"></span>
+              <span class="confidence-bands__band--hitl"></span>
+              <span class="confidence-bands__band--auto"></span>
+            </div>
+            <p class="confidence-legend">
+              <span class="confidence-legend__item"><span class="confidence-legend__swatch stage-swatch--frio"></span>arquiva sozinho</span>
+              <span class="confidence-legend__item confidence-legend__item--hitl"><span class="confidence-legend__swatch confidence-legend__swatch--hitl"></span>você decide</span>
+              <span class="confidence-legend__item"><span class="confidence-legend__swatch confidence-legend__swatch--auto"></span>executa</span>
+            </p>
+          </div>
+          <dl class="form-grid">
+            <dt>arquivar abaixo de</dt><dd><input class="input code" value="0.70"></dd>
+            <dt>executar acima de</dt><dd><input class="input code" value="0.85"></dd>
+          </dl>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel__title title-md">autonomia por tipo de ação</h2>
+          <ul>
+            <li class="setting-row">
+              <span class="setting-row__text"><span class="setting-row__title">responder primeira mensagem</span><span class="setting-row__desc">WhatsApp e Instagram, fora do horário comercial também</span></span>
+              <span class="status-chip status-chip--ia">executa sozinho</span>
+              <button class="toggle toggle--on" type="button" aria-pressed="true" aria-label="ativo"></button>
+            </li>
+            <li class="setting-row">
+              <span class="setting-row__text"><span class="setting-row__title">enviar preço e tabela</span><span class="setting-row__desc">sempre passa por você, independente da confiança</span></span>
+              <span class="status-chip status-chip--hitl">sempre pergunta</span>
+              <button class="toggle toggle--hitl" type="button" aria-pressed="true" aria-label="ativo"></button>
+            </li>
+            <li class="setting-row">
+              <span class="setting-row__text"><span class="setting-row__title">mover deal de estágio</span><span class="setting-row__desc">até “Proposta enviada”. contrato e pagamento nunca.</span></span>
+              <span class="status-chip status-chip--ia">parcial</span>
+              <button class="toggle toggle--on" type="button" aria-pressed="true" aria-label="ativo"></button>
+            </li>
+            <li class="setting-row">
+              <span class="setting-row__text"><span class="setting-row__title">enviar contrato</span><span class="setting-row__desc">desligado — só pessoa faz isso</span></span>
+              <span class="status-chip status-chip--muted">desligado</span>
+              <button class="toggle" type="button" aria-pressed="false" aria-label="inativo"></button>
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel__title title-md">tom de voz do agente</h2>
+          <p><textarea class="input input--textarea">fale como gente, em português informal, tratando por "você". frases curtas, sem emoji em e-mail. nunca prometa prazo ou desconto sem aprovação. assine como "time aaagência".</textarea></p>
+          <p class="chip-row"><span class="tag tag--ia">informal</span><span class="tag tag--ia">direto</span><span class="tag tag--ia">sem promessa de desconto</span></p>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

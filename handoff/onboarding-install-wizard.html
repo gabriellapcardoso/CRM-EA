@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding · wizard — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+<div class="auth">
+  <a class="auth__back" href="dashboard.html">← voltar pro app</a>
+  <aside class="auth__aside">
+    <img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência">
+    <div>
+      <p class="auth__claim">o pós-venda inteiro num lugar<span class="dot-lime">.</span></p>
+      <p class="auth__sub">negociação, conversas dos três canais e um agente de IA que só te chama quando a decisão é sua.</p>
+    </div>
+    <p class="auth__signature">marketing · tráfego pago · inteligência artificial</p>
+  </aside>
+  <section class="auth__panel">
+    <form class="auth__form" action="dashboard.html">
+      <div class="progress" role="progressbar" aria-valuenow="2" aria-valuemin="0" aria-valuemax="4">
+        <span class="progress__seg progress__seg--done"></span>
+        <span class="progress__seg progress__seg--done"></span>
+        <span class="progress__seg"></span>
+        <span class="progress__seg"></span>
+      </div>
+      <div>
+        <p class="eyebrow">passo 2 de 4 · canais</p>
+        <h1 class="auth__title">conecte por onde seus clientes falam</h1>
+        <p class="auth__text">o inbox junta os três num só lugar. pode conectar um agora e o resto depois.</p>
+      </div>
+      <div class="panel__body">
+        <div class="channel-row">
+          <span class="badge-channel badge-channel--whatsapp badge-channel--lg" aria-hidden="true">W</span>
+          <span class="channel-row__text">
+            <span class="channel-row__name">WhatsApp Business</span>
+            <span class="channel-row__meta channel-row__meta--on">conectado · +55 27 99xxx-4410</span>
+          </span>
+          <span class="status-chip status-chip--on">pronto</span>
+        </div>
+        <div class="channel-row">
+          <span class="badge-channel badge-channel--email badge-channel--lg" aria-hidden="true">E</span>
+          <span class="channel-row__text">
+            <span class="channel-row__name">E-mail</span>
+            <span class="channel-row__meta">Google Workspace ou IMAP</span>
+          </span>
+          <button class="btn btn--primary" type="button">conectar</button>
+        </div>
+        <div class="channel-row">
+          <span class="badge-channel badge-channel--instagram badge-channel--lg" aria-hidden="true">I</span>
+          <span class="channel-row__text">
+            <span class="channel-row__name">Instagram Direct</span>
+            <span class="channel-row__meta">precisa de conta profissional</span>
+          </span>
+          <button class="btn btn--ghost" type="button">conectar</button>
+        </div>
+      </div>
+      <p class="card-approval__actions"><button class="btn btn--primary btn--lg" type="submit">continuar</button><button class="btn btn--quiet" type="button">pular por agora</button></p>
+    </form>
+  </section>
+</div>
+</body>
+</html>

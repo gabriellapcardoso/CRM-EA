@@ -1,0 +1,137 @@
+/* tokens.css — aaagência · espelho dos tokens do design system
+   Fonte: _ds/aaag-ncia-designsystem-.../tokens/*.css
+   Nenhum valor novo: só o que já existe no DS + 5 tokens de produto (CRM). */
+
+:root {
+  /* marca */
+  --purple: #54007f;
+  --pink: #f1006e;
+  --lime: #bff208;
+  --white: #fff;
+
+  --purple-950: #210032;
+  --purple-900: #350052;
+  --purple-800: #460069;
+  --purple-700: #54007f;
+  --purple-600: #6a1f96;
+  --purple-500: #8330b3;
+  --purple-400: #a059cb;
+  --purple-300: #c08fdd;
+  --purple-200: #ddc2ec;
+  --purple-100: #efe3f6;
+  --purple-50:  #f8f2fc;
+
+  --pink-700: #b30053;
+  --pink-500: #f1006e;
+  --pink-200: #ffb3d2;
+  --pink-100: #ffe1ee;
+  --pink-50:  #fff1f7;
+
+  --lime-700: #6f8c00;
+  --lime-600: #97bd00;
+  --lime-500: #bff208;
+  --lime-400: #d0f74d;
+  --lime-300: #def986;
+  --lime-200: #ebfbb4;
+  --lime-100: #f5fdd9;
+  --lime-50:  #fbfeef;
+
+  --ink-950: #150f1c;
+  --ink-900: #211a2b;
+  --ink-800: #322a3f;
+  --ink-700: #463c56;
+  --ink-600: #5e5470;
+  --ink-500: #7a7090;
+  --ink-400: #9d94b0;
+  --ink-300: #c2bcd0;
+  --ink-200: #e0dbe9;
+  --ink-100: #efedf4;
+  --ink-50:  #f7f6fa;
+
+  --success: #2fa86b;
+  --success-soft: #e4f5ec;
+  --warning: #e8a300;
+  --warning-soft: #fbf0d4;
+  --danger: #e23b5b;
+  --danger-soft: #fbe5ea;
+
+  /* semânticos */
+  --text-strong: var(--ink-950);
+  --text-body: var(--ink-800);
+  --text-muted: var(--ink-500);
+  --text-faint: var(--ink-400);
+  --text-on-lime: var(--purple-950);
+  --surface-page: var(--white);
+  --surface-subtle: var(--ink-50);
+  --surface-card: var(--white);
+  --surface-brand: var(--purple-700);
+  --surface-inverse: var(--purple-950);
+  --border-subtle: var(--ink-200);
+  --border-default: var(--ink-300);
+
+  --gradient-purple: radial-gradient(circle at 50% 47%, #7d1cae 0%, #69109d 26%, #570d86 55%, #470069 100%);
+
+  /* tipografia */
+  --font-display: "SF Pro Display", system-ui, -apple-system, sans-serif;
+  --font-body: "SF Pro Display", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+  --weight-black: 900;
+  --tracking-tighter: -0.035em;
+  --tracking-tight: -0.015em;
+  --tracking-wide: 0.04em;
+  --tracking-label: 0.1em;
+
+  /* espaçamento (grid 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-11: 44px;
+
+  /* raio */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --radius-button: 10px;
+  --radius-cta: 12px;
+
+  /* elevação */
+  --shadow-xs: 0 1px 2px rgba(33, 0, 50, .08);
+  --shadow-sm: 0 2px 6px -1px rgba(33, 0, 50, .10);
+  --shadow-md: 0 8px 24px -8px rgba(33, 0, 50, .18);
+  --shadow-lg: 0 20px 44px -14px rgba(33, 0, 50, .24);
+  --shadow-purple: 0 14px 30px -10px rgba(84, 0, 127, .45);
+  --shadow-lime: 0 14px 30px -10px rgba(151, 189, 0, .45);
+
+  /* movimento */
+  --dur-fast: 120ms;
+  --dur-base: 240ms;
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+
+  /* ── tokens de produto (CRM) — derivados, sem cor nova ── */
+  --stage-frio: var(--ink-300);
+  --stage-proposta: var(--purple-400);
+  --stage-contrato: var(--purple-600);
+  --stage-ganho: var(--lime-600);
+  --stage-perdido: var(--pink-500);
+
+  --channel-whatsapp: var(--success);
+  --channel-email: var(--purple-500);
+  --channel-instagram: var(--pink-500);
+
+  --hitl-surface: var(--lime-500);   /* limão = precisa de você. nunca decorativo */
+  --hitl-ink: var(--purple-950);
+
+  --row-height: 44px;               /* linha de tabela — densidade de trabalho */
+  --text-ui: 13.5px;                /* corpo de interface */
+  --text-meta: 11.5px;              /* metadado — mínimo do sistema */
+}

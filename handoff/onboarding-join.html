@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar em organização — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+<div class="auth">
+  <a class="auth__back" href="dashboard.html">← voltar pro app</a>
+  <aside class="auth__aside">
+    <img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência">
+    <div>
+      <p class="auth__claim">o pós-venda inteiro num lugar<span class="dot-lime">.</span></p>
+      <p class="auth__sub">negociação, conversas dos três canais e um agente de IA que só te chama quando a decisão é sua.</p>
+    </div>
+    <p class="auth__signature">marketing · tráfego pago · inteligência artificial</p>
+  </aside>
+  <section class="auth__panel">
+    <form class="auth__form" action="dashboard.html">
+      <div>
+        <p class="eyebrow">entrar em organização</p>
+        <h1 class="auth__title">você foi convidado pra aaagência</h1>
+      </div>
+      <div class="org-card">
+        <span class="org-card__mark" aria-hidden="true">a<span class="lime">a</span></span>
+        <span class="channel-row__text">
+          <span class="channel-row__name">aaagência</span>
+          <span class="channel-row__meta">3 pessoas · convidada por Bruna Alcântara</span>
+        </span>
+      </div>
+      <div class="field">
+        <label class="field__label" for="codigo">código do convite</label>
+        <input class="input code" id="codigo" value="AAA-4K92-7T">
+      </div>
+      <p class="note-purple">seu acesso vai entrar como <strong>atendimento</strong>: você vê o inbox e as atividades, mas não mexe em contrato nem em pagamento.</p>
+      <button class="btn btn--primary btn--lg btn--block" type="submit">entrar na organização</button>
+      <p class="auth__text">recebeu o convite por engano? <a href="#">recusar</a></p>
+    </form>
+  </section>
+</div>
+</body>
+</html>

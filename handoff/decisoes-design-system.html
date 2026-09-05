@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decisões de design system — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/card-deal.css">
+  <link rel="stylesheet" href="css/approval.css">
+  <link rel="stylesheet" href="css/design-system.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item nav__item--active" href="decisoes-design-system.html" aria-current="page">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Decisões de design system</h1><p class="topbar__sub">o que Prospecção e Gerador de Propostas herdam daqui</p></div>
+        <span class="spacer"></span>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="screen__inner screen__inner--wide">
+        <div>
+          <h2 class="title-xl">quatro peças que fecham o ecossistema<span class="dot-accent">.</span></h2>
+          <p class="muted">card de deal, badge de estágio, indicador de canal e badge de confiança da IA. Prospecção e Gerador de Propostas usam as mesmas regras — mudam o conteúdo, nunca a forma.</p>
+        </div>
+
+        <div class="ds-grid">
+          <section class="ds-card">
+            <div>
+              <h3 class="title-md">1 · card de deal <code>.card-deal</code></h3>
+              <p class="ds-card__desc">4 linhas fixas, nessa ordem: identidade + valor · pessoa + canal · pendência (só quando existe) · origem do movimento + idade. spine esquerda de 3px carrega a cor do grupo de estágio; vira limão quando há pendência.</p>
+            </div>
+            <div class="ds-demo">
+              <article class="card-deal card-deal--pending">
+                <div class="card-deal__head">
+                  <h4 class="card-deal__title">Academia Pulse</h4>
+                  <p class="card-deal__value num">R$ 5.400</p>
+                </div>
+                <div class="card-deal__contact">
+                  <span class="avatar avatar--sm">DR</span>
+                  <p class="card-deal__contact-name">Diego Ramalho</p>
+                  <span class="badge-channel badge-channel--whatsapp badge-channel--sm" title="WhatsApp">W</span>
+                </div>
+                <p class="badge-pending">
+                  <span class="badge-pending__title"><span class="dot dot--pulse"></span>aguardando sua aprovação</span>
+                  <span class="badge-pending__text">IA quer enviar tabela de preços (conf. 0.81)</span>
+                </p>
+                <div class="card-deal__foot">
+                  <span class="badge-origin badge-origin--ia"><span class="badge-origin__icon" aria-hidden="true">✦</span>agente IA</span>
+                  <span class="card-deal__age">4 h</span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="ds-card">
+            <div>
+              <h3 class="title-md">2 · badge de estágio <code>.badge-stage</code></h3>
+              <p class="ds-card__desc">os 14 estágios viram 5 grupos de cor. o nome nunca é abreviado e nunca vira caixa alta. pill de 999px, 11.5px, peso 700.</p>
+            </div>
+            <div class="panel__body">
+              <p class="ds-row"><span class="stage-swatch stage-swatch--frio"></span><span class="badge-stage badge-stage--frio">Negociando</span><span class="ds-row__note">frio · <code>--stage-frio</code></span></p>
+              <p class="ds-row"><span class="stage-swatch stage-swatch--proposta"></span><span class="badge-stage badge-stage--proposta">Proposta enviada</span><span class="ds-row__note">proposta · <code>--stage-proposta</code></span></p>
+              <p class="ds-row"><span class="stage-swatch stage-swatch--contrato"></span><span class="badge-stage badge-stage--contrato">Contrato assinado</span><span class="ds-row__note">contrato · <code>--stage-contrato</code></span></p>
+              <p class="ds-row"><span class="stage-swatch stage-swatch--ganho"></span><span class="badge-stage badge-stage--ganho">Ganho</span><span class="ds-row__note">ganho · limão 600 (nunca limão como texto)</span></p>
+              <p class="ds-row"><span class="stage-swatch stage-swatch--perdido"></span><span class="badge-stage badge-stage--perdido">Perdido</span><span class="ds-row__note">perdido · <code>--stage-perdido</code></span></p>
+            </div>
+          </section>
+
+          <section class="ds-card">
+            <div>
+              <h3 class="title-md">3 · indicador de canal <code>.badge-channel</code></h3>
+              <p class="ds-card__desc">quadrado de 14–16px, raio 4–5px, uma letra em 900. sempre no mesmo lugar: à direita do nome no card, colado no avatar na lista, acima da bolha na conversa. cor é identidade do canal, não status.</p>
+            </div>
+            <div class="ds-channels">
+              <span class="ds-channel"><span class="badge-channel badge-channel--whatsapp badge-channel--lg">W</span>WhatsApp</span>
+              <span class="ds-channel"><span class="badge-channel badge-channel--email badge-channel--lg">E</span>e-mail</span>
+              <span class="ds-channel"><span class="badge-channel badge-channel--instagram badge-channel--lg">I</span>Instagram</span>
+              <p class="ds-row__note">verde funcional só aqui e em status de conexão. em qualquer outro lugar, verde do sistema é limão de marca.</p>
+            </div>
+          </section>
+
+          <section class="ds-card">
+            <div>
+              <h3 class="title-md">4 · badge de confiança da IA <code>.badge-confidence</code></h3>
+              <p class="ds-card__desc">número em mono com 2 casas, sempre acompanhado da faixa. limão = decisão humana, e limão só aparece quando alguém precisa agir. ação automática usa roxo discreto; abaixo de 0.70 é ink e some do caminho.</p>
+            </div>
+            <div class="panel__body">
+              <p class="ds-row"><span class="badge-confidence badge-confidence--arquivada">0.63</span><span class="ds-row__note">arquiva sozinho · não notifica</span></p>
+              <p class="ds-row"><span class="badge-confidence badge-confidence--pendente">0.74</span><span class="ds-row__note">pendência de aprovação · limão + pulso</span></p>
+              <p class="ds-row"><span class="badge-confidence badge-confidence--executada">0.94</span><span class="ds-row__note">executado sozinho · registra no histórico</span></p>
+              <div class="confidence">
+                <div class="confidence__track"><span class="confidence__marker confidence__marker--c74"></span></div>
+                <p class="confidence__scale num"><span>0.00</span><span>0.70</span><span>0.85</span><span>1.00</span></p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel panel--inverse">
+          <h2 class="panel__title title-md">regras que valem nos 3 sistemas</h2>
+          <div class="ds-rules">
+            <p><b>limão é reservado.</b> só marca “precisa de você”. se aparecer em coisa automática, perde o valor de alarme silencioso.</p>
+            <p><b>vermelho é erro de sistema.</b> deal perdido, follow-up atrasado e risco alto usam rosa e âmbar — nunca danger.</p>
+            <p><b>caixa baixa em tudo.</b> títulos, eyebrows e labels. hierarquia vem de tamanho, peso e cor.</p>
+            <p><b>superfícies em raio 12–16px, botões em 10px.</b> canto curto no CTA é assinatura da casa.</p>
+            <p><b>toda ação tem autor visível.</b> ⚡ automação · ✦ IA · iniciais da pessoa. sem autor, o time não confia no dado.</p>
+            <p><b>densidade de trabalho.</b> corpo 13–13.5px, meta 11.5–12px, linha de tabela 44px. nada abaixo de 11px.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

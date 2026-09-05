@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inbox — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/inbox.css">
+  <link rel="stylesheet" href="css/table-list.css">
+  <link rel="stylesheet" href="css/card-deal.css">
+  <link rel="stylesheet" href="css/approval.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item nav__item--active" href="inbox.html" aria-current="page">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Inbox</h1><p class="topbar__sub">nada pendente</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="inbox">
+        <div class="conv-pane">
+          <div class="conv-pane__head">
+            <div class="chip-row">
+              <button class="chip chip--active" type="button">todos · 7</button>
+              <button class="chip" type="button"><span class="badge-channel badge-channel--whatsapp badge-channel--sm" aria-hidden="true">W</span>4</button>
+              <button class="chip" type="button"><span class="badge-channel badge-channel--email badge-channel--sm" aria-hidden="true">E</span>2</button>
+              <button class="chip" type="button"><span class="badge-channel badge-channel--instagram badge-channel--sm" aria-hidden="true">I</span>1</button>
+            </div>
+            <nav class="states" aria-label="Estados desta tela">
+              <a class="states__link" href="inbox.html">normal</a>
+              <a class="states__link" href="inbox--tempo-real.html">chegando</a>
+              <a class="states__link states__link--current" href="inbox--vazio.html">vazio</a>
+            </nav>
+          </div>
+          <ul class="conv-list">
+
+            <li class="state-empty">
+              <h3 class="state-empty__title">inbox zerada<span class="dot-accent">.</span></h3>
+              <p class="state-empty__text">tudo respondido. o agente cobre WhatsApp e Instagram enquanto você tá fora.</p>
+            </li>
+          </ul>
+        </div>
+
+        <div class="thread">
+          <header class="thread__head">
+            <span class="avatar avatar--purple avatar--md">SF</span>
+            <div>
+              <h2 class="thread__name">Sérgio Fontes</h2>
+              <p class="thread__sub">Construtora Meridiano · conversa unificada dos 3 canais</p>
+            </div>
+            <span class="spacer"></span>
+            <a class="btn btn--ghost" href="cockpit-deal.html?from=inbox">abrir cockpit</a>
+          </header>
+          <ul class="thread__body">
+            <li class="thread__daymark">ontem</li>
+            <li class="message message--in">
+              <p class="message__meta">
+                <span class="badge-channel badge-channel--email badge-channel--sm" aria-hidden="true">E</span>
+                <span class="message__channel">E-mail</span>
+                <span>· Sérgio Fontes</span>
+
+              </p>
+              <p class="message__bubble">Bruna, recebi a proposta. Gostei da estrutura, mas o valor do mês 1 ficou acima do que aprovamos internamente.</p>
+              <p class="message__time">ontem 17:26</p>
+            </li>
+            <li class="message message--out">
+              <p class="message__meta">
+                <span class="badge-channel badge-channel--email badge-channel--sm" aria-hidden="true">E</span>
+                <span class="message__channel">E-mail</span>
+                <span>· Bruna</span>
+
+              </p>
+              <p class="message__bubble">Sérgio, obrigada pelo retorno. O mês 1 concentra a produção dos criativos — dá pra diluir em 3 parcelas sem mexer no escopo.</p>
+              <p class="message__time">ontem 17:58</p>
+            </li>
+            <li class="message message--in">
+              <p class="message__meta">
+                <span class="badge-channel badge-channel--whatsapp badge-channel--sm" aria-hidden="true">W</span>
+                <span class="message__channel">WhatsApp</span>
+                <span>· Sérgio Fontes</span>
+
+              </p>
+              <p class="message__bubble">Perfeito. Me manda por aqui que é mais rápido de mostrar pro conselho.</p>
+              <p class="message__time">hoje 08:22</p>
+            </li>
+            <li class="message message--ai">
+              <p class="message__meta">
+                <span class="badge-channel badge-channel--whatsapp badge-channel--sm" aria-hidden="true">W</span>
+                <span class="message__channel">WhatsApp</span>
+                <span>· agente IA</span>
+                <span class="status-chip status-chip--ia">✦ enviado pela IA</span>
+              </p>
+              <p class="message__bubble">Claro! Já estou preparando a versão parcelada. Te envio hoje até o fim da manhã.</p>
+              <p class="message__time">hoje 08:23 · conf. 0.91 · enviado sozinho</p>
+            </li>
+            <li class="message message--in">
+              <p class="message__meta">
+                <span class="badge-channel badge-channel--email badge-channel--sm" aria-hidden="true">E</span>
+                <span class="message__channel">E-mail</span>
+                <span>· Sérgio Fontes</span>
+
+              </p>
+              <p class="message__bubble">Bruna, consegue revisar o escopo do item 3 antes de eu levar pro conselho?</p>
+              <p class="message__time">hoje 09:12</p>
+            </li>
+
+          </ul>
+          <form class="composer" action="#">
+            <div class="composer__channels">
+              <span>responder por</span>
+              <button class="composer__channel composer__channel--active" type="button"><span class="badge-channel badge-channel--email badge-channel--sm" aria-hidden="true">E</span>e-mail</button>
+              <button class="composer__channel" type="button"><span class="badge-channel badge-channel--whatsapp badge-channel--sm" aria-hidden="true">W</span>WhatsApp</button>
+              <span class="spacer"></span>
+              <span>agente responde sozinho acima de 0.85</span>
+            </div>
+            <div class="composer__row">
+              <label class="visually-hidden" for="msg">mensagem</label>
+              <textarea class="input input--textarea" id="msg" placeholder="escreva ou peça um rascunho ao agente…"></textarea>
+              <button class="btn btn--primary btn--lg" type="submit">enviar</button>
+            </div>
+          </form>
+        </div>
+        <aside class="context-pane" aria-label="Contexto da conversa">
+          <section class="card-hitl-note">
+            <h3 class="card-hitl-note__title">rascunho da IA esperando aprovação</h3>
+            <p class="card-hitl-note__text">3º follow-up · conf. 0.74</p>
+            <p class="card-hitl__actions">
+              <a class="btn btn--on-lime" href="ia.html">revisar</a>
+              <button class="btn btn--on-lime-soft" type="button">descartar</button>
+            </p>
+          </section>
+          <a class="card-deal-mini" href="cockpit-deal.html?from=inbox">
+            <span class="card-deal-mini__head"><span class="card-deal-mini__title">Tráfego performance</span><span class="card-deal-mini__value num">R$ 24.000</span></span>
+            <span class="card-deal-mini__meta">Proposta enviada · 6 dias no estágio</span>
+          </a>
+          <section class="detail-pane__section">
+            <h3 class="label">resumo do agente</h3>
+            <p>objeção de preço no mês 1. aceitou a ideia de parcelar em 3x. pediu revisão do item 3 do escopo antes de levar ao conselho.</p>
+          </section>
+          <section class="detail-pane__section">
+            <h3 class="label">respostas rápidas</h3>
+            <div class="link-list">
+              <a href="#">enviar link da proposta</a>
+              <a href="#">propor call de 15 min</a>
+              <a href="#">mandar case do segmento</a>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

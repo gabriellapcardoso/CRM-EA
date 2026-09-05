@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Negociação — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/board.css">
+  <link rel="stylesheet" href="css/card-deal.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item nav__item--active" href="pipeline.html" aria-current="page">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Negociação</h1><p class="topbar__sub">nenhum deal com esse filtro</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen screen--board">
+      <div class="board-toolbar">
+        <div class="board-toolbar__title">
+          <h2 class="title-lg">negociação</h2>
+          <span class="badge-stage badge-stage--proposta">14 estágios</span>
+        </div>
+        <div class="filter-group" role="group" aria-label="Filtros de deal">
+          <button class="filter-group__item filter-group__item--active" type="button">todos os deals <span class="filter-group__count num">37</span></button>
+          <button class="filter-group__item" type="button">meus <span class="filter-group__count num">12</span></button>
+          <button class="filter-group__item filter-group__item--hitl" type="button">aguardando você <span class="filter-group__count num">3</span></button>
+        </div>
+        <span class="spacer"></span>
+          <nav class="states" aria-label="Estados desta tela">
+            <a class="states__link" href="pipeline.html">normal</a>
+            <a class="states__link" href="pipeline--tempo-real.html">tempo real</a>
+            <a class="states__link" href="pipeline--carregando.html">carregando</a>
+            <a class="states__link states__link--current" href="pipeline--vazio.html">vazio</a>
+          </nav>
+        <button class="btn btn--primary" type="button">novo deal</button>
+      </div>
+
+      <div class="board">
+          <section class="board__col" aria-label="Novo">
+            <header class="col-head col-head--frio">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--frio" aria-hidden="true"></span>
+                <h3 class="col-head__name">Novo</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Contato">
+            <header class="col-head col-head--frio">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--frio" aria-hidden="true"></span>
+                <h3 class="col-head__name">Contato</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Negociando">
+            <header class="col-head col-head--frio">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--frio" aria-hidden="true"></span>
+                <h3 class="col-head__name">Negociando</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Topou receber proposta">
+            <header class="col-head col-head--proposta">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--proposta" aria-hidden="true"></span>
+                <h3 class="col-head__name">Topou receber proposta</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Proposta enviada">
+            <header class="col-head col-head--proposta">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--proposta" aria-hidden="true"></span>
+                <h3 class="col-head__name">Proposta enviada</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Proposta aceita">
+            <header class="col-head col-head--proposta">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--proposta" aria-hidden="true"></span>
+                <h3 class="col-head__name">Proposta aceita</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Rodar contrato">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Rodar contrato</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Enviar contrato">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Enviar contrato</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Contrato aprovado">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Contrato aprovado</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Contrato assinado">
+            <header class="col-head col-head--contrato">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--contrato" aria-hidden="true"></span>
+                <h3 class="col-head__name">Contrato assinado</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Pagamento recebido">
+            <header class="col-head col-head--ganho">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--ganho" aria-hidden="true"></span>
+                <h3 class="col-head__name">Pagamento recebido</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Ganho">
+            <header class="col-head col-head--ganho">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--ganho" aria-hidden="true"></span>
+                <h3 class="col-head__name">Ganho</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Onboarding">
+            <header class="col-head col-head--ganho">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--ganho" aria-hidden="true"></span>
+                <h3 class="col-head__name">Onboarding</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+          <section class="board__col" aria-label="Perdido">
+            <header class="col-head col-head--perdido">
+              <div class="col-head__top">
+                <span class="stage-swatch stage-swatch--perdido" aria-hidden="true"></span>
+                <h3 class="col-head__name">Perdido</h3>
+                <span class="col-head__count num">0</span>
+              </div>
+              <div class="col-head__meta">
+                <span class="num">—</span>
+
+              </div>
+              <span class="col-head__rule" aria-hidden="true"></span>
+            </header>
+            <ul class="board__cards">
+              <li class="col-empty">nenhum deal aqui<a class="col-empty__action" href="#">adicionar</a></li>
+
+            </ul>
+          </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

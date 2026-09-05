@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatórios — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/report.css">
+  <link rel="stylesheet" href="css/design-system.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item" href="pipeline.html">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item nav__item--active" href="relatorios.html" aria-current="page">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Relatórios</h1><p class="topbar__sub">agosto 2026</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="screen__inner screen__inner--wide">
+        <div class="panel__head">
+          <h2 class="title-lg">relatórios</h2>
+          <div class="chip-row">
+            <button class="chip chip--active" type="button">últimos 6 meses</button>
+            <button class="chip" type="button">este mês</button>
+            <button class="chip" type="button">por dono</button>
+          </div>
+          <span class="spacer"></span>
+        <nav class="states" aria-label="Estados desta tela">
+          <a class="states__link states__link--current" href="relatorios.html">normal</a>
+          <a class="states__link" href="relatorios--carregando.html">carregando</a>
+        </nav>
+          <button class="btn btn--ghost" type="button">exportar CSV</button>
+        </div>
+        <section class="kpi-grid" aria-label="Indicadores">
+          <article class="card-kpi">
+            <h3 class="card-kpi__label">pipeline aberto</h3>
+            <p class="card-kpi__value num">R$ 184.500</p>
+            <p class="card-kpi__delta card-kpi__delta--up">+R$ 22.400 na semana</p>
+          </article>
+          <article class="card-kpi">
+            <h3 class="card-kpi__label">ganho em agosto</h3>
+            <p class="card-kpi__value num">R$ 62.300</p>
+            <p class="card-kpi__delta">4 contratos assinados</p>
+          </article>
+          <article class="card-kpi">
+            <h3 class="card-kpi__label">taxa de conversão</h3>
+            <p class="card-kpi__value num">23%</p>
+            <p class="card-kpi__delta card-kpi__delta--up">+3 p.p. vs. julho</p>
+          </article>
+          <article class="card-kpi">
+            <h3 class="card-kpi__label">1ª resposta média</h3>
+            <p class="card-kpi__value num">4 min</p>
+            <p class="card-kpi__delta">agente cobre 87% dos casos</p>
+          </article>
+        </section>
+
+        <div class="ds-grid">
+          <section class="panel">
+            <div class="panel__head">
+              <h3 class="panel__title title-sm">ganho x perdido por mês</h3>
+              <p class="legend">
+                <span class="legend__item"><span class="legend__swatch legend__swatch--won"></span>ganho</span>
+                <span class="legend__item"><span class="legend__swatch legend__swatch--lost"></span>perdido</span>
+              </p>
+            </div>
+            <div class="chart">
+              <div class="chart__col">
+                <p class="chart__value">R$ 38k</p>
+                <div class="chart__bars">
+                  <span class="chart__bar chart__bar--won chart__bar--h38" title="ganho R$ 38k"></span>
+                  <span class="chart__bar chart__bar--lost chart__bar--h24" title="perdido R$ 24k"></span>
+                </div>
+              </div>
+              <div class="chart__col">
+                <p class="chart__value">R$ 46k</p>
+                <div class="chart__bars">
+                  <span class="chart__bar chart__bar--won chart__bar--h46" title="ganho R$ 46k"></span>
+                  <span class="chart__bar chart__bar--lost chart__bar--h31" title="perdido R$ 31k"></span>
+                </div>
+              </div>
+              <div class="chart__col">
+                <p class="chart__value">R$ 52k</p>
+                <div class="chart__bars">
+                  <span class="chart__bar chart__bar--won chart__bar--h52" title="ganho R$ 52k"></span>
+                  <span class="chart__bar chart__bar--lost chart__bar--h29" title="perdido R$ 29k"></span>
+                </div>
+              </div>
+              <div class="chart__col">
+                <p class="chart__value">R$ 61k</p>
+                <div class="chart__bars">
+                  <span class="chart__bar chart__bar--won chart__bar--h61" title="ganho R$ 61k"></span>
+                  <span class="chart__bar chart__bar--lost chart__bar--h44" title="perdido R$ 44k"></span>
+                </div>
+              </div>
+              <div class="chart__col">
+                <p class="chart__value">R$ 58k</p>
+                <div class="chart__bars">
+                  <span class="chart__bar chart__bar--won chart__bar--h58" title="ganho R$ 58k"></span>
+                  <span class="chart__bar chart__bar--lost chart__bar--h39" title="perdido R$ 39k"></span>
+                </div>
+              </div>
+              <div class="chart__col">
+                <p class="chart__value">R$ 34k</p>
+                <div class="chart__bars">
+                  <span class="chart__bar chart__bar--won chart__bar--h34" title="ganho R$ 34k"></span>
+                  <span class="chart__bar chart__bar--lost chart__bar--h22" title="perdido R$ 22k"></span>
+                </div>
+              </div>
+            </div>
+            <div class="chart__axis">
+              <p class="chart__axis-label">mar</p>
+              <p class="chart__axis-label">abr</p>
+              <p class="chart__axis-label">mai</p>
+              <p class="chart__axis-label">jun</p>
+              <p class="chart__axis-label">jul</p>
+              <p class="chart__axis-label">ago</p>
+            </div>
+          </section>
+
+          <div class="panel__body">
+            <section class="panel panel--inverse">
+              <h3 class="label">impacto do agente</h3>
+              <div class="impact">
+                <p class="impact__value">128 ações<span class="dot-lime">.</span></p>
+                <p class="impact__text">em agosto · 94% aprovadas sem edição · 31 h de trabalho manual poupadas</p>
+                <div class="impact__stats">
+                  <div><p class="impact__stat-value num">87%</p><p class="impact__stat-label">1ª resposta pela IA</p></div>
+                  <div><p class="impact__stat-value num">4 min</p><p class="impact__stat-label">tempo médio</p></div>
+                  <div><p class="impact__stat-value num">21</p><p class="impact__stat-label">pendências criadas</p></div>
+                </div>
+              </div>
+            </section>
+            <section class="panel">
+              <h3 class="panel__title title-sm">de onde vieram os deals</h3>
+              <div class="funnel">
+                <div class="funnel__row">
+                  <p class="funnel__label">Novo · Contato · Negociando</p>
+                  <div class="bar bar--slim"><div class="bar__fill bar__fill--frio bar__fill--p78"></div></div>
+                  <p class="funnel__count num">14</p>
+                </div>
+                <div class="funnel__row">
+                  <p class="funnel__label">Proposta (topou → aceita)</p>
+                  <div class="bar bar--slim"><div class="bar__fill bar__fill--proposta bar__fill--p62"></div></div>
+                  <p class="funnel__count num">11</p>
+                </div>
+                <div class="funnel__row">
+                  <p class="funnel__label">Contrato (rodar → assinado)</p>
+                  <div class="bar bar--slim"><div class="bar__fill bar__fill--contrato bar__fill--p38"></div></div>
+                  <p class="funnel__count num">8</p>
+                </div>
+                <div class="funnel__row">
+                  <p class="funnel__label">Ganho · Pago · Onboarding</p>
+                  <div class="bar bar--slim"><div class="bar__fill bar__fill--ganho bar__fill--p24"></div></div>
+                  <p class="funnel__count num">4</p>
+                </div>
+                <div class="funnel__row">
+                  <p class="funnel__label">Perdido</p>
+                  <div class="bar bar--slim"><div class="bar__fill bar__fill--perdido bar__fill--p12"></div></div>
+                  <p class="funnel__count num">3</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

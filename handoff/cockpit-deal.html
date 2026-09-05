@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cockpit do deal — CRM aaagência</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/cockpit.css">
+  <link rel="stylesheet" href="css/card-deal.css">
+  <link rel="stylesheet" href="css/timeline.css">
+  <link rel="stylesheet" href="css/approval.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+      <div class="sidebar__brand"><img class="logo" src="assets/logo-aaagencia-white.png" alt="aaagência"></div>
+      <nav class="nav" aria-label="Navegação principal">
+        <div class="nav__group">
+          <p class="nav__label">trabalho</p>
+          <a class="nav__item" href="dashboard.html">Dashboard</a>
+          <a class="nav__item" href="boards.html">Boards</a>
+          <a class="nav__item nav__item--active" href="pipeline.html" aria-current="page">Negociação</a>
+          <a class="nav__item" href="inbox.html">Inbox<span class="badge-count">6</span></a>
+          <a class="nav__item" href="contatos.html">Contatos</a>
+          <a class="nav__item" href="atividades.html">Atividades</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">inteligência</p>
+          <a class="nav__item" href="ia.html">IA · aprovações<span class="badge-count">3</span></a>
+          <a class="nav__item" href="relatorios.html">Relatórios</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">sistema</p>
+          <a class="nav__item" href="configuracoes-geral.html">Configurações</a>
+          <a class="nav__item" href="perfil.html">Perfil</a>
+          <a class="nav__item" href="decisoes-design-system.html">Decisões de DS</a>
+        </div>
+        <div class="nav__group">
+          <p class="nav__label">acesso</p>
+          <a class="nav__item" href="login.html">Login</a>
+          <a class="nav__item" href="onboarding-install-start.html">Onboarding · start</a>
+          <a class="nav__item" href="onboarding-install-wizard.html">Onboarding · wizard</a>
+          <a class="nav__item" href="onboarding-join.html">Entrar em organização</a>
+        </div>
+      </nav>
+      <a class="sidebar__user" href="perfil.html">
+        <span class="avatar avatar--pink avatar--md">BA</span>
+        <span class="sidebar__user-text"><span class="sidebar__user-name">Bruna Alcântara</span><span class="sidebar__user-role">fundadora</span></span>
+      </a>
+    </aside>
+  <main class="main">
+      <header class="topbar">
+        <button class="nav-toggle" type="button" aria-label="mostrar ou ocultar o menu" aria-expanded="true"><span class="nav-toggle__glyph" aria-hidden="true"></span></button>
+        <div class="topbar__title"><h1 class="topbar__heading">Cockpit do deal</h1><p class="topbar__sub">Construtora Meridiano · Proposta enviada</p></div>
+        <span class="spacer"></span>
+        <form class="search" role="search" action="#"><label class="visually-hidden" for="q">buscar</label><input class="search__input" id="q" type="search" placeholder="buscar"><kbd class="search__kbd">⌘K</kbd></form>
+        <a class="pill-hitl" href="ia.html"><span class="dot dot--pulse"></span>3 decisões aguardando você</a>
+        <p class="status status--on"><span class="dot"></span>agente ativo</p>
+      </header>
+    <div class="screen">
+      <div class="cockpit">
+        <header class="cockpit__head">
+          <div class="cockpit__head-top">
+            <a class="back-link" href="pipeline.html" data-back="origem">← voltar pra negociação</a>
+            <h2 class="cockpit__title">Construtora Meridiano</h2>
+            <p class="cockpit__value num">R$ 24.000</p>
+            <span class="badge-stage badge-stage--proposta">Proposta enviada</span>
+            <span class="badge-origin badge-origin--humano"><span class="badge-origin__icon" aria-hidden="true">●</span>movido por você · 34 min</span>
+            <span class="spacer"></span>
+            <button class="btn btn--ghost" type="button">registrar atividade</button>
+            <button class="btn btn--primary" type="button">avançar estágio</button>
+          </div>
+          <ol class="stepper">
+            <li class="stepper__step stepper__step--done"><span class="stepper__n">1</span>Novo</li>
+            <li class="stepper__step stepper__step--done"><span class="stepper__n">2</span>Contato</li>
+            <li class="stepper__step stepper__step--done"><span class="stepper__n">3</span>Negociando</li>
+            <li class="stepper__step stepper__step--done"><span class="stepper__n">4</span>Topou receber proposta</li>
+            <li class="stepper__step stepper__step--current"><span class="stepper__n">5</span>Proposta enviada</li>
+            <li class="stepper__step"><span class="stepper__n">6</span>Proposta aceita</li>
+            <li class="stepper__step"><span class="stepper__n">7</span>Rodar contrato</li>
+            <li class="stepper__step"><span class="stepper__n">8</span>Enviar contrato</li>
+            <li class="stepper__step"><span class="stepper__n">9</span>Contrato aprovado</li>
+            <li class="stepper__step"><span class="stepper__n">10</span>Contrato assinado</li>
+            <li class="stepper__step"><span class="stepper__n">11</span>Pagamento recebido</li>
+            <li class="stepper__step"><span class="stepper__n">12</span>Ganho</li>
+            <li class="stepper__step"><span class="stepper__n">13</span>Onboarding</li>
+          </ol>
+        </header>
+
+        <div class="cockpit__sections">
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--contato" aria-hidden="true"></span>
+            <h3 class="section-head__title">contato principal</h3>
+            <p class="section-head__note">e os dados deste deal</p>
+          </div>
+          <section class="section-card">
+            <div class="contact-head">
+              <span class="avatar avatar--purple avatar--lg">SF</span>
+              <div>
+                <p class="contact-head__name">Sérgio Fontes</p>
+                <p class="contact-head__role">diretor comercial · Construtora Meridiano</p>
+              </div>
+              <span class="spacer"></span>
+              <div class="channel-actions">
+                <button class="channel-actions__btn" type="button"><span class="badge-channel badge-channel--whatsapp badge-channel--sm" aria-hidden="true">W</span>WhatsApp</button>
+                <button class="channel-actions__btn" type="button"><span class="badge-channel badge-channel--email badge-channel--sm" aria-hidden="true">E</span>e-mail</button>
+                <a class="btn btn--outline" href="contato-detalhe.html">ver contato completo</a>
+              </div>
+            </div>
+            <dl class="field-grid section-card__split">
+            <div class="field"><dt class="field__label">produto</dt><dd class="field__value">Tráfego performance</dd></div>
+            <div class="field"><dt class="field__label">valor</dt><dd class="field__value">R$ 24.000</dd></div>
+            <div class="field"><dt class="field__label">origem</dt><dd class="field__value">formulário do site</dd></div>
+            <div class="field"><dt class="field__label">dono</dt><dd class="field__value">Bruna</dd></div>
+            <div class="field"><dt class="field__label">no estágio há</dt><dd class="field__value">6 dias</dd></div>
+            <div class="field"><dt class="field__label">proposta</dt><dd class="field__value field__value--link"><a href="#">#4821 · 3 visualizações</a></dd></div>
+            <div class="field"><dt class="field__label">WhatsApp</dt><dd class="field__value">+55 27 99812-0044</dd></div>
+            <div class="field"><dt class="field__label">e-mail</dt><dd class="field__value">sergio@meridiano.com.br</dd></div>
+            </dl>
+            <p class="chip-row section-card__split">
+              <span class="label">etiquetas</span>
+              <span class="tag tag--pink">sensível a valor</span>
+              <span class="tag">construção</span>
+              <span class="tag">ticket alto</span>
+            </p>
+          </section>
+
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--risco" aria-hidden="true"></span>
+            <h3 class="section-head__title">risco do deal</h3>
+            <p class="section-head__note">por que este deal pede atenção</p>
+          </div>
+          <section class="section-card">
+            <div class="risk-row">
+              <p class="risk risk--medio"><span class="risk__level">médio</span><span class="risk__text">6 dias sem resposta e objeção de preço aberta desde a call de terça.</span></p>
+              <div class="risk-stats">
+                <div><p class="risk-stat__value">6 dias</p><p class="risk-stat__label">sem resposta</p></div>
+                <div><p class="risk-stat__value">3</p><p class="risk-stat__label">visualizações da proposta</p></div>
+                <div><p class="risk-stat__value">2</p><p class="risk-stat__label">objeções abertas</p></div>
+              </div>
+            </div>
+            <p class="health section-card__split">
+              <span class="label">saúde do deal</span>
+              <span class="health__track"><span class="health__fill health__fill--p58"></span></span>
+              <span class="health__value">58%</span>
+              <span class="meta">probabilidade 45% · 31 dias no funil · 8 atividades</span>
+            </p>
+          </section>
+
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--hitl" aria-hidden="true"></span>
+            <h3 class="section-head__title">aguardando sua decisão</h3>
+            <p class="section-head__note">o agente parou e não envia nada sem você</p>
+          </div>
+          <section class="card-hitl" aria-labelledby="hitl-deal">
+            <div class="card-hitl__head">
+              <span class="dot dot--pulse"></span>
+              <h4 class="card-hitl__title" id="hitl-deal">enviar 3º follow-up da proposta por e-mail</h4>
+              <span class="card-hitl__age">há 12 min</span>
+            </div>
+            <div class="card-hitl__inner">
+              <blockquote class="card-hitl__quote">“Sérgio, tudo certo por aí? Passando pra saber se o conselho conseguiu olhar a proposta. Se ajudar, consigo abrir o item 3 numa call de 15 min.”</blockquote>
+              <p class="card-hitl__conf">
+                <span>confiança</span>
+                <span class="card-hitl__conf-value">0.74</span>
+                <span class="card-hitl__conf-track"><span class="confidence__marker confidence__marker--c74"></span></span>
+                <span>faixa 0.70–0.85 = você decide</span>
+              </p>
+            </div>
+            <p class="card-hitl__actions">
+              <button class="btn btn--on-lime" type="button">aprovar e enviar</button>
+              <button class="btn btn--on-lime-soft" type="button">editar antes</button>
+              <span class="spacer"></span>
+              <button class="btn btn--ghost" type="button">descartar</button>
+            </p>
+          </section>
+
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--passos" aria-hidden="true"></span>
+            <h3 class="section-head__title">próximos passos</h3>
+            <p class="section-head__note">checklist deste deal</p>
+          </div>
+          <section class="section-card">
+            <ul class="checklist checklist--grid">
+              <li class="checklist__item"><span class="checklist__box"></span>revisar item 3 do escopo</li>
+              <li class="checklist__item"><span class="checklist__box"></span>call de 15 min com o conselho</li>
+              <li class="checklist__item checklist__item--done"><span class="checklist__box">✓</span>enviar versão parcelada</li>
+            </ul>
+          </section>
+
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--tempo" aria-hidden="true"></span>
+            <h3 class="section-head__title">linha do tempo</h3>
+            <p class="section-head__note">tudo · IA · automação · pessoas</p>
+          </div>
+          <section class="section-card section-card--flush">
+            <ul class="timeline">
+              <li class="timeline__item">
+                <span class="actor actor--ia" aria-hidden="true">✦</span>
+                <div class="timeline__body"><p class="timeline__text">agente registrou objeção de preço e marcou o deal como “sensível a valor”</p><p class="timeline__meta">conf. 0.94 · executado · hoje 09:41</p></div>
+              </li>
+              <li class="timeline__item timeline__item--pending">
+                <span class="actor actor--pendente" aria-hidden="true">!</span>
+                <div class="timeline__body"><p class="timeline__text">agente quer enviar o 3º follow-up da proposta</p><p class="timeline__meta">conf. 0.74 · aguardando sua aprovação · hoje 09:12</p></div>
+                <span class="tag-pending">pendente</span>
+              </li>
+              <li class="timeline__item">
+                <span class="actor actor--humano" aria-hidden="true">BA</span>
+                <div class="timeline__body"><p class="timeline__text">você moveu o deal de Topou receber proposta → Proposta enviada</p><p class="timeline__meta">manual · ontem 17:20</p></div>
+              </li>
+              <li class="timeline__item">
+                <span class="actor actor--auto" aria-hidden="true">⚡</span>
+                <div class="timeline__body"><p class="timeline__text">proposta #4821 aberta pelo contato (3 visualizações)</p><p class="timeline__meta">webhook · gerador de propostas · ontem 17:26</p></div>
+              </li>
+              <li class="timeline__item">
+                <span class="actor actor--auto" aria-hidden="true">⚡</span>
+                <div class="timeline__body"><p class="timeline__text">deal criado a partir do formulário do site</p><p class="timeline__meta">webhook · 28 jul 14:03</p></div>
+              </li>
+            </ul>
+          </section>
+
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--contato" aria-hidden="true"></span>
+            <h3 class="section-head__title">responder</h3>
+            <p class="section-head__note">a mensagem sai no seu nome</p>
+          </div>
+          <section class="section-card">
+            <div class="composer__channels">
+              <button class="composer__channel composer__channel--active" type="button">WhatsApp</button>
+              <button class="composer__channel" type="button">e-mail</button>
+              <button class="composer__channel" type="button">nota interna</button>
+            </div>
+            <p><textarea class="input input--textarea" placeholder="escreva pra Sérgio…"></textarea></p>
+            <p class="composer__row">
+              <button class="chip chip--ia" type="button">✦ pedir sugestão ao agente</button>
+              <span class="spacer"></span>
+              <button class="btn btn--primary" type="button">enviar</button>
+            </p>
+          </section>
+
+          <div class="section-head">
+            <span class="section-head__swatch section-head__swatch--auto" aria-hidden="true"></span>
+            <h3 class="section-head__title">o que a IA já fez sozinha</h3>
+            <p class="section-head__note">sem precisar da sua ação</p>
+          </div>
+          <section class="section-card section-card--flush">
+            <ul class="auto-log">
+              <li class="auto-log__item"><span class="badge-confidence badge-confidence--executada">0.94</span><div class="auto-log__body"><p class="auto-log__what">classificou objeção de preço</p><p class="auto-log__note">agente · hoje 09:41</p></div><a href="#">ver</a></li>
+              <li class="auto-log__item"><span class="badge-confidence badge-confidence--executada">0.91</span><div class="auto-log__body"><p class="auto-log__what">respondeu WhatsApp com prazo de entrega</p><p class="auto-log__note">agente · hoje 08:23</p></div><a href="#">ver</a></li>
+              <li class="auto-log__item"><span class="badge-confidence badge-confidence--executada">0.96</span><div class="auto-log__body"><p class="auto-log__what">enriqueceu dados da empresa</p><p class="auto-log__note">agente · ontem 17:26</p></div><a href="#">ver</a></li>
+              <li class="auto-log__item"><span class="badge-confidence badge-confidence--executada">0.88</span><div class="auto-log__body"><p class="auto-log__what">agendou lembrete de follow-up</p><p class="auto-log__note">agente · ontem 16:40</p></div><a href="#">ver</a></li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/nav-toggle.js" defer></script>
+</body>
+</html>

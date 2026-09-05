@@ -1,0 +1,56 @@
+/* report.css — gráficos simples e funil. Usado em: dashboard, relatorios. */
+
+.funnel { display: flex; flex-direction: column; gap: 9px; }
+.funnel__row { display: flex; align-items: center; gap: var(--space-3); }
+.funnel__label { width: 150px; font-size: 12.5px; color: var(--ink-700); font-weight: var(--weight-medium); }
+.funnel__count { width: 52px; text-align: right; font-size: 12.5px; font-weight: var(--weight-bold); color: var(--ink-800); }
+.funnel__value { width: 92px; text-align: right; font-size: 12.5px; color: var(--text-muted); }
+.bar { flex: 1; height: 22px; background: var(--ink-100); border-radius: var(--radius-xs); overflow: hidden; }
+.bar--slim { height: 8px; width: 110px; flex: none; border-radius: var(--radius-pill); }
+.bar__fill { height: 100%; border-radius: inherit; background: var(--stage-frio); }
+.bar__fill--frio { background: var(--stage-frio); }
+.bar__fill--proposta { background: var(--stage-proposta); }
+.bar__fill--contrato { background: var(--stage-contrato); }
+.bar__fill--ganho { background: var(--stage-ganho); }
+.bar__fill--perdido { background: var(--stage-perdido); }
+
+.chart { display: flex; align-items: flex-end; gap: 22px; height: 200px; padding-bottom: 6px; border-bottom: 1px solid var(--border-subtle); }
+.chart__col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; justify-content: flex-end; height: 100%; }
+.chart__value { font-size: var(--text-meta); font-weight: var(--weight-bold); color: var(--ink-700); font-variant-numeric: tabular-nums; }
+.chart__bars { display: flex; align-items: flex-end; gap: 4px; }
+.chart__bar { border-radius: var(--radius-xs) var(--radius-xs) 0 0; }
+.chart__bar--won { width: 26px; background: var(--purple-700); }
+.chart__bar--lost { width: 14px; background: var(--pink-200); }
+.chart__axis { display: flex; gap: 22px; margin-top: 7px; }
+.chart__axis-label { flex: 1; text-align: center; font-size: 12px; color: var(--text-muted); }
+.legend { display: flex; gap: var(--space-3); margin-left: auto; }
+.legend__item { display: flex; align-items: center; gap: 5px; font-size: var(--text-meta); color: var(--ink-600); }
+.legend__swatch { width: 9px; height: 9px; border-radius: 2px; }
+.legend__swatch--won { background: var(--purple-700); }
+.legend__swatch--lost { background: var(--pink-200); }
+.impact { display: flex; flex-direction: column; gap: var(--space-1); }
+.impact__value { font-family: var(--font-display); font-weight: var(--weight-black); font-size: 34px; letter-spacing: var(--tracking-tighter); line-height: 1.05; }
+.impact__value .dot-lime { color: var(--lime-500); }
+.impact__text { font-size: 13px; color: rgba(255,255,255,.72); }
+.impact__stats { display: flex; gap: var(--space-4); border-top: 1px solid rgba(255,255,255,.14); padding-top: var(--space-3); margin-top: var(--space-3); }
+.impact__stat-value { font-weight: var(--weight-heavy); font-size: 18px; }
+.impact__stat-label { font-size: var(--text-meta); color: rgba(255,255,255,.6); }
+
+/* escala de dado do mock */
+.bar__fill--p12 { width: 12%; }
+.bar__fill--p24 { width: 24%; }
+.bar__fill--p38 { width: 38%; }
+.bar__fill--p62 { width: 62%; }
+.bar__fill--p78 { width: 78%; }
+.chart__bar--h38 { height: 99px; }
+.chart__bar--h46 { height: 120px; }
+.chart__bar--h52 { height: 135px; }
+.chart__bar--h61 { height: 159px; }
+.chart__bar--h58 { height: 151px; }
+.chart__bar--h34 { height: 88px; }
+.chart__bar--h24 { height: 62px; }
+.chart__bar--h31 { height: 81px; }
+.chart__bar--h29 { height: 75px; }
+.chart__bar--h44 { height: 114px; }
+.chart__bar--h39 { height: 101px; }
+.chart__bar--h22 { height: 57px; }

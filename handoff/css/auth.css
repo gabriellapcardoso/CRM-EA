@@ -1,0 +1,37 @@
+/* auth.css — login e onboarding. Usado em: login, onboarding-*. */
+
+.auth { display: flex; min-height: 100vh; }
+.auth__aside { width: 44%; flex: 0 0 44%; background: var(--gradient-purple); color: #fff; padding: var(--space-11); display: flex; flex-direction: column; justify-content: space-between; }
+.auth__aside .logo { height: 34px; width: auto; }
+.auth__claim { font-family: var(--font-display); font-weight: var(--weight-black); font-size: 44px; line-height: .98; letter-spacing: -.04em; max-width: 420px; }
+.auth__claim .dot-lime { color: var(--lime-500); }
+.auth__sub { font-size: 15px; color: rgba(255,255,255,.78); line-height: 1.5; max-width: 420px; margin-top: var(--space-3); }
+.auth__signature { font-size: 12.5px; color: rgba(255,255,255,.5); }
+.auth__panel { flex: 1; background: var(--surface-card); display: grid; place-items: center; padding: var(--space-11) var(--space-8); overflow-y: auto; }
+.auth__form { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: var(--space-4); }
+.auth__title { font-family: var(--font-display); font-weight: var(--weight-black); font-size: 28px; letter-spacing: var(--tracking-tighter); line-height: 1.05; color: var(--text-strong); }
+.auth__text { font-size: 13.5px; color: var(--text-muted); }
+.auth__divider { display: flex; align-items: center; gap: var(--space-3); color: var(--border-default); font-size: var(--text-meta); }
+.auth__divider::before, .auth__divider::after { content: ""; flex: 1; height: 1px; background: var(--border-subtle); }
+.auth__links { display: flex; justify-content: space-between; font-size: 12.5px; }
+.auth__panel { position: relative; }
+.auth__back { position: absolute; right: var(--space-4); top: var(--space-4); z-index: 10; background: rgba(255,255,255,.9); border: 1px solid var(--border-subtle); color: var(--ink-700); font-size: 12px; font-weight: var(--weight-bold); padding: 6px 11px; border-radius: 9px; white-space: nowrap; }
+
+.progress { display: flex; gap: 5px; }
+.progress__seg { flex: 1; height: 4px; border-radius: var(--radius-pill); background: var(--ink-200); }
+.progress__seg--done { background: var(--surface-brand); }
+.choice { border: 1px solid var(--border-subtle); border-radius: var(--radius-cta); padding: var(--space-3) var(--space-3); display: block; }
+.choice--primary { border-color: var(--purple-200); background: var(--purple-50); }
+.choice__title { font-weight: var(--weight-heavy); font-size: 14px; color: var(--text-strong); }
+.choice--primary .choice__title { color: var(--purple-800); }
+.choice__desc { font-size: 12.5px; color: var(--ink-600); }
+.channel-row { border: 1px solid var(--border-subtle); border-radius: var(--radius-cta); padding: var(--space-3); display: flex; align-items: center; gap: 11px; }
+.channel-row__text { flex: 1; }
+.channel-row__name { font-weight: var(--weight-bold); font-size: 13.5px; color: var(--text-strong); }
+.channel-row__meta { font-size: 12px; color: var(--text-muted); }
+.channel-row__meta--on { color: var(--success); }
+.org-card { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); display: flex; align-items: center; gap: var(--space-3); background: var(--surface-subtle); }
+.org-card__mark { width: 38px; height: 38px; border-radius: 11px; background: var(--surface-inverse); color: #fff; font-family: var(--font-display); font-weight: var(--weight-black); font-size: 15px; display: grid; place-items: center; }
+.org-card__mark .lime { color: var(--lime-500); }
+.code { font-family: var(--font-mono); font-size: 15px; letter-spacing: .18em; }
+.note-purple { background: var(--purple-50); border: 1px solid var(--purple-100); border-radius: var(--radius-sm); padding: 10px var(--space-3); font-size: 12.5px; color: var(--purple-800); }
