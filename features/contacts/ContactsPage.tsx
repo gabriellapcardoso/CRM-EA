@@ -20,8 +20,7 @@ import {
     useMessagingConversations,
 } from '@/lib/query/hooks';
 import { ConfirmDialog as ConfirmModal } from '@/components/ui/confirm-dialog';
-import { getInitials } from '@/features/boards/cardFormat';
-import type { Contact, DealView } from '@/types';
+import type { DealView } from '@/types';
 
 const ContactFormModal = dynamic(
     () => import('./components/ContactFormModal').then(m => ({ default: m.ContactFormModal })),
@@ -44,20 +43,20 @@ const MergeContactsModal = dynamic(
     { ssr: false }
 );
 
-const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-const CURRENCY_FORMATTER = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
 /**
  * Componente React `ContactsPage`.
  *
- * Redesenhado em 2026-08 (ver REDESIGN-CRM.md) a partir de `contatos(+estados).html`:
- * layout de 2 painéis — `.list-pane` (tabela `.table-list`) + `.detail-pane` (340px,
- * detalhe do contato selecionado com deals reais e nota HITL quando houver pendência).
+ * Redesenhado em 2026-08 (ver REDESIGN-CRM.md) a partir de `contatos(+estados).html`.
+ * A gaveta de detalhe (`.detail-pane`, 340px) saiu na revisão de 2026-09-04: clicar
+ * numa linha agora navega pra `/contacts/[contactId]`, tela cheia — o detalhe deixa
+ * de roubar largura da lista e passa a ter URL própria, que dá pra recarregar e
+ * mandar pra alguém. Ver `features/contacts/detail/ContactDetailPage.tsx`.
  *
- * Desvio deliberado da convenção "página padded" (`screen__inner`): o mockup do
- * handoff usa `.screen--split` direto sob `.screen`, sem wrapper, porque o painel de
- * detalhe precisa herdar 100% da altura disponível — nesting sob `screen__inner`
- * (que não tem altura própria) quebraria o scroll interno da tabela e o painel fixo.
+ * Desvio deliberado da convenção "página padded" (`screen__inner`): a tela usa
+ * `.screen--split` direto sob `.screen`, sem wrapper, porque a tabela precisa
+ * herdar 100% da altura disponível — nesting sob `screen__inner` (que não tem
+ * altura própria) quebraria o scroll interno dela.
  * @returns {Element} Retorna um valor do tipo `Element`.
  */
 export const ContactsPage: React.FC = () => {
@@ -65,7 +64,6 @@ export const ContactsPage: React.FC = () => {
     const router = useRouter();
     const [isImportExportOpen, setIsImportExportOpen] = React.useState(false);
     const [isMergeModalOpen, setIsMergeModalOpen] = React.useState(false);
-    const [selectedContactId, setSelectedContactId] = React.useState<string | null>(null);
 
     const { data: duplicateGroups = [] } = useDuplicateContactsQuery();
     const mergeMutation = useMergeContactsMutation();
@@ -106,6 +104,20 @@ export const ContactsPage: React.FC = () => {
         return map;
     }, [dealsByContactId]);
 
+    /**
+     * Dono do contato — derivado dos deals dele, porque `contacts` não tem coluna
+     * de dono. Pega o primeiro deal com dono definido; contato sem deal fica sem
+     * dono, e a tabela mostra "—" (ausência de dado, não "ninguém é dono").
+     */
+    const ownerByContactId = React.useMemo(() => {
+        const map = new Map<string, string>();
+        for (const [contactId, contactDeals] of dealsByContactId) {
+            const withOwner = contactDeals.find(d => d.owner?.name);
+            if (withOwner?.owner?.name) map.set(contactId, withOwner.owner.name);
+        }
+        return map;
+    }, [dealsByContactId]);
+
     const pendingContactIds = React.useMemo(() => {
         const dealIdToContactId = new Map<string, string>();
         for (const deal of dealsView) {
@@ -131,24 +143,18 @@ export const ContactsPage: React.FC = () => {
         return map;
     }, [conversations]);
 
-    const selectedContact: Contact | null = React.useMemo(
-        () => controller.contacts.find(c => c.id === selectedContactId) ?? null,
-        [controller.contacts, selectedContactId]
-    );
-    const selectedContactDeals = selectedContact ? dealsByContactId.get(selectedContact.id) ?? [] : [];
-    const selectedContactPendingAdvance = React.useMemo(() => {
-        if (selectedContactDeals.length === 0) return null;
-        const dealIds = new Set(selectedContactDeals.map(d => d.id));
-        return pendingAdvances.find(a => dealIds.has(a.deal_id)) ?? null;
-    }, [selectedContactDeals, pendingAdvances]);
-
     const goToDeal = (dealId: string) => {
         controller.setDeleteWithDeals(null);
         router.push(`/boards?deal=${dealId}`);
     };
 
-    const goToConversation = (contactId: string) => {
-        router.push(`/messaging?contactId=${contactId}`);
+    /**
+     * Clicar num contato abre a tela cheia dele. Antes selecionava a gaveta de
+     * 340px ao lado, e o estado morria no `useState`: recarregar a página ou
+     * mandar o link pra alguém devolvia a lista sem contato nenhum aberto.
+     */
+    const abrirContato = (contactId: string) => {
+        router.push(`/contacts/${contactId}`);
     };
 
     return (
@@ -254,11 +260,11 @@ export const ContactsPage: React.FC = () => {
                             onSort={controller.handleSort}
                             duplicateContactIds={duplicateContactIds}
                             onAddContact={controller.openCreateModal}
-                            selectedContactId={selectedContactId}
-                            onSelectContact={(contact) => setSelectedContactId(contact.id)}
+                            onSelectContact={(contact) => abrirContato(contact.id)}
                             channelByContactId={channelByContactId}
                             pendingContactIds={pendingContactIds}
                             dealsSummaryByContact={dealsSummaryByContact}
+                            ownerByContactId={ownerByContactId}
                         />
                     )}
                 </div>
@@ -275,69 +281,6 @@ export const ContactsPage: React.FC = () => {
                     </div>
                 )}
             </div>
-
-            <aside className="detail-pane" aria-label="Detalhe do contato">
-                {selectedContact ? (
-                    <>
-                        <div className="detail-pane__head">
-                            <span className="avatar avatar--purple avatar--lg">{getInitials(selectedContact.name)}</span>
-                            <div>
-                                <h2 className="detail-pane__name">{selectedContact.name}</h2>
-                                <p className="detail-pane__sub">
-                                    {controller.getCompanyName(selectedContact.clientCompanyId)}
-                                    {selectedContact.role ? ` · ${selectedContact.role}` : ''}
-                                </p>
-                            </div>
-                        </div>
-                        <p className="card-approval__actions">
-                            <button type="button" onClick={() => goToConversation(selectedContact.id)} className="btn btn--primary">
-                                abrir conversa
-                            </button>
-                            <button type="button" onClick={() => controller.openEditModal(selectedContact)} className="btn btn--ghost">
-                                editar
-                            </button>
-                        </p>
-                        <dl className="data-list detail-pane__section">
-                            <div className="data-list__row"><dt>WhatsApp</dt><dd>{selectedContact.phone || '—'}</dd></div>
-                            <div className="data-list__row"><dt>e-mail</dt><dd>{selectedContact.email || '—'}</dd></div>
-                            <div className="data-list__row"><dt>criado em</dt><dd>{PT_BR_DATE_FORMATTER.format(new Date(selectedContact.createdAt))}</dd></div>
-                        </dl>
-                        {selectedContactPendingAdvance && (
-                            <p className="card-hitl-note">
-                                <span className="card-hitl-note__title">1 decisão da IA pendente neste contato</span>
-                                <span className="card-hitl-note__text">
-                                    {selectedContactPendingAdvance.reason} · conf. {selectedContactPendingAdvance.confidence.toFixed(2)}
-                                </span>
-                            </p>
-                        )}
-                        {selectedContactDeals.length > 0 && (
-                            <section className="detail-pane__section">
-                                <h3 className="label">deals</h3>
-                                {selectedContactDeals.map(deal => (
-                                    <a
-                                        key={deal.id}
-                                        className={`card-deal-mini ${deal.isLost ? 'card-deal-mini--perdido' : ''}`}
-                                        href={`/boards?deal=${deal.id}`}
-                                    >
-                                        <span className="card-deal-mini__head">
-                                            <span className="card-deal-mini__title">{deal.title}</span>
-                                            <span className="card-deal-mini__value num">{CURRENCY_FORMATTER.format(deal.value || 0)}</span>
-                                        </span>
-                                        <span className="card-deal-mini__meta">
-                                            {deal.isLost ? 'perdido' : deal.isWon ? 'ganho' : deal.stageLabel}
-                                        </span>
-                                    </a>
-                                ))}
-                            </section>
-                        )}
-                    </>
-                ) : (
-                    <div className="state-empty">
-                        <h3 className="state-empty__title">nenhum contato selecionado</h3>
-                        <p className="state-empty__text">clique numa linha da lista pra ver o detalhe aqui.</p>
-                    </div>
-                )}
-            </aside>
 
             <ContactsImportExportModal
                 isOpen={isImportExportOpen}
