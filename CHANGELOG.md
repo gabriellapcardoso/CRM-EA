@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(inbox): o detalhe do deal ficou escuro depois que o app virou claro-só — 2026-09-05
+
+O `FocusContextPanel` — a tela de "ver detalhes" do Inbox, e também a rota
+`/deals/[dealId]/cockpit` — era escuro no meio de um produto claro.
+
+**Não era modo escuro mal configurado.** O `ThemeProvider` removeu o modo escuro
+como opção: força `darkMode = false`, tira a classe `dark` do `<html>` e apaga a
+preferência do `localStorage`. Este painel tinha a paleta escura fixa no código
+(130 ocorrências de `slate-800/900/950`, `text-white`, `bg-white/5`, tintas
+`-950/xx`), sem nenhuma variante `dark:` — ficou órfão quando o app virou
+claro-só e ninguém percebeu.
+
+A conversão preserva a **hierarquia**, não o número: no escuro `slate-600` é o
+mais apagado e `text-white` o mais forte, e no claro isso inverte. Mapear
+`600 → 600` produziria o contraste ao contrário.
+
+| escuro | papel | claro |
+|---|---|---|
+| `text-white`, `slate-100` | mais forte | `--text-strong` |
+| `slate-300` | corpo | `--text-body` |
+| `slate-400`, `slate-500` | apagado | `--text-muted` |
+| `slate-600` | mais apagado | `--text-faint` |
+
+Cinco `text-white` continuam brancos de propósito: o ✓ do estágio cumprido, os
+dois botões de ação, o avatar em gradiente e o botão primário — todos sobre fundo
+sólido colorido. Tintas que só existiam pra fundo escuro (`bg-red-950/20`,
+`bg-orange-950/30`, `bg-blue-950/30`) viraram `--danger-soft` / `--warning-soft` /
+`--purple-50`. Texto de acento subiu de `-400` pros tokens semânticos, porque
+`-400` sobre branco não tem contraste.
+
+**Três mapas de `nome-de-classe → hex` foram poupados** — a cor do estágio vem do
+banco, e ali `'bg-slate-500'` é chave de lookup, não classe de estilo. A primeira
+passada reescreveu as chaves e colapsou duas numa; o TypeScript pegou com
+`duplicate property`. Sem esse erro, a cor de dois estágios sumiria em silêncio.
+
+Verificado na tela depois do deploy: fundo `rgb(247,246,250)`, título
+`rgb(21,15,28)`, zero elementos escuros restantes.
+
+### fix(inbox): o ponto do estágio não alcançado ainda usava o cinza do tema escuro — 2026-09-05
+
+Resíduo do anterior. `#334155` (slate-700) num `style` inline — **conversão por
+classe não alcança estilo inline**. Sobre fundo claro aquele cinza lia como
+"preenchido", o inverso do que o ponto significa. Passou a `var(--ink-300)`.
+
+Achado varrendo os elementos do painel por luminosidade de fundo depois do
+deploy: 14 vieram em `rgb(51,65,85)`.
+
 ### fix(qa): três achados no cockpit e no modal de edição do contato — 2026-09-05
 
 `/qa` em produção, no navegador logado, sobre as telas do #70/#71. Nenhuma ação de
