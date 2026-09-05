@@ -91,11 +91,16 @@ describe('.cockpit__body — coluna única, uma rolagem', () => {
   })
 })
 
-describe('ordem das seções — identificar, decidir, entender, consultar', () => {
-  // `deal` e `contato` são separados de propósito: blocos com o mesmo `order`
-  // caem na ordem do DOM, e ali o contato vem antes (JSX :1611 vs :1752) — o
-  // inverso do que a tela pede.
-  const ordem = ['deal', 'contato', 'decidir', 'historico', 'assistente', 'ref']
+describe('ordem das seções — quem é, quanto arrisca, o que decidir, o que fazer', () => {
+  // Revisão de 2026-09-04: `--decidir` cobria três blocos (HITL, risco e
+  // próximos passos) com a mesma `order`, e blocos empatados caem na ordem do
+  // DOM — que ali era HITL, risco, passos. O risco ENQUADRA a decisão, então
+  // tem que vir antes dela; empate não dá pra garantir isso sem mexer no JSX.
+  // Daí as três classes próprias.
+  //
+  // `--deal` sumiu: os dados do deal foram absorvidos pela `.field-grid` do
+  // bloco de contato, então não existe mais um bloco só deles pra ordenar.
+  const ordem = ['contato', 'risco', 'hitl', 'passos', 'historico', 'assistente', 'ref']
 
   it.each(ordem.map((nome, i) => [nome, i + 1] as const))(
     '.cockpit__sec--%s tem order: %i',
@@ -103,6 +108,14 @@ describe('ordem das seções — identificar, decidir, entender, consultar', () 
       expect(rule(`.cockpit__sec--${nome}`)).toMatch(new RegExp(`order:\\s*${esperado}\\s*;`))
     },
   )
+
+  it('`--decidir` não volta: empate de order devolve a ordem do DOM', () => {
+    // Reintroduzir a classe agrupada faz risco, HITL e passos empatarem de
+    // novo, e o desempate silencioso do DOM põe a decisão antes do risco que a
+    // justifica. Falha aqui é mais barata que descobrir na tela.
+    expect(css).not.toContain('.cockpit__sec--decidir')
+    expect(cockpitTsx).not.toContain('cockpit__sec--decidir')
+  })
 
   it('nenhum CockpitBlock fica sem classe de seção', () => {
     // `order` só funciona porque os containers são `display: contents` e os
