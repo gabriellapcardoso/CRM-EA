@@ -1,5 +1,91 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Remover uma opção de tema não remove o código que a assumia (2026-09-05)
+
+O modo escuro deixou de ser opção: o `ThemeProvider` passou a forçar
+`darkMode = false`, remover a classe `dark` do `<html>` e apagar a preferência do
+`localStorage`. O que ninguém varreu foi o código que já estava escrito **assumindo
+fundo escuro**.
+
+O `FocusContextPanel` tinha 130 ocorrências de paleta escura fixa — `slate-800`,
+`slate-900`, `slate-950`, `text-white`, `bg-white/5`, tintas `-950/xx` — e
+**nenhuma variante `dark:`**. Ele não estava "em modo escuro"; ele era escuro.
+Ficou órfão no meio de um produto claro e ninguém notou, porque só abre por um
+botão dentro do Inbox.
+
+**A varredura que fecha isso** custa um comando, depois de qualquer remoção de
+tema ou de flag visual:
+
+```bash
+grep -rlE "(bg|text|border)-(slate|gray|zinc)-(700|800|900|950)|text-white|bg-white/" \
+  --include='*.tsx' features components | sort
+```
+
+Arquivo que aparece aí e não tem `dark:` está assumindo um tema que não existe
+mais. Vale pra remoção de qualquer variante visual, não só tema.
+
+**Ao converter, preservar a hierarquia e não o número.** No escuro `slate-600` é o
+texto mais apagado e `text-white` o mais forte; no claro isso inverte. Mapear
+`600 → 600` produz o contraste ao contrário — legível, mas com a ênfase trocada,
+que é pior que ilegível porque ninguém percebe.
+
+## Busca-e-substitui não distingue classe de chave de objeto (2026-09-05)
+
+Na conversão acima, a substituição em massa reescreveu isto:
+
+```ts
+const tailwindToHex = {
+  'bg-slate-500': '#64748b',   // ← virou 'bg-[var(--ink-400)]'
+  'bg-gray-500':  '#6b7280',   // ← virou 'bg-[var(--ink-400)]' também
+};
+```
+
+São **chaves de lookup** que casam com `stage.color` vindo do banco, não classes
+de estilo. Duas chaves distintas colapsaram numa. O TypeScript pegou
+(`TS1117: duplicate property`) — sem isso, a cor de dois estágios teria sumido em
+silêncio, e o sintoma apareceria semanas depois como "esse estágio ficou cinza".
+
+Antes de rodar substituição em massa sobre nome de classe, listar as ocorrências
+que estão **dentro de aspas seguidas de `:`** — são dados, não estilo.
+
+## Conversão por classe não alcança `style` inline (2026-09-05)
+
+Depois de converter as 130 classes, sobrou `#334155` (slate-700) num
+`style={{ backgroundColor: ... }}`. O ponto do estágio ainda não alcançado
+continuou escuro — e sobre fundo claro ele lia como **preenchido**, o inverso do
+que o ponto significa.
+
+Busca por classe não vê hex em objeto de estilo. Depois de qualquer conversão de
+paleta, varrer os literais:
+
+```bash
+grep -oE "'#[0-9a-fA-F]{3,8}'" arquivo.tsx | sort | uniq -c | sort -rn
+```
+
+E conferir na tela renderizada, não no código: varrer os elementos por
+luminosidade de fundo achou 14 sobreviventes que a leitura do arquivo não achou.
+
+```js
+[...document.querySelectorAll('.painel *')].filter(e => {
+  const m = getComputedStyle(e).backgroundColor.match(/rgba?\((\d+), (\d+), (\d+)/);
+  return m && (+m[1] + +m[2] + +m[3]) / 3 < 110;
+})
+```
+
+## Reportei branches sobrando que não existiam (2026-09-05)
+
+Disse à fundadora que tinham ficado branches remotas de PRs já mergeados, e ofereci
+limpar. Não havia nenhuma: `git ls-remote --heads origin` mostrava só `main`. O
+`gh pr merge --delete-branch` sempre funcionou.
+
+O que eu li foi `git branch -r`, que mostra **refs de rastreamento locais** — cópias
+que ficam no clone até alguém podar. `git fetch --prune` apagou todas de uma vez,
+sem tocar no servidor.
+
+`git branch -r` e `git branch --no-merged` respondem sobre o MEU clone. Sobre o
+servidor, quem responde é `git ls-remote --heads origin` — e é essa a pergunta
+quando se fala em limpar branch remota.
+
 ## Pré-preencher formulário com o texto de estado da tela (2026-09-05)
 
 O detalhe do contato mostra `"Empresa não vinculada"` quando o contato não tem
