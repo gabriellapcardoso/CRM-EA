@@ -1224,7 +1224,11 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                 <div
                                                     className="w-2 h-2 rounded-full"
                                                     style={{
-                                                        backgroundColor: (isActive || isPassed) ? hexColor : '#334155',
+                                                        // `#334155` (slate-700) era o cinza do tema escuro pro estágio ainda não
+                                                        // alcançado. Sobre fundo claro ele lia como "preenchido",
+                                                        // o inverso do que o ponto significa. Está num `style`
+                                                        // inline, então a conversão por classe não o alcançou.
+                                                        backgroundColor: (isActive || isPassed) ? hexColor : 'var(--ink-300)',
                                                         opacity: isPassed ? 0.5 : 1,
                                                     }}
                                                 />
