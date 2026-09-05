@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(qa): três achados no cockpit e no modal de edição do contato — 2026-09-05
+
+`/qa` em produção, no navegador logado, sobre as telas do #70/#71. Nenhuma ação de
+escrita executada: o modal foi aberto duas vezes e fechado sem salvar.
+
+**Dois números de confiança se contradizendo a 14px de distância.** A linha da
+saúde renderizava `"saúde do deal 50% probabilidade 0%"`. O 50% é a estimativa da
+IA (`aiAnalysis.probabilityScore`); o 0% é o campo gravado no deal. Nada dizia de
+quem era cada um. Não é regressão — os dois já divergiam; o layout do #70 foi que
+os encostou, antes viviam em blocos distantes. Agora cada número nomeia a fonte, e
+a probabilidade gravada só aparece quando de fato diverge.
+
+**Valor de carregamento com cara de diagnóstico.** Enquanto a IA analisa, `health`
+cai no campo do deal — 0 num deal novo. A barra pintava 0% em vermelho com a
+palavra "alto", e depois saltava pra 50% laranja. Agora "analisando…" e barra
+vazia até a análise chegar.
+
+**Campo morto no modal adicionado uma hora antes.** O campo "empresa" abria
+preenchido com `"Empresa não vinculada"` — o texto de estado da tela, não um nome
+— a legenda promete "Este campo cria a empresa", e salvar ignorava o valor. Ligar
+o campo sem corrigir o pré-preenchimento criaria uma empresa com esse nome no
+primeiro salvamento. Agora pré-preenche com o nome real (ou vazio) e vincula com a
+mesma resolução do controller da lista.
+
+Saúde 88 → 100 sobre 5 categorias. Zero erro de console. Relatório em
+`.gstack/qa-reports/qa-report-crm-aaagencia-com-br-2026-09-05.md`.
+
+**Não verificado:** a vinculação de empresa ponta-a-ponta, que exigiria salvar
+sobre contato real.
+
+### fix(contatos): a regra que protegia o badge de estágio mirava classe inexistente — 2026-09-05
+
+`.cell-name__co .badge-stage { flex: none }` não alcançava nada: o `StageBadge`
+(`ContactsStageTabs.tsx:119`) renderiza utilitários do Tailwind e nunca emite
+`.badge-stage`. Verificado lendo a lista de classes do elemento em produção.
+
+Alvo passa a ser por posição — `.cell-name__co > :not(.cell-name__co-text)` — que
+não depende de como o vizinho se veste. CSS não erra em seletor sem correspondência,
+então nada avisou.
+
+**O que não foi afirmado:** que isso consertou um sintoma observado. A tentativa de
+reproduzir o esmagamento falhou em pressionar (setar `width` num `<td>` de tabela
+`table-layout: auto` não força largura). O fato verificado é a regra morta.
+
 ### feat(layout): telas de detalhe viram página inteira, sem rolagem lateral — 2026-09-05
 
 Revisão de layout sobre o pacote `handoff/` (5 mudanças + 1 bônus). Nada de cor,

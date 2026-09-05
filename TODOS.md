@@ -2,6 +2,25 @@
 
 ## Telas de detalhe
 
+### Vinculação de empresa pelo detalhe do contato não foi testada ponta-a-ponta — P3
+
+O modal de edição de `/contacts/[contactId]` passou a resolver empresa por nome
+(acha, cria se não existir, vazio desvincula), espelhando o controller da lista.
+O caminho **não foi exercitado**: verificar exigiria salvar sobre contato real, e
+o QA de 2026-09-05 rodou sem nenhuma ação de escrita.
+
+**O que verificar quando houver contato de teste:** salvar com nome de empresa que
+já existe (deve vincular à existente, não criar duplicata); com nome novo (deve
+criar); com o campo vazio (deve desvincular). Conferir também que a lista de
+contatos reflete a mudança sem recarregar — a mutation agora escreve em
+`contacts.detail(id)` além dos caches de lista.
+
+**Detalhe que pede atenção:** o controller da lista grava `companyId`, que o tipo
+`Contact` marca como `@deprecated` em favor de `clientCompanyId`. O detalhe segue
+o mesmo campo pra não divergir do que já existe, mas os dois convivem e ninguém
+migrou.
+
+
 ### Empresas, deals e atividades param em 1000 linhas — P3
 
 `contactsService.getAll()`, `companies` (`contacts.ts:683`), `dealsService`

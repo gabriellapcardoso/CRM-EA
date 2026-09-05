@@ -1,5 +1,108 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Pré-preencher formulário com o texto de estado da tela (2026-09-05)
+
+O detalhe do contato mostra `"Empresa não vinculada"` quando o contato não tem
+empresa. Reusei essa MESMA variável pra pré-preencher o campo "empresa" do modal
+de edição. O campo abria com um texto de interface onde deveria haver um nome.
+
+Enquanto o campo estava morto (o salvamento ignorava `companyName`), isso era só
+feio. No instante em que liguei a vinculação, virou corrupção de dado: o primeiro
+salvamento criaria uma empresa **chamada "Empresa não vinculada"** no
+`crm_companies`, e ela apareceria em toda lista de empresas dali pra frente.
+
+A confusão tem nome: **a variável do valor e a variável do texto exibido eram a
+mesma.** Separar resolve e documenta sozinho:
+
+```ts
+const empresaDoContato = companies.find(c => c.id === contact.clientCompanyId); // valor
+const companyName = empresaDoContato?.name ?? 'Empresa não vinculada';          // texto
+```
+
+Vale pra qualquer estado: "sem dono", "—", "carregando…", "fora do lote
+carregado". **Texto de estado nunca entra num `value` de formulário.**
+
+## Refactor de layout encostou dois números que se contradizem (2026-09-05)
+
+O cockpit mostrava a saúde do deal dentro da frase do risco e a probabilidade num
+bloco separado, longe. Juntei os dois blocos e a linha virou:
+
+```
+saúde do deal 50%   probabilidade 0%
+```
+
+14px entre eles, medido. O 50% é a estimativa da IA; o 0% é o campo gravado no
+deal. **Os dois já divergiam há tempo** — o refactor não criou a divergência, criou
+a justaposição, e a justaposição é que destrói a confiança nos dois números.
+
+Lição pra qualquer mudança que junta blocos distantes: **listar os números que
+passaram a ser vizinhos e perguntar se eles aparentam dever concordar.** Se sim, ou
+eles concordam, ou a tela diz de quem é cada um. Não existe terceira opção que não
+seja o leitor concluir que o sistema está quebrado.
+
+## Regra CSS mirando classe que o componente não emite (2026-09-05)
+
+Escrevi `.cell-name__co .badge-stage { flex: none }` pra impedir que o badge de
+estágio encolhesse. O `StageBadge` deste repositório renderiza utilitários do
+Tailwind e **nunca emite `.badge-stage`**. A regra não alcançava nada.
+
+O que torna isso perigoso: **CSS não erra em seletor sem correspondência.** Não há
+warning, não há console, o build passa, o teste que afirma "a regra existe no
+arquivo" passa. A regra fica ali parecendo proteção.
+
+Duas defesas:
+
+1. Verificar na lista de classes do elemento **renderizado**, não no nome que se
+   espera. `getComputedStyle` no elemento também serve: se `flex-shrink` continua
+   `1`, a regra não pegou.
+2. Preferir alvo por **posição** quando o vizinho é de outro vocabulário:
+   `.pai > :not(.filho-que-encolhe)` não depende de como o vizinho se veste.
+
+Num repositório que mistura CSS semântico com Tailwind, esse descasamento é a
+regra, não a exceção.
+
+## Confirmar deploy por igualdade, não por diferença (2026-09-05)
+
+Já registrei aqui que `"" != anterior` anuncia deploy que não aconteceu. A versão
+positiva da regra é melhor: **comparar o artefato em produção com o artefato do
+build local, e exigir igualdade.**
+
+```bash
+curl -s https://dominio/login | grep -oE '_next/static/chunks/[a-z0-9~._-]+\.css' | head -1
+ls .next/static/chunks/*.css   # tem que bater
+```
+
+Diferença tem infinitas causas: timeout, grep que parou de casar, resposta vazia,
+CDN servindo outra rota. Igualdade com um valor que eu produzi tem uma só.
+
+**Duas armadilhas do marcador**, as duas encontradas nesta sessão:
+
+- **`vercel ls` dizendo `Ready` confirma o BUILD, não o alias.** Um deploy pronto
+  e um domínio ainda apontando pro anterior convivem numa boa. Checar o domínio.
+- **O hash do CSS não muda quando o commit só toca TSX.** No #72 o CSS ficou
+  idêntico e o marcador não servia. Aí o que confirma é comportamento: procurar na
+  página a string que só a versão nova produz.
+
+## Medir antes da query resolver produz zero com cara de bug (2026-09-05)
+
+Continuação da entrada de 2026-09-04 sobre medições que mentem. Duas variações
+novas, e uma delas quase virou achado falso reportado:
+
+- **Li `larguraFill: 0` na barra de saúde** e quase reportei "a barra não
+  renderiza". Era estado de carga: a segunda leitura deu 308px. Elemento
+  alimentado por query assíncrona precisa de releitura antes de virar achado.
+  (O estado de carga em si virou achado legítimo — mas por pintar 0% em vermelho
+  com a palavra "alto", indistinguível de diagnóstico real.)
+- **`td.style.width` numa tabela `table-layout: auto` não pressiona nada.** O
+  algoritmo automático ignora. O teste de esmagamento saiu "aprovado" sem nunca
+  ter apertado. Terceira variação do mesmo erro, depois de `flex: 1` vs `width` e
+  de `resize_window`. O que funcionou foi encolher o **painel** ancestral, com
+  `flex: none`, e conferir que a largura real mudou antes de ler o resultado.
+
+O padrão que sobrevive às três: **ler a variável independente DEPOIS de setá-la e
+provar que ela mudou.** Se não mudou, a medição não mediu nada — e uma medição que
+não mediu nada se parece exatamente com uma que passou.
+
 ## `x in objeto` aceita `toString` e `constructor` (2026-09-05)
 
 Escrevi um mapa de origens de navegação e validei a entrada do usuário com
