@@ -66,6 +66,12 @@ Fases seguintes no `PLANO-CLIENTES.md`: ficha completa (F2), grade e kanban
 (F3), dossiê com RAG (F4), contexto criativo (F5), assistente de cadastro com
 leitura do site (F6).
 
+A auditoria de cobertura do `/ship` fechou mais três lacunas: a escolha do
+contrato vigente (que ignora rascunho, encerrado e excluído — se ignorasse o
+`deleted_at`, um contrato apagado voltaria a somar no MRR), os `refine` dos
+formulários, e a ligação de cache entre as mutations de empresa e a carteira,
+que vive num arquivo de outro módulo e sumiria no primeiro refactor por lá.
+
 **A revisão do PR #77 achou sete defeitos, seis já corrigidos aqui.** O maior:
 as seis tabelas novas declaravam `organization_id NOT NULL`, o service não
 enviava o campo, e **nenhum trigger o preenchia** — todo cadastro de contrato

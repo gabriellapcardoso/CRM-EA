@@ -126,3 +126,125 @@ describe('salvar() não apaga campo ausente do formulário', () => {
         expect(campos).not.toHaveProperty('organization_id');
     });
 });
+
+describe('escolha do contrato vigente', () => {
+    function builderComEmbed(contratos: unknown[]) {
+        const b: Record<string, unknown> = {};
+        for (const m of ['select', 'eq', 'is', 'order']) {
+            b[m] = vi.fn(() => b);
+        }
+        b.range = vi.fn(() =>
+            Promise.resolve({
+                data: [
+                    {
+                        id: 'e1',
+                        organization_id: 'o1',
+                        name: 'Padaria',
+                        industry: null,
+                        website: null,
+                        owner_id: null,
+                        is_client: true,
+                        client_since: '2026-01-01',
+                        niche: null,
+                        lifecycle_stage: 'em_operacao',
+                        category: null,
+                        health_score: null,
+                        health_source: 'manual',
+                        created_at: '2026-01-01T00:00:00Z',
+                        updated_at: null,
+                        client_contracts: contratos,
+                    },
+                ],
+                error: null,
+                count: 1,
+            }),
+        );
+        return b;
+    }
+
+    function contrato(over: Record<string, unknown>) {
+        return {
+            id: 'c',
+            company_id: 'e1',
+            monthly_value: 100,
+            starts_at: '2026-01-01',
+            ends_at: null,
+            renewal_date: null,
+            status: 'rascunho',
+            deleted_at: null,
+            organization_id: 'o1',
+            created_at: '2026-01-01T00:00:00Z',
+            ...over,
+        };
+    }
+
+    async function listarCom(contratos: unknown[]) {
+        vi.resetModules();
+        const b = builderComEmbed(contratos);
+        vi.doMock('@/lib/supabase/client', () => ({ supabase: { from: vi.fn(() => b) } }));
+        const { clientsService } = await import('@/lib/supabase/clients');
+        const { data } = await clientsService.listar({ page: 0, pageSize: 25 });
+        return data!.data[0];
+    }
+
+    it('pega o vigente entre vários e ignora rascunho e encerrado', async () => {
+        const cliente = await listarCom([
+            contrato({ id: 'a', status: 'encerrado', monthly_value: 900 }),
+            contrato({ id: 'b', status: 'vigente', monthly_value: 500 }),
+            contrato({ id: 'c', status: 'rascunho', monthly_value: 700 }),
+        ]);
+        expect(cliente.activeContract?.id).toBe('b');
+        expect(cliente.activeContract?.monthlyValue).toBe(500);
+    });
+
+    // O índice único parcial só conta contrato vigente NÃO excluído. Se a
+    // seleção aqui ignorasse `deleted_at`, um contrato excluído voltaria a
+    // somar no MRR da carteira — e a soma pareceria certa.
+    it('não escolhe contrato vigente que foi excluído', async () => {
+        const cliente = await listarCom([
+            contrato({ id: 'a', status: 'vigente', monthly_value: 900, deleted_at: '2026-05-01T00:00:00Z' }),
+        ]);
+        expect(cliente.activeContract).toBeUndefined();
+    });
+
+    it('empresa sem contrato nenhum não inventa um', async () => {
+        const cliente = await listarCom([]);
+        expect(cliente.activeContract).toBeUndefined();
+        expect(cliente.name).toBe('Padaria');
+    });
+
+    it('converte o valor mensal que o PostgREST devolve como string', async () => {
+        const cliente = await listarCom([
+            contrato({ id: 'b', status: 'vigente', monthly_value: '1234.56' }),
+        ]);
+        expect(cliente.activeContract?.monthlyValue).toBe(1234.56);
+    });
+});
+
+describe('invalidação cruzada empresa ↔ cliente', () => {
+    // A mesma linha de `crm_companies` é lida por dois módulos desde
+    // 2026-09-05. As mutations de empresa vivem num arquivo que não é deste
+    // módulo, e sem esta guarda a ligação some no primeiro refactor por lá.
+    const HOOKS = readFileSync(
+        join(process.cwd(), 'lib/query/hooks/useContactsQuery.ts'),
+        'utf-8',
+    )
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
+        .map(l => l.replace(/^\s*\/\/.*$/, ''))
+        .join('\n');
+
+    it('toda invalidação de empresa invalida clientes junto', () => {
+        const invalidacoesDeEmpresa = HOOKS.split(
+            'queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });',
+        ).slice(1);
+        expect(invalidacoesDeEmpresa.length).toBeGreaterThanOrEqual(4);
+        for (const [i, trecho] of invalidacoesDeEmpresa.entries()) {
+            // A invalidação de clientes vem logo depois, na mesma callback.
+            expect(
+                trecho.slice(0, 400),
+                `invalidação de empresa nº ${i + 1} não alcança o cache de clientes`,
+            ).toContain("q.queryKey[0] === 'clients'");
+        }
+    });
+});
