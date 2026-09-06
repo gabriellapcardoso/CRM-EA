@@ -113,3 +113,46 @@ export interface ClientsMetrics {
      */
     semContrato: number;
 }
+
+// =============================================================================
+// F2 — ficha do cliente
+// =============================================================================
+
+/** Marco escrito à mão. O que é derivável NÃO vira linha aqui. */
+export interface ClientEvent {
+    id: string;
+    companyId: string;
+    title: string;
+    body?: string;
+    occurredAt: string;
+    actorId?: string;
+    organizationId?: string;
+    createdAt: string;
+}
+
+export interface ClientTeamMember {
+    id: string;
+    companyId: string;
+    profileId: string;
+    /** Nome do perfil, resolvido na leitura. */
+    profileName: string;
+    role?: string;
+    createdAt: string;
+}
+
+/** De onde a linha da timeline veio. A tela mostra isso: origem importa. */
+export type TimelineOrigem = 'atividade' | 'marco';
+
+export interface ClientTimelineItem {
+    id: string;
+    origem: TimelineOrigem;
+    /** ISO. Ordena decrescente. */
+    ocorridoEm: string;
+    titulo: string;
+    detalhe?: string;
+    /** Tipo da atividade (CALL, NOTE, STATUS_CHANGE...), quando origem é atividade. */
+    tipo?: string;
+    /** Título do deal a que a atividade pertence, quando houver. */
+    deal?: string;
+    autor?: string;
+}

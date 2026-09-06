@@ -41,6 +41,9 @@ export const queryKeys = {
         paginated: (pagination: PaginationState, filters?: ClientsFilters) =>
             [...base.all, 'paginated', pagination, filters] as const,
         contracts: (companyId: string) => [...base.all, 'contracts', companyId] as const,
+        events: (companyId: string) => [...base.all, 'events', companyId] as const,
+        team: (companyId: string) => [...base.all, 'team', companyId] as const,
+        aiActions: (companyId: string) => [...base.all, 'aiActions', companyId] as const,
     })),
     boards: createQueryKeys('boards'),
 

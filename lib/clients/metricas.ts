@@ -21,6 +21,21 @@ export function somarDias(iso: string, dias: number): string {
     return base.toISOString().slice(0, 10);
 }
 
+/**
+ * Dias de `hoje` até a data ISO. Negativo quando já passou.
+ *
+ * Aritmética sobre a data ISO, não sobre `new Date(iso)`: o construtor lê data
+ * pura como UTC meia-noite e, em GMT-3, a conta escorrega um dia.
+ */
+export function diasAte(iso: string, hoje: string): number {
+    const [a1, m1, d1] = hoje.split('-').map(Number);
+    const [a2, m2, d2] = iso.split('-').map(Number);
+    const umDia = 86_400_000;
+    const de = Date.UTC(a1, m1 - 1, d1);
+    const ate = Date.UTC(a2, m2 - 1, d2);
+    return Math.round((ate - de) / umDia);
+}
+
 /** O cliente conta na carteira: é cliente, não foi arquivado, não deu churn. */
 export function estaNaCarteira(c: ClientView): boolean {
     return c.isClient && c.lifecycleStage !== 'churn';

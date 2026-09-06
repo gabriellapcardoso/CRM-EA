@@ -127,3 +127,46 @@ describe('vocabulário visual', () => {
         expect(suspeitas).toEqual([]);
     });
 });
+
+describe('vocabulário próprio, sem colidir com o que já existe', () => {
+    /**
+     * `.timeline` já existia neste arquivo (linhas ~1176), usado pelo cockpit
+     * do deal, pelo detalhe do contato e pelo ActivityRow. Escrever um segundo
+     * `.timeline__item` na F2 fez as duas famílias brigarem: a de baixo venceu
+     * nas propriedades compartilhadas — o item do cliente herdou
+     * `align-items: center` e apareceu centralizado — e o meu
+     * `list-style/margin/padding` passou a valer nas telas deles, que ninguém
+     * mediu. Mesma classe de estrago do `.table-list`.
+     */
+    it('o módulo não emite as classes .timeline* compartilhadas', () => {
+        const infratores: string[] = [];
+        for (const { caminho, conteudo } of FONTES) {
+            for (const m of conteudo.matchAll(/className="([^"{}]+)"/g)) {
+                for (const classe of m[1].split(/\s+/)) {
+                    if (/^timeline(__|--|$)/.test(classe)) {
+                        infratores.push(`${caminho}: .${classe}`);
+                    }
+                }
+            }
+        }
+        expect(infratores).toEqual([]);
+    });
+
+    it('o vocabulário do módulo é definido uma vez só no globals.css', () => {
+        const duplicadas: string[] = [];
+        for (const seletor of [
+            'client-timeline',
+            'client-timeline__item',
+            'client-timeline__head',
+            'client-timeline__title',
+            'client-timeline__body',
+            'kpi-grid--fluid',
+        ]) {
+            const regras = CSS.split('\n').filter(l =>
+                new RegExp(`^\\.${seletor}\\s*\\{`).test(l.trim()),
+            );
+            if (regras.length !== 1) duplicadas.push(`.${seletor}: ${regras.length} regras`);
+        }
+        expect(duplicadas).toEqual([]);
+    });
+});
