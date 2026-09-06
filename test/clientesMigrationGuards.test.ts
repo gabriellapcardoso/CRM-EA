@@ -9,7 +9,7 @@
  * apagar a linha do conserto deixa o teste vermelho.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const CAMINHO = join(
@@ -229,5 +229,60 @@ describe('RLS das tabelas do módulo', () => {
                 `CREATE POLICY "${tabela}_org_isolate" ON public\\.${tabela}[\\s\\S]{0,200}?USING \\(organization_id = public\\.get_user_org_id\\(\\)\\)`,
             ),
         );
+    });
+});
+
+describe('função de integridade compartilhada entre tabelas', () => {
+    /**
+     * A função é usada por cinco tabelas com formatos diferentes de registro.
+     * A primeira versão lia `NEW.created_by` guardado por
+     * `TG_TABLE_NAME = 'client_assets' AND ...`, o que PARECE proteger e não
+     * protege: PL/pgSQL compila a expressão booleana inteira como uma consulta
+     * SQL só, e a coluna não resolve num INSERT de contrato. Todo insert de
+     * contrato falhava com 42703, em produção, com a migration reportando
+     * sucesso e todos os objetos no lugar.
+     *
+     * A guarda lê a ÚLTIMA migration que define a função — num diretório de
+     * migrations, a mais recente é que responde pelo estado.
+     */
+    const definicoes = readdirSync(join(process.cwd(), 'supabase/migrations'))
+        .filter(f => f.endsWith('.sql'))
+        .sort()
+        .filter(f =>
+            // DEFINE a função, não apenas menciona. Sem o `CREATE OR REPLACE`
+            // o filtro pega também a migration que só faz REVOKE e COMMENT —
+            // e um arquivo sem `NEW.` nenhum faz toda asserção de ausência
+            // passar por vacuidade. Achado pela injeção de regressão.
+            readFileSync(join(process.cwd(), 'supabase/migrations', f), 'utf-8').includes(
+                'CREATE OR REPLACE FUNCTION public.check_client_company_tenant()',
+            ),
+        );
+
+    const ULTIMA = semComentarios(
+        readFileSync(
+            join(process.cwd(), 'supabase/migrations', definicoes[definicoes.length - 1]),
+            'utf-8',
+        ),
+    );
+
+    it('a última definição lê os campos opcionais por to_jsonb', () => {
+        expect(definicoes.length).toBeGreaterThan(0);
+        expect(ULTIMA).toContain('to_jsonb(NEW)');
+    });
+
+    // Campo que não existe em todas as cinco tabelas nunca pode ser lido como
+    // `NEW.<campo>` — a referência é resolvida em tempo de compilação, para
+    // qualquer tabela, mesmo dentro de um IF que jamais seria verdadeiro.
+    it.each(['owner_id', 'created_by', 'actor_id', 'signed_asset_id'])(
+        'não lê NEW.%s diretamente',
+        campo => {
+            expect(ULTIMA).not.toContain(`NEW.${campo}`);
+        },
+    );
+
+    // Estes dois existem nas cinco tabelas, então podem ser lidos direto.
+    it('company_id e organization_id continuam lidos direto', () => {
+        expect(ULTIMA).toContain('NEW.company_id');
+        expect(ULTIMA).toContain('NEW.organization_id');
     });
 });

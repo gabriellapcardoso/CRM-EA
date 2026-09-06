@@ -1,5 +1,62 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## `TG_TABLE_NAME = 'x' AND NEW.campo` não protege nada (2026-09-06)
+
+Função de trigger compartilhada por cinco tabelas, com as checagens opcionais
+escritas assim:
+
+```sql
+IF TG_TABLE_NAME = 'client_assets' AND NEW.created_by IS NOT NULL THEN
+```
+
+Parece uma guarda. Não é. **PL/pgSQL compila a expressão booleana inteira como
+uma consulta SQL só**, e `NEW.created_by` não resolve quando `NEW` é do tipo
+`client_contracts`, que não tem a coluna. Não existe curto-circuito em tempo de
+compilação. Resultado: `ERROR: 42703: record "new" has no field "created_by"` em
+**todo** insert de contrato.
+
+O que torna o caso didático não é o erro — é o que **não** o pegou:
+
+- a migration aplicou com `success: true`;
+- os 6 objetos, 6 policies, 12 triggers e o índice foram conferidos um a um no
+  banco, todos presentes;
+- o advisor de segurança do Supabase passou limpo;
+- as 39 guardas estáticas passaram — elas casam texto do arquivo e **não
+  executam a função**;
+- e era o mesmo defeito que a revisão tinha acabado de consertar
+  (`organization_id` sem trigger), reintroduzido pelo próprio conserto.
+
+Só apareceu numa **sonda transacional**: `BEGIN`, `set_config('request.jwt.claims', ...)`
+pra simular usuário autenticado, `INSERT` igual ao que o service faz, `ROLLBACK`.
+Custa uma consulta e prova o que nenhuma verificação estrutural prova.
+
+**A regra: objeto existir não é objeto funcionar.** Depois de aplicar migration
+com trigger, function ou policy, exercitar o caminho de escrita dentro de uma
+transação desfeita — e exercitar também as recusas, senão você só provou que a
+porta abre.
+
+**O conserto:** ler campo de formato variável por `to_jsonb(NEW) ->> 'campo'`,
+que devolve NULL numa tabela sem a coluna em vez de erro. `IF` aninhado também
+funcionaria (PL/pgSQL planeja cada comando na primeira execução, e ramo não
+tomado não é planejado), mas depende de uma sutileza que não sobrevive a uma
+edição futura desatenta.
+
+## Guarda que casa arquivo por menção pega o arquivo errado (2026-09-06)
+
+A guarda contra o bug acima procura a ÚLTIMA migration que define a função e
+afirma que ela não lê `NEW.created_by`. O filtro era `.includes('FUNCTION
+public.check_client_company_tenant()')` — que casa também a migration seguinte,
+que só faz `REVOKE` e `COMMENT`. Esse arquivo não tem `NEW.` nenhum, então as
+quatro asserções de ausência passavam **por vacuidade**.
+
+Descoberto pela injeção de regressão: apaguei o conserto esperando 5 falhas e vi
+2. As três que faltaram eram as que mais importavam.
+
+**A regra: asserção de AUSÊNCIA precisa provar que estava olhando o lugar certo.**
+Um `not.toContain` sobre o alvo errado é sempre verde. Filtrar por `CREATE OR
+REPLACE FUNCTION`, não pelo nome solto; e conferir na injeção que o número de
+falhas bate com o número de asserções que dependiam do conserto.
+
 ## `isLoading` do TanStack tem um quarto estado, e ele mente (2026-09-05)
 
 A tela de Clientes dizia **"Nenhum cliente cadastrado ainda"** enquanto a consulta

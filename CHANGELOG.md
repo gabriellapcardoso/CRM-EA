@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(clientes): a checagem de integridade quebrava todo insert de contrato — 2026-09-06
+
+Achado por sonda transacional em produção, minutos depois de aplicar a migration
+do Módulo Clientes. `check_client_company_tenant()` é compartilhada por cinco
+tabelas e lia `NEW.created_by` guardado por `TG_TABLE_NAME = 'client_assets'`.
+PL/pgSQL compila a expressão booleana inteira: a coluna não resolve num insert de
+contrato, e `ERROR: 42703` derrubava toda gravação.
+
+A migration reportou sucesso, os 6 objetos e 12 triggers foram conferidos um a um
+no banco, o advisor de segurança passou limpo e as 39 guardas estáticas passaram —
+elas casam texto do arquivo e não executam a função. Objeto existir não é objeto
+funcionar.
+
+Conserto em `20260905140000`: leitura por `to_jsonb(NEW) ->> 'campo'`, que devolve
+NULL numa tabela sem a coluna. Verificado em produção dentro de transação
+desfeita — contrato com empresa de outra organização recusa, asset com
+`created_by` de outra organização recusa, asset válido passa, `signed_asset_id`
+que não é contrato recusa.
+
+Também em `20260905130000`: `REVOKE EXECUTE` das duas funções de trigger. Sendo
+`SECURITY DEFINER`, o PostgREST as expunha como endpoint RPC pra `anon` e
+`authenticated` — não explorável, porque o Postgres recusa chamar função de
+trigger fora de trigger, mas superfície que não precisa existir.
+
 ### feat(clientes): governança da carteira pós-venda, fase 1 — 2026-09-05
 
 O CRM cobria bem o caminho até a venda e parava no instante do pagamento: o deal
