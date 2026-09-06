@@ -40,6 +40,32 @@ exercitada com soft-delete e uma empresa "excluída" pode voltar a aparecer.
 Enquanto não for feito, quem tentar excluir uma empresa com contrato vai ver a
 mensagem crua de violação de FK do Postgres.
 
+### Histórico de migrations divergiu do banco — P2
+
+Descoberto ao aplicar a migration do Módulo Clientes em 2026-09-06. A pasta local
+tem 74 migrations, o histórico remoto tem 70, e a diferença **não** é o que
+parece: oito foram aplicadas com timestamp diferente do nome do arquivo
+(`contact_product_interests` é `20260806140000` local e `20260806212912`
+remoto), e quatro de health check estão **aplicadas no banco sem registro
+nenhum** no histórico — a função `check_cron_heartbeats`, a tabela
+`cron_heartbeats` e os 8 crons existem e rodam.
+
+A explicação provável dessas quatro: elas carregam o placeholder
+`__CRON_SECRET__`, que precisa ser substituído antes de rodar, então foram
+coladas no editor SQL em vez de passar pelo CLI.
+
+**Consequência prática:** `supabase db push` tentaria aplicar 13 migrations,
+sendo 8 duplicatas sob outro nome. **Não usar `db push` neste projeto** sem
+antes reconciliar com `supabase migration repair`.
+
+### `check_contact_product_interest_tenant` executável por anon — P3
+
+O advisor de segurança flagra: a função de trigger de `contact_product_interests`
+(20260806140000) é SECURITY DEFINER e o PostgREST a expõe como RPC pra `anon` e
+`authenticated`. Não é explorável — o Postgres recusa chamar função de trigger
+fora de trigger — mas é endpoint que não devia existir. As duas equivalentes do
+Módulo Clientes já foram revogadas em `20260905130000`; falta esta.
+
 ### LGPD: soft-delete não é descarte — P2
 
 `client_contracts` guarda CPF/CNPJ e endereço, e `deleted_at` só oculta.
