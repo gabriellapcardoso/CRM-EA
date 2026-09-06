@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(clientes): ficha com abas, timeline derivada e equipe atribuída (F2) — 2026-09-06
+
+Três abas na ficha do cliente: Visão Geral, Comercial e Timeline. A aba vive na
+URL (`?aba=`), então recarregar cai no mesmo lugar e o endereço pode ser mandado
+pra alguém. As outras quatro abas da spec chegam nas F4 e F5 — barra com item
+morto promete tela que não abre.
+
+**A timeline é derivada por join, nunca pela coluna.** `activities` tem
+`client_company_id`, e ela está preenchida em **zero** das 78 linhas da base,
+embora 40 sejam deriváveis pelo deal ou pelo contato. A coluna só é escrita
+quando alguém cria atividade pela tela de Atividades com deal ou contato que já
+tem empresa; linha histórica e linha de webhook nunca receberam valor. Filtrar
+por ela devolveria timeline vazia pra todo cliente, pra sempre, sem erro na
+tela.
+
+O plano dizia `activities` + `deal_stage_events`. O outbox ficou de fora: ele
+tem 10 linhas em três slugs (`perdido`, `proposta-pronta`, `topou-proposta`),
+porque é fila de webhook e não histórico — mostraria um recorte enviesado. A
+mudança de estágio já chega como atividade `STATUS_CHANGE`.
+
+**Ações da IA** saem de `ai_conversation_log` (14 linhas), pelo caminho
+conversa → contato → empresa. `ai_decisions` tem as colunas certas e **zero
+linhas**: contar por ela devolveria zero pra sempre, com cara de resposta.
+
+Marco manual (`client_events`) entra só pro que não é derivável — kickoff,
+reunião trimestral. Cadastro e remoção pela tela; o formulário pede data e o
+horário guardado é meio-dia UTC, margem contra conversão de fuso. A linha do
+marco mostra **só a data**: exibir esse meio-dia convertido (09:00 em GMT-3)
+seria apresentar como informação um número que ninguém digitou.
+
+Equipe interna reusa `useOrgMembersQuery`; quem já está atribuído sai do
+seletor, senão o segundo clique bate no índice único e devolve erro cru.
+
+Verificado em produção contra um cliente real com 32 atividades deriváveis,
+marcado e desmarcado na mesma sessão: a timeline mostrou as 32 na ordem certa,
+o marco entrou em primeiro pela data, e a remoção funcionou. Estado do banco
+conferido antes e depois — 7 empresas ativas, 10 no total, 78 atividades, os
+mesmos números.
+
+Arquivos: `features/clients/detail/**` (ClientTabs, VisaoGeralTab, ComercialTab,
+TimelineTab, TimelineList, ClientTeamBlock, useClientTimeline),
+`lib/clients/timeline.ts`, `lib/clients/metricas.ts` (`diasAte`),
+`lib/supabase/clients.ts`, `lib/query/hooks/useClientsQuery.ts`,
+`lib/query/queryKeys.ts`, `types/clients.ts`, `app/globals.css`.
+
 ### fix(clientes): a checagem de integridade quebrava todo insert de contrato — 2026-09-06
 
 Achado por sonda transacional em produção, minutos depois de aplicar a migration

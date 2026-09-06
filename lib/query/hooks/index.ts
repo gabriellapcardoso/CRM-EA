@@ -48,6 +48,13 @@ export {
   useCreateClient,
   useUpdateClient,
   useSaveContract,
+  useClientEvents,
+  useCreateClientEvent,
+  useDeleteClientEvent,
+  useClientTeam,
+  useAssignClientTeam,
+  useRemoveClientTeam,
+  useClientAIActions,
 } from './useClientsQuery';
 
 // Companies

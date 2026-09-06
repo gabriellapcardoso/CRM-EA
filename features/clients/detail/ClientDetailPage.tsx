@@ -3,20 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useClient, useClientContracts, useSaveContract } from '@/lib/query/hooks/useClientsQuery';
+import { useClient } from '@/lib/query/hooks/useClientsQuery';
 import { resolverOrigem } from '@/lib/navigation/origem';
 import { faixaDeSaude, rotuloDaFaixa } from '@/lib/clients/health';
-import { formatarDocumento } from '@/lib/clients/documento';
 import { estadoDaConsulta } from '@/lib/clients/estadoDaConsulta';
-import { ContractForm } from '../components/ContractForm';
-import type { ContractFormData } from '@/lib/validations/schemas';
-import type { ClientContract, ContractStatus, DocumentType } from '@/types/clients';
-
-const MOEDA = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-});
+import { ClientTabs, ehAbaValida, type AbaDoCliente } from './ClientTabs';
+import { VisaoGeralTab } from './VisaoGeralTab';
+import { ComercialTab } from './ComercialTab';
+import { TimelineTab } from './TimelineTab';
 
 const NICHOS: Record<string, string> = {
     local: 'Negócio Local',
@@ -44,10 +38,10 @@ function dataBR(iso?: string): string {
 }
 
 /**
- * Ficha do cliente — F1 entrega a aba Comercial.
+ * Ficha do cliente.
  *
- * As outras seis abas chegam nas fases seguintes; até lá não existe barra de
- * abas, porque barra com seis itens mortos é pior que nenhuma.
+ * A F2 entrega três abas: Visão Geral, Comercial e Timeline. As outras quatro
+ * da spec chegam nas F4 e F5, e só aparecem na barra quando existirem.
  */
 export default function ClientDetailPage({ companyId }: { companyId: string }) {
     const searchParams = useSearchParams();
@@ -58,6 +52,21 @@ export default function ClientDetailPage({ companyId }: { companyId: string }) {
         ? resolverOrigem(from, searchParams?.get('fromId'))
         : { href: '/clients', label: '← voltar pra clientes' };
 
+    // A aba vive na URL: recarregar cai na mesma aba, e o endereço pode ser
+    // mandado pra outra pessoa. `replaceState` não remonta a árvore do App
+    // Router, então trocar de aba não refaz as consultas da página.
+    const abaDaUrl = searchParams?.get('aba');
+    const [aba, setAba] = React.useState<AbaDoCliente>(
+        ehAbaValida(abaDaUrl) ? abaDaUrl : 'visao-geral',
+    );
+
+    const trocarAba = React.useCallback((nova: AbaDoCliente) => {
+        setAba(nova);
+        const params = new URLSearchParams(window.location.search);
+        params.set('aba', nova);
+        window.history.replaceState(null, '', `?${params.toString()}`);
+    }, []);
+
     const {
         data: cliente,
         isSuccess,
@@ -65,39 +74,6 @@ export default function ClientDetailPage({ companyId }: { companyId: string }) {
         error,
         isFetching,
     } = useClient(companyId);
-    const contratos = useClientContracts(companyId);
-    const salvar = useSaveContract();
-
-    const [editando, setEditando] = React.useState<ClientContract | null>(null);
-    const [criandoNovo, setCriandoNovo] = React.useState(false);
-
-    const lista = contratos.data ?? [];
-    const vigente = lista.find(c => c.status === 'vigente');
-    const emEdicao = criandoNovo ? null : (editando ?? vigente ?? null);
-
-    const aoSalvar = async (dados: ContractFormData) => {
-        await salvar.mutateAsync({
-            id: emEdicao?.id,
-            companyId,
-            monthlyValue: Number(dados.monthlyValue),
-            startsAt: dados.startsAt,
-            endsAt: dados.endsAt || undefined,
-            renewalDate: dados.renewalDate || undefined,
-            status: dados.status as ContractStatus,
-            paymentMethod: dados.paymentMethod || undefined,
-            documentType: (dados.documentType || undefined) as DocumentType | undefined,
-            documentNumber: dados.documentNumber || undefined,
-            addressZip: dados.addressZip || undefined,
-            addressStreet: dados.addressStreet || undefined,
-            addressNumber: dados.addressNumber || undefined,
-            addressComplement: dados.addressComplement || undefined,
-            addressDistrict: dados.addressDistrict || undefined,
-            addressCity: dados.addressCity || undefined,
-            addressState: dados.addressState || undefined,
-        });
-        setCriandoNovo(false);
-        setEditando(null);
-    };
 
     // Só `isSuccess` autoriza dizer que o cliente não existe — senão uma falha
     // de rede vira "cliente não encontrado". Ver `estadoDaConsulta`.
@@ -107,13 +83,6 @@ export default function ClientDetailPage({ companyId }: { companyId: string }) {
         isFetching,
         temDados: !!cliente,
         quantidade: cliente ? 1 : 0,
-    });
-    const estadoContratos = estadoDaConsulta({
-        isSuccess: contratos.isSuccess,
-        isError: contratos.isError,
-        isFetching: contratos.isFetching,
-        temDados: !!contratos.data,
-        quantidade: lista.length,
     });
 
     if (estado === 'carregando') {
@@ -197,111 +166,12 @@ export default function ClientDetailPage({ companyId }: { companyId: string }) {
                 </div>
             </section>
 
-            <section className="section-card">
-                <h2 className="title-md">Comercial</h2>
 
-                {estadoContratos === 'carregando' && (
-                    <p className="muted">Carregando contratos…</p>
-                )}
+            <ClientTabs ativa={aba} onTrocar={trocarAba} />
 
-                {estadoContratos === 'indefinido' && (
-                    <p className="muted">
-                        Os contratos não chegaram. Recarregue a página — isto não quer
-                        dizer que não há contrato.
-                    </p>
-                )}
-
-                {estadoContratos === 'erro' && (
-                    <p className="muted">
-                        Não foi possível carregar os contratos:{' '}
-                        {(contratos.error as Error)?.message}
-                    </p>
-                )}
-
-                {estadoContratos === 'com-dados' && (
-                    <div className="table-list__scroll">
-                        <table className="table-list table-list--fit">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Situação</th>
-                                    <th scope="col" className="cell-num">Mensal</th>
-                                    <th scope="col">Início</th>
-                                    <th scope="col">Renovação</th>
-                                    <th scope="col">Documento</th>
-                                    <th scope="col"><span className="sr-only">Ações</span></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {lista.map(c => (
-                                    <tr key={c.id}>
-                                        <td>
-                                            {c.status === 'vigente' ? 'Vigente'
-                                                : c.status === 'encerrado' ? 'Encerrado' : 'Rascunho'}
-                                        </td>
-                                        <td className="cell-num num">{MOEDA.format(c.monthlyValue)}</td>
-                                        <td>{dataBR(c.startsAt)}</td>
-                                        <td>{dataBR(c.renewalDate)}</td>
-                                        <td>
-                                            {c.documentNumber
-                                                ? formatarDocumento(c.documentType, c.documentNumber)
-                                                : '—'}
-                                        </td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className="btn btn--quiet"
-                                                onClick={() => {
-                                                    setCriandoNovo(false);
-                                                    setEditando(c);
-                                                }}
-                                            >
-                                                Editar
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {estadoContratos === 'vazio' && (
-                    <p className="muted">
-                        Nenhum contrato cadastrado. Sem ele o cliente entra como zero no MRR
-                        da carteira.
-                    </p>
-                )}
-
-                <div className="list-toolbar">
-                    <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={() => {
-                            setCriandoNovo(true);
-                            setEditando(null);
-                        }}
-                    >
-                        Novo Contrato
-                    </button>
-                    {emEdicao && (
-                        <span className="meta">
-                            Editando o contrato iniciado em {dataBR(emEdicao.startsAt)}.
-                        </span>
-                    )}
-                </div>
-
-                <ContractForm
-                    contrato={emEdicao}
-                    salvando={salvar.isPending}
-                    onSubmit={aoSalvar}
-                />
-
-                {salvar.isError && (
-                    <p className="muted">
-                        Não foi possível salvar: {(salvar.error as Error)?.message}
-                    </p>
-                )}
-            </section>
+            {aba === 'visao-geral' && <VisaoGeralTab cliente={cliente} />}
+            {aba === 'comercial' && <ComercialTab companyId={companyId} />}
+            {aba === 'timeline' && <TimelineTab companyId={companyId} />}
         </div>
     );
 }

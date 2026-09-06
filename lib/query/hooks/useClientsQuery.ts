@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { queryKeys, entityCachesExceptDetail } from '@/lib/query/queryKeys';
-import { clientsService, clientContractsService } from '@/lib/supabase/clients';
+import {
+    clientsService,
+    clientContractsService,
+    clientEventsService,
+    clientTeamService,
+    contarAcoesDeIA,
+} from '@/lib/supabase/clients';
 import type { PaginationState } from '@/types';
 import type { ClientContract, ClientsFilters, ClientView } from '@/types/clients';
 
@@ -166,5 +172,105 @@ export const useSaveContract = () => {
                 queryKey: queryKeys.clients.detail(entrada.companyId),
             });
         },
+    });
+};
+
+// =============================================================================
+// F2 — marcos, equipe e ações de IA
+// =============================================================================
+
+export const useClientEvents = (companyId?: string) => {
+    const { user, loading: authLoading } = useAuth();
+    return useQuery({
+        queryKey: queryKeys.clients.events(companyId ?? ''),
+        queryFn: async ({ signal }) => {
+            const { data, error } = await clientEventsService.listar(companyId!, { signal });
+            if (error) throw error;
+            return data ?? [];
+        },
+        staleTime: 60 * 1000,
+        enabled: !authLoading && !!user && !!companyId,
+    });
+};
+
+export const useCreateClientEvent = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (entrada: Parameters<typeof clientEventsService.criar>[0]) => {
+            const { data, error } = await clientEventsService.criar(entrada);
+            if (error) throw error;
+            return data!;
+        },
+        onSuccess: (_dados, entrada) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.clients.events(entrada.companyId) });
+        },
+    });
+};
+
+export const useDeleteClientEvent = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id }: { id: string; companyId: string }) => {
+            const { error } = await clientEventsService.excluir(id);
+            if (error) throw error;
+        },
+        onSuccess: (_dados, { companyId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.clients.events(companyId) });
+        },
+    });
+};
+
+export const useClientTeam = (companyId?: string) => {
+    const { user, loading: authLoading } = useAuth();
+    return useQuery({
+        queryKey: queryKeys.clients.team(companyId ?? ''),
+        queryFn: async ({ signal }) => {
+            const { data, error } = await clientTeamService.listar(companyId!, { signal });
+            if (error) throw error;
+            return data ?? [];
+        },
+        staleTime: 60 * 1000,
+        enabled: !authLoading && !!user && !!companyId,
+    });
+};
+
+export const useAssignClientTeam = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (entrada: Parameters<typeof clientTeamService.atribuir>[0]) => {
+            const { error } = await clientTeamService.atribuir(entrada);
+            if (error) throw error;
+        },
+        onSuccess: (_dados, entrada) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.clients.team(entrada.companyId) });
+        },
+    });
+};
+
+export const useRemoveClientTeam = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id }: { id: string; companyId: string }) => {
+            const { error } = await clientTeamService.remover(id);
+            if (error) throw error;
+        },
+        onSuccess: (_dados, { companyId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.clients.team(companyId) });
+        },
+    });
+};
+
+/** Três consultas encadeadas; `staleTime` alto porque muda devagar. */
+export const useClientAIActions = (companyId?: string) => {
+    const { user, loading: authLoading } = useAuth();
+    return useQuery({
+        queryKey: queryKeys.clients.aiActions(companyId ?? ''),
+        queryFn: async ({ signal }) => {
+            const { data, error } = await contarAcoesDeIA(companyId!, { signal });
+            if (error) throw error;
+            return data ?? 0;
+        },
+        staleTime: 5 * 60 * 1000,
+        enabled: !authLoading && !!user && !!companyId,
     });
 };

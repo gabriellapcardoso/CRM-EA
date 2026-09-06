@@ -7,7 +7,7 @@
  * painel mostrar um MRR menor sem dizer por quê, então `semContrato` sai junto.
  */
 import { describe, expect, it } from 'vitest';
-import { calcularMetricas, mesesDecorridos, estaNaCarteira, somarDias } from '@/lib/clients/metricas';
+import { calcularMetricas, mesesDecorridos, estaNaCarteira, somarDias, diasAte } from '@/lib/clients/metricas';
 import type { ClientView, ClientContract } from '@/types/clients';
 
 const HOJE = '2026-09-05';
@@ -151,5 +151,20 @@ describe('somarDias', () => {
         expect(somarDias('2026-12-31', 1)).toBe('2027-01-01');
         // Ano bissexto
         expect(somarDias('2028-02-28', 1)).toBe('2028-02-29');
+    });
+});
+
+describe('diasAte', () => {
+    it('conta pra frente, pra trás e o mesmo dia', () => {
+        expect(diasAte('2026-09-11', '2026-09-06')).toBe(5);
+        expect(diasAte('2026-09-06', '2026-09-06')).toBe(0);
+        expect(diasAte('2026-09-01', '2026-09-06')).toBe(-5);
+    });
+
+    it('atravessa mês e ano sem escorregar', () => {
+        expect(diasAte('2026-10-01', '2026-09-06')).toBe(25);
+        expect(diasAte('2027-01-01', '2026-12-31')).toBe(1);
+        // 2028 é bissexto: fevereiro tem 29 dias.
+        expect(diasAte('2028-03-01', '2028-02-01')).toBe(29);
     });
 });

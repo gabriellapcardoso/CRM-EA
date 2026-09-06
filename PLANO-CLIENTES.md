@@ -2,7 +2,7 @@
 
 # Plano — Módulo Clientes (governança de carteira pós-venda)
 
-**Status:** F1 entregue em 2026-09-05 · F2 a F6 em aberto · **Branch alvo:** `feat/modulo-clientes` · **Data:** 2026-09-05
+**Status:** F1 e F2 entregues (2026-09-05 e 06) · F3 a F6 em aberto · **Branch alvo:** `feat/modulo-clientes` · **Data:** 2026-09-05
 
 ## 1. O problema
 
@@ -178,7 +178,13 @@ operacional · timeline · comercial.
 | Fase | Entrega | Por que essa ordem |
 |---|---|---|
 | **F1** | Migration completa (colunas de governança + `client_contracts` + satélites + RLS + integridade cross-org) · cadastro de cliente · aba Comercial · listagem em tabela · os 4 indicadores | Primeira fase utilizável de ponta a ponta: dá pra cadastrar, contratar e ver o MRR |
-| **F2** | Ficha: Visão Geral, Timeline derivada, equipe atribuída | Leitura sobre dado que a F1 já produz |
+| **F2** | ✅ Ficha: abas, Visão Geral, Timeline derivada, equipe atribuída | Leitura sobre dado que a F1 já produz |
+
+> **Correções que a F2 fez no plano.** A timeline NÃO usa `deal_stage_events`: é
+> outbox de webhook, com linha só pros slugs que disparam integração, e mostraria
+> recorte enviesado. A mudança de estágio já chega como atividade `STATUS_CHANGE`.
+> E as ações de IA saem de `ai_conversation_log`, não de `ai_decisions` — esta tem
+> as colunas certas e zero linhas.
 | **F3** | Grade de cartões · kanban do ciclo de vida · filtros combináveis · ordenação | Camada de visualização |
 | **F4** | Dossiê: bucket, upload, e o RAG **consertado** — `uploadToFileSearchStore` ganha call site e passa a devolver o id do documento | Depende de mexer no fornecedor de RAG, risco isolado |
 | **F5** | Contexto Criativo · Identidade & Produtos · Operacional | Campos livres sobre a estrutura da F1 |

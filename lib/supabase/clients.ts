@@ -18,6 +18,8 @@ import { sanitizePostgrestValue } from '@/lib/utils/sanitize';
 import type {
     ClientView,
     ClientContract,
+    ClientEvent,
+    ClientTeamMember,
     ContractStatus,
     DocumentType,
     ClientNiche,
@@ -397,3 +399,222 @@ export const clientContractsService = {
         }
     },
 };
+
+// =============================================================================
+// F2 — marcos, equipe e ações de IA
+// =============================================================================
+
+type DbClientEvent = {
+    id: string;
+    company_id: string;
+    title: string;
+    body: string | null;
+    occurred_at: string;
+    actor_id: string | null;
+    organization_id: string;
+    created_at: string;
+};
+
+function transformEvent(db: DbClientEvent): ClientEvent {
+    return {
+        id: db.id,
+        companyId: db.company_id,
+        title: db.title,
+        body: db.body ?? undefined,
+        occurredAt: db.occurred_at,
+        actorId: db.actor_id ?? undefined,
+        organizationId: db.organization_id,
+        createdAt: db.created_at,
+    };
+}
+
+export const clientEventsService = {
+    async listar(
+        companyId: string,
+        options?: { signal?: AbortSignal },
+    ): Promise<{ data: ClientEvent[] | null; error: Error | null }> {
+        try {
+            if (!supabase) return { data: null, error: new Error('Supabase não configurado') };
+            let query = supabase
+                .from('client_events')
+                .select('*')
+                .eq('company_id', companyId)
+                .is('deleted_at', null)
+                .order('occurred_at', { ascending: false });
+            if (options?.signal) query = query.abortSignal(options.signal);
+
+            const { data, error } = await query;
+            if (error) return { data: null, error };
+            return { data: (data ?? []).map(e => transformEvent(e as DbClientEvent)), error: null };
+        } catch (e) {
+            return { data: null, error: e as Error };
+        }
+    },
+
+    /** `organization_id` vem do trigger `client_events_set_org_id`. */
+    async criar(entrada: {
+        companyId: string;
+        title: string;
+        body?: string;
+        occurredAt: string;
+    }): Promise<{ data: ClientEvent | null; error: Error | null }> {
+        try {
+            if (!supabase) return { data: null, error: new Error('Supabase não configurado') };
+            const { data, error } = await supabase
+                .from('client_events')
+                .insert({
+                    company_id: entrada.companyId,
+                    title: entrada.title,
+                    body: entrada.body ?? null,
+                    occurred_at: entrada.occurredAt,
+                })
+                .select('*')
+                .single();
+            if (error) return { data: null, error };
+            return { data: transformEvent(data as DbClientEvent), error: null };
+        } catch (e) {
+            return { data: null, error: e as Error };
+        }
+    },
+
+    async excluir(id: string): Promise<{ error: Error | null }> {
+        try {
+            if (!supabase) return { error: new Error('Supabase não configurado') };
+            // Soft-delete, como nas outras tabelas do repositório.
+            const { error } = await supabase
+                .from('client_events')
+                .update({ deleted_at: new Date().toISOString() })
+                .eq('id', id);
+            return { error };
+        } catch (e) {
+            return { error: e as Error };
+        }
+    },
+};
+
+type DbClientTeam = {
+    id: string;
+    company_id: string;
+    profile_id: string;
+    role: string | null;
+    created_at: string;
+    profiles: { name: string | null } | null;
+};
+
+export const clientTeamService = {
+    async listar(
+        companyId: string,
+        options?: { signal?: AbortSignal },
+    ): Promise<{ data: ClientTeamMember[] | null; error: Error | null }> {
+        try {
+            if (!supabase) return { data: null, error: new Error('Supabase não configurado') };
+            let query = supabase
+                .from('client_team')
+                .select('id, company_id, profile_id, role, created_at, profiles(name)')
+                .eq('company_id', companyId)
+                .order('created_at', { ascending: true });
+            if (options?.signal) query = query.abortSignal(options.signal);
+
+            const { data, error } = await query;
+            if (error) return { data: null, error };
+            return {
+                data: (data ?? []).map(m => {
+                    const db = m as unknown as DbClientTeam;
+                    return {
+                        id: db.id,
+                        companyId: db.company_id,
+                        profileId: db.profile_id,
+                        // Nome ausente é "Sem nome", texto de EXIBIÇÃO — nunca
+                        // volta pro banco como valor.
+                        profileName: db.profiles?.name ?? 'Sem nome',
+                        role: db.role ?? undefined,
+                        createdAt: db.created_at,
+                    };
+                }),
+                error: null,
+            };
+        } catch (e) {
+            return { data: null, error: e as Error };
+        }
+    },
+
+    async atribuir(entrada: {
+        companyId: string;
+        profileId: string;
+        role?: string;
+    }): Promise<{ error: Error | null }> {
+        try {
+            if (!supabase) return { error: new Error('Supabase não configurado') };
+            const { error } = await supabase.from('client_team').insert({
+                company_id: entrada.companyId,
+                profile_id: entrada.profileId,
+                role: entrada.role ?? null,
+            });
+            return { error };
+        } catch (e) {
+            return { error: e as Error };
+        }
+    },
+
+    /** Remoção é DELETE mesmo: a tabela é um vínculo, não tem `deleted_at`. */
+    async remover(id: string): Promise<{ error: Error | null }> {
+        try {
+            if (!supabase) return { error: new Error('Supabase não configurado') };
+            const { error } = await supabase.from('client_team').delete().eq('id', id);
+            return { error };
+        } catch (e) {
+            return { error: e as Error };
+        }
+    },
+};
+
+/**
+ * Quantas vezes a IA agiu para este cliente.
+ *
+ * Quem registra é `ai_conversation_log`, e o vínculo com a empresa é indireto:
+ * conversa -> contato -> `client_company_id`. Três consultas, e cada uma corta
+ * cedo quando não há o que buscar.
+ *
+ * `ai_decisions` NÃO serve: a tabela existe, tem `deal_id` e `contact_id`, e
+ * está vazia — zero linhas em produção (2026-09-06). Contar por ela devolveria
+ * zero para sempre, com cara de resposta.
+ */
+export async function contarAcoesDeIA(
+    companyId: string,
+    options?: { signal?: AbortSignal },
+): Promise<{ data: number | null; error: Error | null }> {
+    try {
+        if (!supabase) return { data: null, error: new Error('Supabase não configurado') };
+
+        let contatosQuery = supabase
+            .from('contacts')
+            .select('id')
+            .eq('client_company_id', companyId)
+            .is('deleted_at', null);
+        if (options?.signal) contatosQuery = contatosQuery.abortSignal(options.signal);
+        const { data: contatos, error: erroContatos } = await contatosQuery;
+        if (erroContatos) return { data: null, error: erroContatos };
+        if (!contatos?.length) return { data: 0, error: null };
+
+        let conversasQuery = supabase
+            .from('messaging_conversations')
+            .select('id')
+            .in('contact_id', contatos.map(c => c.id));
+        if (options?.signal) conversasQuery = conversasQuery.abortSignal(options.signal);
+        const { data: conversas, error: erroConversas } = await conversasQuery;
+        if (erroConversas) return { data: null, error: erroConversas };
+        if (!conversas?.length) return { data: 0, error: null };
+
+        let logQuery = supabase
+            .from('ai_conversation_log')
+            .select('id', { count: 'exact', head: true })
+            .in('conversation_id', conversas.map(c => c.id));
+        if (options?.signal) logQuery = logQuery.abortSignal(options.signal);
+        const { count, error: erroLog } = await logQuery;
+        if (erroLog) return { data: null, error: erroLog };
+
+        return { data: count ?? 0, error: null };
+    } catch (e) {
+        return { data: null, error: e as Error };
+    }
+}

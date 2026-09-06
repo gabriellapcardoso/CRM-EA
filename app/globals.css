@@ -932,6 +932,21 @@ body {
    original, que o dashboard e o inbox usam e ninguém mediu. */
 .kpi-grid--fluid { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
 
+/* Linha do tempo do cliente (Módulo Clientes F2, 2026-09-06).
+   Prefixo `client-` de propósito: já existe um vocabulário `.timeline` neste
+   arquivo (linhas ~1170), usado pelo cockpit do deal, pelo detalhe do contato
+   e pelo ActivityRow. Escrever um segundo `.timeline__item` fez as duas
+   famílias brigarem — a de baixo venceu nas propriedades compartilhadas, meu
+   item herdou `align-items: center` e apareceu centralizado, e o meu
+   `list-style/margin/padding` passou a valer nas telas deles, que ninguém
+   mediu. Mesma lição do `.table-list`: não estender classe compartilhada. */
+.client-timeline { display: flex; flex-direction: column; gap: var(--space-3); list-style: none; margin: 0; padding: 0; }
+.client-timeline__item { border-left: 2px solid var(--ink-100); padding: 0 0 0 var(--space-3); display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.client-timeline__head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.client-timeline__label { font-size: var(--text-meta); font-weight: var(--weight-bold); letter-spacing: var(--tracking-wide); color: var(--purple-700); }
+.client-timeline__title { font-size: 13.5px; font-weight: var(--weight-semibold); color: var(--text-strong); overflow-wrap: anywhere; }
+.client-timeline__body { font-size: 13px; color: var(--text-body); overflow-wrap: anywhere; }
+
 .state-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; padding: var(--space-11) var(--space-5); }
 .state-empty--boxed { background: var(--surface-card); border: 1px dashed var(--border-default); border-radius: var(--radius-lg); }
 .state-empty__title { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 19px; letter-spacing: -.03em; color: var(--text-strong); }

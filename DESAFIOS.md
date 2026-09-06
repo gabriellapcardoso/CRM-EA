@@ -1,5 +1,46 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Escrevi um segundo `.timeline` e as duas famílias brigaram (2026-09-06)
+
+Criei `.timeline`, `.timeline__item` e mais quatro regras para a linha do tempo
+do cliente. O arquivo **já tinha** esse vocabulário, ~230 linhas abaixo, usado
+pelo cockpit do deal, pelo detalhe do contato e pelo `ActivityRow`.
+
+O estrago foi nos dois sentidos, e nenhum apareceu como erro:
+
+- **na minha tela:** como as regras deles vêm depois, venceram nas propriedades
+  compartilhadas. Meu item herdou `align-items: center` e apareceu centralizado,
+  sem a borda lateral que eu tinha escrito;
+- **nas telas deles:** meu `.timeline { list-style: none; margin: 0; padding: 0 }`
+  passou a valer no cockpit e no detalhe do contato, que ninguém mediu.
+
+O `text-align` do item era `start`, então a inspeção rápida dizia que estava
+tudo certo. Quem entregou a resposta foi percorrer `document.styleSheets`
+procurando **qual regra** casava o elemento — e ela era `.timeline__item`, que
+eu achei que fosse minha.
+
+**A regra: classe compartilhada não se estende, se evita.** Vocabulário de
+módulo novo nasce com prefixo próprio (`client-timeline`). Antes de escrever
+regra nova, `grep -nE "^\.nome" globals.css` — se já existe, escolher outro
+nome. É a mesma lição do `.table-list`, que eu tinha registrado dez dias antes.
+Guarda: `test/clientesSemRolagemLateral.test.ts`.
+
+## Coordenada de clique não é pixel de CSS (2026-09-06)
+
+`getBoundingClientRect()` devolve pixel CSS — no viewport de 1280. O clique da
+ferramenta de navegador usa o quadro que o screenshot informa, 800x450. Passei
+(428, 388) de um sistema para o outro, o clique caiu 160px longe do botão, nada
+aconteceu, e por um momento eu estava prestes a registrar "a remoção de marco
+não funciona".
+
+O que salvou foi não haver erro nenhum: sem mensagem na tela e sem erro no
+console, a hipótese "a mutation falhou" não se sustentava — mutation que falha
+deixa rastro. Sobrou "o clique não chegou".
+
+**A regra: converter pelo fator (quadro da ferramenta ÷ viewport) antes de
+clicar**, ou tirar a coordenada do próprio screenshot, que já vem no quadro
+certo. E antes de reportar "o botão não funciona", conferir se o clique chegou.
+
 ## `TG_TABLE_NAME = 'x' AND NEW.campo` não protege nada (2026-09-06)
 
 Função de trigger compartilhada por cinco tabelas, com as checagens opcionais

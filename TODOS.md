@@ -66,6 +66,27 @@ O advisor de segurança flagra: a função de trigger de `contact_product_intere
 fora de trigger — mas é endpoint que não devia existir. As duas equivalentes do
 Módulo Clientes já foram revogadas em `20260905130000`; falta esta.
 
+### Toda mudança de estágio grava DUAS atividades — P2
+
+Achado na verificação da F2, olhando a timeline de um cliente real: cada
+mudança de estágio aparece duplicada, com o mesmo horário e o mesmo deal, em
+dois formatos diferentes.
+
+São duas linhas distintas no banco, escritas por dois caminhos:
+
+- `lib/query/hooks/useMoveDeal.ts:143` grava `title: "Moveu para <estágio>"`,
+  sem descrição;
+- `features/deals/cockpit/DealCockpitClient.tsx:1484` grava `title: "Moveu para"`
+  com o estágio na descrição.
+
+Mover um deal pelo cockpit dispara os dois. O efeito não é só visual: qualquer
+contagem de atividade fica inflada, e o histórico polui em todas as telas que o
+mostram — Atividades, detalhe do contato, cockpit e agora a ficha do cliente.
+
+**Antes de consertar, decidir qual formato fica.** O `ActivityRow` e o
+`FocusContextPanel` fazem parse do título (`title.includes('Moveu para')`), então
+mudar o formato mexe na renderização de três telas.
+
 ### LGPD: soft-delete não é descarte — P2
 
 `client_contracts` guarda CPF/CNPJ e endereço, e `deleted_at` só oculta.
