@@ -1,5 +1,135 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## `isLoading` do TanStack tem um quarto estado, e ele mente (2026-09-05)
+
+A tela de Clientes dizia **"Nenhum cliente cadastrado ainda"** enquanto a consulta
+devolvia HTTP 400. Nenhum erro na tela, nenhum log, nada.
+
+`isLoading` é `isPending && isFetching`. Existe um estado sem nome próprio —
+`pending` **sem** estar `fetching` — em que `isLoading` é falso, `isError` é falso
+e não há dado nenhum. Ele acontece em três situações comuns: o retry ficou
+**pausado** (`fetchStatus: 'paused'`, o gerenciador de rede julgou a máquina
+offline), a query está **desabilitada** porque a sessão ainda não resolveu, e o
+intervalo entre uma tentativa e a próxima.
+
+A condição intuitiva `!isLoading && !isError && lista.length === 0` cai justamente
+nesse buraco e afirma "não há nada" sobre uma consulta que nunca respondeu.
+
+**A regra: só `isSuccess` autoriza dizer que não há nada.** Vazio não é resultado,
+e a versão de UI dessa regra é essa. A decisão virou função pura
+(`lib/clients/estadoDaConsulta.ts`) com seis estados nomeados, incluindo
+`indefinido` — o que a tela precisa dizer com todas as letras em vez de esconder.
+
+**Como apareceu:** só na verificação no navegador. Os 864 testes estavam verdes; a
+sonda no `window` foi o que mostrou `status: "pending", fetchStatus: "paused",
+isLoading: false, isError: false, failureCount: 1`. Teste de componente não pegaria
+sem simular exatamente essa combinação — por isso a guarda é a função pura.
+
+## Forcei largura no elemento errado e ganhei seis medições idênticas (2026-09-05)
+
+Varredura de seis larguras (1044, 900, 734, 660, 520, 400) pra provar que a grade
+de indicadores reflui. As seis devolveram `mainClient: 734` e a mesma
+`grid-template-columns`. Cara de teste aprovado; nenhuma medição de fato.
+
+Eu estava escrevendo `style.width` no pai do `<main>`, que não governa a largura
+dele nesse layout. O jeito que funciona é `resize_window`, **conferindo
+`window.innerWidth` depois** — a própria ferramenta já reportou sucesso sem
+redimensionar em sessão anterior.
+
+O que salvou foi imprimir a variável independente em cada linha do resultado, como
+o `AGENTS.md` §12.1 manda. Com ela na tabela, o valor congelado salta aos olhos;
+sem ela, seis linhas de "não estoura" viram evidência.
+
+**Segunda armadilha no mesmo bloco:** medir mobile sem recarregar. `resize_window`
+pra 375px sem reload deu `mainClient: 138` e coluna de 52px — a barra lateral ainda
+ocupava espaço porque os portões de dispositivo rodam no load. Com reload:
+`mainClient: 374`, uma coluna de 288px, correto. Emulação de dispositivo **exige
+reload** antes de qualquer leitura.
+
+## Li a migration inicial e chamei de estado atual (2026-09-05)
+
+Escrevi no plano do Módulo Clientes que `deal_files` usa `USING (true)` "hoje", com
+citação de linha e tudo. É verdade em `schema_init.sql:1135` e **falso há seis
+meses**: `20260221200000_fix_rls_org_scoping.sql:161` substituiu aquilo por
+isolamento via `deals.organization_id`. Eu tinha lido o arquivo certo e tirado a
+conclusão errada, porque migration é log, não estado.
+
+É a mesma forma do erro de `git branch -r` de dois dias antes: consultei uma fonte
+que descreve um momento e tratei a resposta como o presente. Naquele caso o cache
+local; neste, a primeira migration de um diretório com 47 delas.
+
+**A regra:** num diretório de migrations, a última que toca o objeto é que responde.
+Antes de afirmar o estado de uma tabela, policy ou coluna, `grep` pelo nome do objeto
+em **todas** as migrations e ler a mais recente — nunca só a que aparece primeiro.
+
+O que sobrou de útil: procurando a correção, achei que ela cobriu a tabela e **não**
+as policies de `storage.objects`. O buraco real era outro, mais estreito e mais
+grave — a linha isolada, os bytes abertos. A afirmação errada teria escondido isso
+atrás de um problema que não existia mais.
+
+## Regex de teste atravessou a fronteira do bloco e deu falso verde (2026-09-05)
+
+Guarda estática do bucket novo:
+`FOR SELECT TO authenticated[\s\S]{0,400}?storage.foldername`, casada no arquivo
+inteiro. Passou. Depois, na injeção de regressão, apaguei o isolamento da policy de
+SELECT — e **continuou passando**: os 400 caracteres do `[\s\S]{0,400}?` saíam da
+policy quebrada e achavam o `foldername` da policy **seguinte**.
+
+Só a injeção mostrou. O teste verde, sozinho, não dizia nada: ele media a existência
+das duas palavras em algum lugar do arquivo, não a relação entre elas.
+
+**A regra:** guarda estática sobre um bloco (policy, função, tabela, regra CSS)
+recorta o bloco primeiro — do cabeçalho ao terminador — e só depois afirma dentro
+dele. `[\s\S]{0,N}` entre duas âncoras não é escopo, é aposta na distância.
+
+E o corolário, que é o de sempre: **injeção de regressão em todo teste estático
+novo**. Este teste teria entrado no repositório como proteção e não protegia nada.
+
+## Função recebeu `hoje` e usou o relógio (2026-09-05)
+
+`calcularMetricas(clientes, hoje)` calculava a janela de 90 dias com
+`dataLocalISOEmDias(90)`, que conta a partir de `new Date()`. O parâmetro `hoje`
+valia pra comparar e não pra definir o limite.
+
+O teste passou. Passou porque a data que fixei era a data real do dia. Amanhã
+quebraria sozinho, sem ninguém ter tocado no código — e o diagnóstico começaria
+procurando uma regressão que não existe.
+
+**A regra:** função que aceita "agora" como parâmetro não pode ler o relógio em
+lugar nenhum do corpo. E o teste prova isso passando **dois** valores diferentes e
+exigindo resultados diferentes; com um valor só, coincidência e correção têm a mesma
+aparência.
+
+## Classe emitida sem regra é no-op silencioso (2026-09-05)
+
+O `CLAUDE.md` já registra o caso inverso — regra CSS mirando classe que nenhum
+componente emite. A forma simétrica aconteceu escrevendo este módulo: escrevi
+`className="cell-hint"` e `className="text-faint"`, e nenhuma das duas existe no
+`globals.css`. `.meta` e `.muted` é que existem.
+
+Nada avisa. O CSS não erra em classe desconhecida, o build passa, o TypeScript não
+tem opinião sobre string em `className`, e o elemento simplesmente aparece sem
+estilo — que é fácil de não notar num texto secundário.
+
+**O que pegou:** contar as ocorrências no `globals.css` antes de dar por pronto.
+Virou guarda em `test/clientesSemRolagemLateral.test.ts`, que varre o módulo e
+compara cada classe semântica emitida contra as regras do arquivo.
+
+## `z.coerce.number()` quebra a inferência do react-hook-form (2026-09-05)
+
+Campo numérico com `z.coerce.number()` no schema, `useForm<z.input<typeof schema>>`,
+e o TypeScript recusa o resolver com "Two different types with this name exist, but
+they are unrelated" — mais um erro no `error={errors.campo}`, que sai como
+`Merge<FieldError, FieldErrorsImpl<{}>>` em vez de `FieldError`.
+
+A causa: `coerce` e `preprocess` mudam o tipo de **entrada** do schema, e o
+`useForm` tipa o formulário pela entrada. O erro não fala disso em lugar nenhum, e
+a primeira reação é mexer no componente de campo.
+
+**A saída, que também é a mais explícita:** campo fica `string` no schema, validação
+por `refine`, conversão pra número no envio. Vale pros dois campos deste módulo
+(`healthScore`, `monthlyValue`) e pra qualquer outro que apareça.
+
 ## Remover uma opção de tema não remove o código que a assumia (2026-09-05)
 
 O modo escuro deixou de ser opção: o `ThemeProvider` passou a forçar

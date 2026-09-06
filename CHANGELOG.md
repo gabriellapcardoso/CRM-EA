@@ -7,6 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(clientes): governança da carteira pós-venda, fase 1 — 2026-09-05
+
+O CRM cobria bem o caminho até a venda e parava no instante do pagamento: o deal
+caía no board `pos-venda` e acabava a instrumentação. Não havia lugar que
+respondesse quanto a carteira fatura por mês, quais contratos vencem, ou em que
+ponto do onboarding cada cliente está.
+
+**A empresa passa a ser o cliente.** `crm_companies` ganhou sete colunas de
+governança (`is_client`, `client_since`, `niche`, `lifecycle_stage`, `category`,
+`health_score`, `health_source`) em vez de existir uma tabela `clients` paralela.
+O plano original propunha a tabela separada; a revisão adversarial mostrou o
+custo, e ele é permanente: duas identidades obrigariam a sincronizar `name`,
+`owner_id`, `organization_id`, status e `deleted_at` pra sempre, e toda consulta
+de contato ou deal traduziria `client_company_id → clients.company_id →
+clients.id`. `deals.client_company_id` e `contacts.client_company_id` agora
+apontam pro cliente sem tradução nenhuma.
+
+**Contrato é 1:N, com vigência.** `client_contracts` guarda valor, período,
+renovação, escopo, forma de pagamento e os dados cadastrais. Contrato único
+perderia a história — renovação, reajuste, churn e reativação são fatos datados,
+e sobrescrever uma linha impede explicar o MRR do mês passado. Um índice único
+parcial garante **um** contrato vigente por empresa: sem ele o join da listagem
+multiplica a linha e o MRR total sobe sem nada acusar, porque a soma fica maior
+e parece certa.
+
+Satélites: `client_context` (1:1, com links, ofertas e metas em jsonb),
+`client_assets` (dossiê), `client_rag_store` (1:1 — **um** store contém muitos
+documentos; guardar o store por arquivo é a cardinalidade errada e teria que ser
+desfeita sobre dado real), `client_team` e `client_events`. A timeline é
+derivada de `activities` e `deal_stage_events`; `client_events` fica só pros
+marcos que ninguém registra como atividade.
+
+**O bucket do dossiê não copia a policy do `deal-files`.** A RLS da tabela
+`deal_files` isola por organização desde `20260221200000`, mas as três policies
+de `storage.objects` continuam `USING (bucket_id = 'deal-files')` pra todo
+`authenticated` — a linha é isolada e os bytes não. O `client-assets` usa o
+formato do `messaging-media`, prefixo de pasta por organização, nas **quatro**
+operações. O buraco do `deal-files` é anterior a esta entrega e está no
+`TODOS.md` como P1.
+
+Contrato assinado nunca vai pro File Search Store: `CHECK (NOT (kind =
+'contrato' AND rag_document_id IS NOT NULL))`. CPF e endereço não são enviados
+a fornecedor de IA nenhum.
+
+**Telas:** `/clients` com os quatro indicadores (receita mensal, clientes
+ativos, LTV médio realizado, alertas de renovação de 90 dias), busca e listagem
+em tabela; `/clients/[clientId]` com a aba Comercial. Busca e página moram na
+URL. Os indicadores declaram o próprio recorte — "calculado sobre os N desta
+página" — em vez de parecerem o total da carteira.
+
+**Health score é digitado pela agência**, não é pesquisa respondida pelo
+cliente. `health_source` grava a procedência pra que, quando existir NPS de
+verdade, dê pra separar um número do outro. Ausência de pontuação é estado
+próprio, diferente de zero: cliente novo ainda não foi avaliado, e zero é churn.
+
+Fases seguintes no `PLANO-CLIENTES.md`: ficha completa (F2), grade e kanban
+(F3), dossiê com RAG (F4), contexto criativo (F5), assistente de cadastro com
+leitura do site (F6).
+
+A auditoria de cobertura do `/ship` fechou mais três lacunas: a escolha do
+contrato vigente (que ignora rascunho, encerrado e excluído — se ignorasse o
+`deleted_at`, um contrato apagado voltaria a somar no MRR), os `refine` dos
+formulários, e a ligação de cache entre as mutations de empresa e a carteira,
+que vive num arquivo de outro módulo e sumiria no primeiro refactor por lá.
+
+**A revisão do PR #77 achou sete defeitos, seis já corrigidos aqui.** O maior:
+as seis tabelas novas declaravam `organization_id NOT NULL`, o service não
+enviava o campo, e **nenhum trigger o preenchia** — todo cadastro de contrato
+falharia. `set_organization_id_from_profile()` existe desde `20260222000000`,
+criada por esse mesmo motivo, e cobria cinco tabelas; agora cobre as seis novas
+também. A função de checagem cross-org levanta exceção se o campo chegar vazio,
+para que uma inversão na ordem dos triggers falhe alto em vez de gravar linha
+sem organização.
+
+Os outros: o `CHECK` do documento aceitava CPF sem tipo declarado (em SQL,
+`NULL AND TRUE` é `NULL`, e `CHECK` só rejeita `FALSE`); `monthly_value` aceitava
+negativo, o que faria o MRR diminuir; a listagem baixava documento e endereço de
+todos os contratos de 25 empresas por página numa tela que exibe três campos;
+editar o valor mensal apagava escopo e observações; `/clients/{id}` abria
+qualquer empresa e criava contrato pra quem não está na carteira; e restaurar
+`?p=2` da URL caía sempre na página 1, porque o debounce da busca zerava a
+página 300ms depois.
+
+`client_contracts` usa `ON DELETE RESTRICT`, sozinho entre as satélites:
+`companiesService.delete()` faz DELETE físico, e com CASCADE um clique em
+"excluir empresa" apagaria contrato com CNPJ sem aviso.
+
+Arquivos: `supabase/migrations/20260905120000_modulo_clientes.sql`,
+`types/clients.ts`, `lib/clients/{health,documento,metricas}.ts`,
+`lib/supabase/clients.ts`, `lib/query/hooks/useClientsQuery.ts`,
+`features/clients/**`, `app/(protected)/clients/**`, `app/globals.css`
+(`.kpi-grid--fluid`), `lib/navigation/origem.ts`, `lib/validations/schemas.ts`,
+`components/Layout.tsx`, `lib/query/queryKeys.ts`.
+
 ### fix(inbox): o detalhe do deal ficou escuro depois que o app virou claro-só — 2026-09-05
 
 O `FocusContextPanel` — a tela de "ver detalhes" do Inbox, e também a rota

@@ -923,6 +923,14 @@ body {
 .card-kpi__delta { font-size: 12px; font-weight: var(--weight-semibold); color: var(--text-muted); }
 .card-kpi__delta--up { color: var(--success); }
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); }
+/* Variante fluida dos indicadores (Módulo Clientes, 2026-09-05).
+   A `.kpi-grid` original é `repeat(4, 1fr)` fixo: com a barra lateral e o
+   painel de IA abertos ao mesmo tempo num monitor de 1280, sobram ~660px e
+   quatro colunas rígidas estouram pro lado. `min(200px, 100%)` e não `200px`
+   puro pela mesma razão do `.card-approval`: piso puro sobrepõe a largura do
+   container e a rolagem lateral volta. Modificador em vez de alterar a
+   original, que o dashboard e o inbox usam e ninguém mediu. */
+.kpi-grid--fluid { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
 
 .state-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; padding: var(--space-11) var(--space-5); }
 .state-empty--boxed { background: var(--surface-card); border: 1px dashed var(--border-default); border-radius: var(--radius-lg); }

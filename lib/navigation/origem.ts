@@ -24,6 +24,7 @@ export type OrigemId =
   | 'board'
   | 'negociacao'
   | 'decisoes'
+  | 'clientes'
   | 'deal';
 
 export interface Origem {
@@ -46,6 +47,7 @@ const MAPA: Record<OrigemId, Origem> = {
   board: { href: '/boards', label: '← voltar pro board' },
   negociacao: PADRAO,
   decisoes: { href: '/decisions', label: '← voltar pras decisões' },
+  clientes: { href: '/clients', label: '← voltar pra clientes' },
   deal: { href: '/boards', label: '← voltar pro deal' },
 };
 

@@ -1,5 +1,78 @@
 # TODOS
 
+## Módulo Clientes
+
+### Bucket `deal-files` deixa qualquer autenticado ler qualquer arquivo — P1
+
+A RLS da tabela `deal_files` foi corrigida em
+`20260221200000_fix_rls_org_scoping.sql:161`: hoje isola por
+`deals.organization_id`. As policies de `storage.objects`, não —
+`deal_files_read`, `deal_files_upload` e `deal_files_delete` continuam
+`USING (bucket_id = 'deal-files')` pra todo `authenticated`
+(`schema_init.sql:1149-1163`), e nenhuma migration posterior tocou nelas.
+
+**Consequência:** a linha que descreve o arquivo é isolada por organização; os
+bytes do arquivo não. Qualquer usuário logado de qualquer organização baixa
+qualquer anexo de deal do bucket se souber o caminho.
+
+**Conserto:** o formato de `20260210100002_create_messaging_media_bucket.sql` —
+`(storage.foldername(name))[1] = get_user_org_id()::text` — nas quatro
+operações. O `client-assets` já nasceu assim
+(`20260905120000_modulo_clientes.sql`), e `test/clientesMigrationGuards.test.ts`
+guarda esse formato. Falta migrar o `deal-files`, o que exige mover os arquivos
+existentes pra dentro de um prefixo de organização: **não é só trocar a policy**,
+os objetos já gravados estão na raiz do bucket.
+
+### `companiesService.delete()` apaga empresa de verdade — P2
+
+`lib/supabase/contacts.ts:778` faz `.delete()` físico em `crm_companies`, apesar de
+o `CLAUDE.md` listar a tabela entre as oito de soft-delete e de a coluna
+`deleted_at` existir e ser filtrada em toda leitura. Achado na revisão do PR #77.
+
+Enquanto era só empresa, o estrago era limitado. Com o Módulo Clientes a mesma
+linha carrega governança, e as satélites penduram contrato, contexto, equipe e
+eventos nela. `client_contracts` usa `ON DELETE RESTRICT` justamente por isso: a
+exclusão passa a falhar em vez de destruir CNPJ e endereço em silêncio.
+
+**O que falta:** trocar o `.delete()` por `UPDATE deleted_at`, e antes disso varrer
+a tela de Empresas atrás de consulta que não filtre `deleted_at` — ela nunca foi
+exercitada com soft-delete e uma empresa "excluída" pode voltar a aparecer.
+Enquanto não for feito, quem tentar excluir uma empresa com contrato vai ver a
+mensagem crua de violação de FK do Postgres.
+
+### LGPD: soft-delete não é descarte — P2
+
+`client_contracts` guarda CPF/CNPJ e endereço, e `deleted_at` só oculta.
+Retenção após churn, atendimento a pedido de eliminação, e o que fazer com
+backups não estão definidos. A F1 entrega o campo e a tela; a política é decisão
+da fundadora, não de código. Enquanto não existir, o dado fica no banco
+indefinidamente.
+
+### Qualquer membro da organização lê o CPF do cliente — P2
+
+Toda policy do repositório é `FOR ALL TO authenticated` por organização, e a do
+`client_contracts` segue o mesmo formato. Para uma agência de poucas pessoas sem
+sistema de papéis isso é decisão consciente, não descuido — mas está escrito aqui
+porque deixa de ser aceitável no dia em que a equipe crescer. O conserto pede
+papéis (`profiles.role` já existe?), policy separada por operação e, possivelmente,
+mascaramento na leitura.
+
+### Indicadores da carteira contam só a página carregada — P3
+
+`calcularMetricas()` roda sobre os clientes que vieram na página (25 por vez). Com
+carteira maior que isso, receita e LTV descrevem a página, não a carteira — e a
+tela diz isso em vez de deixar passar por total. O conserto é agregação no banco
+(uma RPC que soma `client_contracts` vigentes por organização), e só vale a pena
+quando a carteira passar de uma página.
+
+### `features/dashboard/components/StatCard.tsx` não tem consumidor — P3
+
+Componente Tailwind com variante `dark:` (`bg-slate-100 dark:bg-white/10`) num app
+que é claro-só, e nenhum arquivo o importa — o vocabulário de indicador que o
+produto fala é `.card-kpi`, semântico. O Módulo Clientes quase o reusou; usar
+`.card-kpi` foi deliberado. Apagar depois de confirmar por `grep` que segue sem
+call site.
+
 ## Telas de detalhe
 
 ### Vinculação de empresa pelo detalhe do contato não foi testada ponta-a-ponta — P3

@@ -2,6 +2,7 @@ import { createQueryKeys, createExtendedQueryKeys } from './createQueryKeys';
 import { PaginationState, ContactsServerFilters } from '@/types';
 import type { ConversationFilters } from '@/lib/messaging/types';
 import type { Query } from '@tanstack/react-query';
+import type { ClientsFilters } from '@/types/clients';
 
 /**
  * Query keys centralizadas para gerenciamento de cache.
@@ -32,6 +33,15 @@ export const queryKeys = {
     })),
 
     companies: createQueryKeys('companies'),
+
+    // Clientes (carteira pós-venda). Nasce paginada: a listagem tem busca,
+    // filtros e três formatos desde a F3, e `contacts` já pagou uma vez o
+    // preço de começar com lists() simples e parametrizar depois.
+    clients: createExtendedQueryKeys('clients', base => ({
+        paginated: (pagination: PaginationState, filters?: ClientsFilters) =>
+            [...base.all, 'paginated', pagination, filters] as const,
+        contracts: (companyId: string) => [...base.all, 'contracts', companyId] as const,
+    })),
     boards: createQueryKeys('boards'),
 
     // Activities with custom extension for byDeal
