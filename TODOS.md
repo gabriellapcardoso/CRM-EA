@@ -66,6 +66,22 @@ O advisor de segurança flagra: a função de trigger de `contact_product_intere
 fora de trigger — mas é endpoint que não devia existir. As duas equivalentes do
 Módulo Clientes já foram revogadas em `20260905130000`; falta esta.
 
+### `AuthSessionMissingError` no console de toda página — P3
+
+Achado no `/qa` da F2, mas não é da F2: `context/AuthContext.tsx:188` chama
+`sb.auth.getUser()` na montagem, antes de a sessão ser restaurada do storage. O
+erro esperado desse estado vira `console.error`, duas vezes por carregamento, em
+toda página da app. O `onAuthStateChange` assume logo em seguida e a tela
+funciona normalmente.
+
+Confirmado em `/dashboard` e na ficha do cliente. A linha é de 2026-04-02
+(`201a0d9`).
+
+Não quebra nada, e é exatamente por isso que incomoda: ensina a ignorar erro de
+console, que é onde um problema de auth de verdade apareceria. Conserto: tratar
+`AuthSessionMissingError` como o estado esperado de "ainda não há sessão" e não
+logar como erro — mantendo o `console.error` para os outros casos.
+
 ### `.in()` sem teto na contagem de ações da IA — P3
 
 Achado no `/review` da F2. `contarAcoesDeIA` (`lib/supabase/clients.ts`) faz três
