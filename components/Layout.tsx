@@ -33,6 +33,7 @@ const PAGE_TITLES: Record<string, { heading: string; sub: string }> = {
   '/inbox': { heading: 'Inbox', sub: 'o que precisa da sua atenção agora' },
   '/messaging': { heading: 'Mensagens', sub: 'conversas por WhatsApp, e-mail e Instagram' },
   '/contacts': { heading: 'Contatos', sub: 'pessoas e empresas do seu funil' },
+  '/clients': { heading: 'Clientes', sub: 'a carteira depois da venda' },
   '/activities': { heading: 'Atividades', sub: 'tarefas, ligações e follow-ups' },
   '/decisions': { heading: 'IA · decisões', sub: 'o que o agente fez e o que espera você' },
   '/ai': { heading: 'Assistente IA', sub: 'converse com o agente' },
@@ -218,6 +219,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <NavLink to="/inbox" label="Inbox" prefetch="inbox" isActive={pathname === '/inbox'} />
               <NavLink to="/messaging" label="Mensagens" badge={unreadMessagesCount} isActive={pathname.startsWith('/messaging')} />
               <NavLink to="/contacts" label="Contatos" prefetch="contacts" isActive={pathname === '/contacts'} />
+              <NavLink to="/clients" label="Clientes" isActive={pathname.startsWith('/clients')} />
               <NavLink to="/activities" label="Atividades" prefetch="activities" isActive={pathname === '/activities'} />
             </div>
             <div className="nav__group">

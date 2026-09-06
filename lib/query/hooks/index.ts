@@ -40,6 +40,16 @@ export {
   type ContactsFilters,
 } from './useContactsQuery';
 
+// Clientes (carteira pós-venda)
+export {
+  useClients,
+  useClient,
+  useClientContracts,
+  useCreateClient,
+  useUpdateClient,
+  useSaveContract,
+} from './useClientsQuery';
+
 // Companies
 export {
   useCompanies,

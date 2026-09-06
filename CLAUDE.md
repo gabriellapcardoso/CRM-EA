@@ -217,6 +217,55 @@ Modelo correto em `20260904000000_pg_net_timeout_health_checks.sql`; o formato q
 
 **Telas de detalhe são página, não painel (2026-09-04)**: o detalhe do contato era um `.detail-pane` de 340px encostado na lista e agora é `/contacts/[contactId]` em tela cheia — o estado saiu do `useState` e foi pra URL, que dá pra recarregar e mandar pra alguém. `.detail-pane` **continua no CSS porque o inbox ainda usa**; não usar em tela nova. Na mesma revisão **só a lista de contatos** perdeu o piso de largura, via `.table-list--fit` (a coluna empresa virou segunda linha do nome, `.cell-name__stack`); `.table-list` mantém o `min-width: 840px` porque a lista do pipeline (`KanbanList`) e o catálogo de produtos usam a mesma classe, têm outras colunas e não foram medidos — tirar de todas de uma vez espremeria tabela que ninguém olhou. O `.card-approval` trocou `1fr 268px` por `repeat(auto-fit, minmax(min(320px, 100%), 1fr))`: o `min()` não é enfeite, piso puro de 320px sobrepõe a largura do container e o card volta a rolar pro lado. Piso medido da tabela de contatos: **648px + 40px de padding do `.table-list__scroll`** — cabe em 1280px com a barra lateral, e ainda rola ~28px se a barra E o painel de IA estiverem abertos ao mesmo tempo num monitor de 1280. Guarda: `test/telasDeDetalheSemRolagemLateral.test.ts`.
 
+**`isLoading` do TanStack não distingue "nada ainda" de "não há nada".** Ele é
+`isPending && isFetching`; com o retry pausado (rede julgada offline), com a query
+desabilitada pela sessão que ainda não resolveu, ou entre duas tentativas, o estado
+é `pending` sem `fetching`: `isLoading` falso, `isError` falso, zero dados. A
+condição `!isLoading && !isError && lista.length === 0` afirma "não há nada" sobre
+uma consulta que falhou — foi o que a tela de Clientes mostrou com a consulta
+devolvendo 400. **Só `isSuccess` autoriza afirmar vazio**, e o estado indefinido
+merece texto próprio na tela. `lib/clients/estadoDaConsulta.ts` resolve isso numa
+função pura de seis estados; tela nova usa ela em vez de recombinar booleanos.
+
+**Módulo Clientes: a empresa É o cliente (2026-09-05).** `crm_companies` ganhou as
+colunas de governança (`is_client`, `client_since`, `niche`, `lifecycle_stage`,
+`category`, `health_score`, `health_source`) em vez de existir uma tabela `clients`
+paralela — duas identidades obrigariam a sincronizar `name`, `owner_id`,
+`organization_id`, status e `deleted_at` pra sempre, e toda consulta de contato ou
+deal traduziria `client_company_id → clients.company_id → clients.id`. As satélites
+(`client_contracts`, `client_context`, `client_assets`, `client_rag_store`,
+`client_team`, `client_events`) chaveiam por `company_id`. **`lifecycle_stage` é o
+terceiro estado de propósito**, ao lado de `contacts.stage` e dos estágios de board:
+ele descreve a relação com a conta, sobrevive a qualquer deal, e **nunca é escrito
+por automação de deal**. Timeline é derivada de `activities` + `deal_stage_events`;
+`client_events` só guarda marco manual. `client_contracts` é 1:N com vigência, e o
+índice único parcial `idx_client_contracts_um_vigente` é o que impede o join da
+listagem de multiplicar a linha e inflar o MRR sem nada acusar. Guarda:
+`test/clientesMigrationGuards.test.ts`.
+
+**Policy de bucket privado não é `USING (bucket_id = '...')`.** Esse formato libera
+todo objeto do bucket pra qualquer `authenticated`, de qualquer organização — a
+linha na tabela fica isolada e os bytes não. É o estado do `deal-files` até hoje
+(`schema_init.sql:1149-1163`; a RLS da tabela `deal_files` foi corrigida em
+`20260221200000`, as policies de `storage.objects` não — ver `TODOS.md`). O formato
+certo é o do `messaging-media`: `(storage.foldername(name))[1] =
+get_user_org_id()::text`, aplicado a INSERT, SELECT, UPDATE e DELETE. Bucket novo
+copia esse, e o caminho do arquivo começa pelo id da organização.
+
+**PII não entra no caminho de IA.** `client_assets.kind = 'contrato'` é excluído do
+upload pro File Search Store por constraint no banco (`CHECK (NOT (kind =
+'contrato' AND rag_document_id IS NOT NULL))`), não só por `if` na aplicação — a
+constraint sobrevive a refactor. Documento é guardado só com dígitos; o CHECK do
+banco confere o tamanho contra `document_type` e o dígito verificador é da
+aplicação (`lib/clients/documento.ts`), porque `11111111111` passa no tamanho.
+
+**Formulário: `z.coerce.number()` e `z.preprocess()` quebram o react-hook-form.**
+Eles mudam o tipo de ENTRADA do schema (`z.input`), e o `useForm` perde a
+inferência do campo — o erro sai como `Merge<FieldError, FieldErrorsImpl<{}>>`, que
+não casa com o `FieldError` que o `InputField` espera, e o resolver deixa de ser
+atribuível. Manter o campo como `string` no schema, validar com `refine`, e
+converter pra número no envio. Explícito, e não precisa de cast em lugar nenhum.
+
 **O app é claro-só, e isso não é um tema — é a ausência de um.** O `ThemeProvider` (`context/ThemeContext.tsx`) força `darkMode = false`, remove a classe `dark` do `<html>` e apaga `crm_dark_mode` do `localStorage`; `useTheme` não tem nenhum consumidor. Componente novo usa os tokens do design system (`--surface-card`, `--text-strong`, `--ink-*`), nunca paleta `slate-*` fixa e nunca variante `dark:`. Em 2026-09-05 o `FocusContextPanel` (a tela de "ver detalhes" do Inbox, e a rota `/deals/[dealId]/cockpit`) apareceu escuro no meio do produto claro: 130 ocorrências de paleta escura fixa, órfãs desde que o modo escuro saiu. Ao remover variante visual, varrer quem a assumia — `grep -rlE "(bg|text|border)-(slate|gray|zinc)-(700|800|900|950)|text-white|bg-white/" --include='*.tsx' features components`.
 
 **Conversão de paleta por classe não alcança `style` inline.** Depois de converter as 130 classes, um `#334155` sobreviveu num `style={{ backgroundColor }}` e o ponto do estágio não alcançado continuou escuro — sobre fundo claro, lendo como "preenchido", o inverso do que significa. Varrer também os literais (`grep -oE "'#[0-9a-fA-F]{3,8}'"`) e conferir no DOM renderizado por luminosidade de fundo, não na leitura do arquivo.
