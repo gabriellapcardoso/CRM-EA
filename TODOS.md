@@ -23,6 +23,23 @@ guarda esse formato. Falta migrar o `deal-files`, o que exige mover os arquivos
 existentes pra dentro de um prefixo de organização: **não é só trocar a policy**,
 os objetos já gravados estão na raiz do bucket.
 
+### `companiesService.delete()` apaga empresa de verdade — P2
+
+`lib/supabase/contacts.ts:778` faz `.delete()` físico em `crm_companies`, apesar de
+o `CLAUDE.md` listar a tabela entre as oito de soft-delete e de a coluna
+`deleted_at` existir e ser filtrada em toda leitura. Achado na revisão do PR #77.
+
+Enquanto era só empresa, o estrago era limitado. Com o Módulo Clientes a mesma
+linha carrega governança, e as satélites penduram contrato, contexto, equipe e
+eventos nela. `client_contracts` usa `ON DELETE RESTRICT` justamente por isso: a
+exclusão passa a falhar em vez de destruir CNPJ e endereço em silêncio.
+
+**O que falta:** trocar o `.delete()` por `UPDATE deleted_at`, e antes disso varrer
+a tela de Empresas atrás de consulta que não filtre `deleted_at` — ela nunca foi
+exercitada com soft-delete e uma empresa "excluída" pode voltar a aparecer.
+Enquanto não for feito, quem tentar excluir uma empresa com contrato vai ver a
+mensagem crua de violação de FK do Postgres.
+
 ### LGPD: soft-delete não é descarte — P2
 
 `client_contracts` guarda CPF/CNPJ e endereço, e `deleted_at` só oculta.

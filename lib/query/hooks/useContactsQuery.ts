@@ -684,6 +684,15 @@ export const useBulkDeleteCompanies = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
+      // A mesma linha de `crm_companies` também é o cliente do Módulo Clientes
+      // (ela ganhou as colunas de governança em 2026-09-05). Sem isto, renomear
+      // ou excluir uma empresa aqui deixa a carteira e a ficha exibindo a versão
+      // antiga durante todo o staleTime. Invalida TUDO de `clients`, detail
+      // incluso: nenhuma destas mutations escreve otimisticamente nesse cache,
+      // então não há escrita pra atropelar.
+      queryClient.invalidateQueries({
+        predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'clients',
+      });
       queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
       // Use DEALS_VIEW_KEY — é a única source of truth para deals (SSOT)
       queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
@@ -720,6 +729,15 @@ export const useCreateCompany = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
+      // A mesma linha de `crm_companies` também é o cliente do Módulo Clientes
+      // (ela ganhou as colunas de governança em 2026-09-05). Sem isto, renomear
+      // ou excluir uma empresa aqui deixa a carteira e a ficha exibindo a versão
+      // antiga durante todo o staleTime. Invalida TUDO de `clients`, detail
+      // incluso: nenhuma destas mutations escreve otimisticamente nesse cache,
+      // então não há escrita pra atropelar.
+      queryClient.invalidateQueries({
+        predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'clients',
+      });
     },
   });
 };
@@ -738,6 +756,15 @@ export const useUpdateCompany = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
+      // A mesma linha de `crm_companies` também é o cliente do Módulo Clientes
+      // (ela ganhou as colunas de governança em 2026-09-05). Sem isto, renomear
+      // ou excluir uma empresa aqui deixa a carteira e a ficha exibindo a versão
+      // antiga durante todo o staleTime. Invalida TUDO de `clients`, detail
+      // incluso: nenhuma destas mutations escreve otimisticamente nesse cache,
+      // então não há escrita pra atropelar.
+      queryClient.invalidateQueries({
+        predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'clients',
+      });
     },
   });
 };
@@ -756,6 +783,15 @@ export const useDeleteCompany = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.lists() });
+      // A mesma linha de `crm_companies` também é o cliente do Módulo Clientes
+      // (ela ganhou as colunas de governança em 2026-09-05). Sem isto, renomear
+      // ou excluir uma empresa aqui deixa a carteira e a ficha exibindo a versão
+      // antiga durante todo o staleTime. Invalida TUDO de `clients`, detail
+      // incluso: nenhuma destas mutations escreve otimisticamente nesse cache,
+      // então não há escrita pra atropelar.
+      queryClient.invalidateQueries({
+        predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'clients',
+      });
       queryClient.invalidateQueries({ predicate: entityCachesExceptDetail('contacts') });
     },
   });

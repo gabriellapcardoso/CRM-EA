@@ -41,6 +41,8 @@ interface Props {
     onSubmit: (dados: ClientFormData) => void;
     clienteEmEdicao?: ClientView | null;
     salvando?: boolean;
+    /** Mensagem da última tentativa que falhou. */
+    erro?: string;
 }
 
 /**
@@ -58,6 +60,7 @@ export const ClientFormModal: React.FC<Props> = ({
     onSubmit,
     clienteEmEdicao,
     salvando,
+    erro,
 }) => {
     const {
         register,
@@ -149,6 +152,8 @@ export const ClientFormModal: React.FC<Props> = ({
                     error={errors.healthScore}
                     registration={register('healthScore')}
                 />
+
+                {erro && <p className="muted">Não foi possível salvar: {erro}</p>}
 
                 <SubmitButton isLoading={!!salvando}>
                     {clienteEmEdicao ? 'Salvar' : 'Cadastrar Cliente'}

@@ -70,9 +70,16 @@ COMMENT ON COLUMN public.crm_companies.lifecycle_stage IS
 -- são fatos datados, e sobrescrever uma linha impede explicar o MRR do mês
 -- passado. TABELA DE PII: document_number e endereço. Ver §7.1 e §7.5 do plano.
 
+-- ON DELETE RESTRICT, não CASCADE, e é a única satélite assim.
+-- `companiesService.delete()` (lib/supabase/contacts.ts:778) faz DELETE FÍSICO
+-- em crm_companies, apesar de a tabela estar na lista de soft-delete do
+-- CLAUDE.md. Com CASCADE, um clique em "excluir empresa" na tela de Contatos
+-- apagaria de vez o contrato com CNPJ e endereço — e os arquivos no Storage
+-- ficariam órfãos, porque cascata de banco não alcança bucket. RESTRICT faz a
+-- exclusão falhar em vez de destruir dado cadastral em silêncio.
 CREATE TABLE IF NOT EXISTS public.client_contracts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.crm_companies(id) ON DELETE CASCADE,
+    company_id UUID NOT NULL REFERENCES public.crm_companies(id) ON DELETE RESTRICT,
 
     monthly_value NUMERIC NOT NULL DEFAULT 0,
     starts_at DATE NOT NULL,
@@ -120,9 +127,24 @@ DO $$ BEGIN
   ALTER TABLE public.client_contracts ADD CONSTRAINT client_contracts_doc_number_check
     CHECK (
       document_number IS NULL
-      OR (document_type = 'cpf'  AND document_number ~ '^[0-9]{11}$')
-      OR (document_type = 'cnpj' AND document_number ~ '^[0-9]{14}$')
+      OR (
+        -- O tipo é exigido explicitamente. Sem esta linha, document_type NULL
+        -- faz cada disjunção virar NULL (NULL AND TRUE = NULL), o CHECK inteiro
+        -- avalia NULL, e CHECK só rejeita FALSE — um CPF entraria sem tipo.
+        document_type IS NOT NULL
+        AND (
+          (document_type = 'cpf'  AND document_number ~ '^[0-9]{11}$')
+          OR (document_type = 'cnpj' AND document_number ~ '^[0-9]{14}$')
+        )
+      )
     );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- MRR e LTV somam este campo. Valor negativo faria os indicadores DIMINUIREM
+-- e ninguém suspeitaria do número, só do resultado.
+DO $$ BEGIN
+  ALTER TABLE public.client_contracts ADD CONSTRAINT client_contracts_valor_check
+    CHECK (monthly_value >= 0);
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
@@ -366,6 +388,53 @@ CREATE POLICY "client_events_org_isolate" ON public.client_events
 -- apontar company_id/profile_id de OUTRA organização — FK simples não valida
 -- isso. Mesmo padrão de check_contact_product_interest_tenant (20260806140000).
 
+-- ---------------------------------------------------------------------------
+-- 9a. organization_id preenchido por trigger
+-- ---------------------------------------------------------------------------
+-- `set_organization_id_from_profile()` existe desde 20260222000000, criada
+-- justamente porque vários services faziam INSERT sem organization_id
+-- assumindo um trigger que não existia — e levavam 403 da RLS. Ela cobre
+-- contacts, crm_companies, activities, deal_items e board_stages. As tabelas
+-- deste módulo precisam da mesma cobertura: elas declaram organization_id
+-- NOT NULL e o service não envia o campo.
+--
+-- ORDEM IMPORTA. O Postgres dispara triggers BEFORE de mesma operação em
+-- ordem alfabética de NOME. `client_*_set_org_id` vem antes de
+-- `trg_client_*_tenant`, então o preenchimento acontece antes da checagem.
+-- Isso não fica de pé por sorte: a função de checagem abaixo levanta exceção
+-- se organization_id chegar NULL, então qualquer renomeação que inverta a
+-- ordem falha alto em vez de gravar linha sem organização.
+
+DROP TRIGGER IF EXISTS client_contracts_set_org_id ON public.client_contracts;
+CREATE TRIGGER client_contracts_set_org_id
+  BEFORE INSERT ON public.client_contracts
+  FOR EACH ROW EXECUTE FUNCTION public.set_organization_id_from_profile();
+
+DROP TRIGGER IF EXISTS client_context_set_org_id ON public.client_context;
+CREATE TRIGGER client_context_set_org_id
+  BEFORE INSERT ON public.client_context
+  FOR EACH ROW EXECUTE FUNCTION public.set_organization_id_from_profile();
+
+DROP TRIGGER IF EXISTS client_rag_store_set_org_id ON public.client_rag_store;
+CREATE TRIGGER client_rag_store_set_org_id
+  BEFORE INSERT ON public.client_rag_store
+  FOR EACH ROW EXECUTE FUNCTION public.set_organization_id_from_profile();
+
+DROP TRIGGER IF EXISTS client_assets_set_org_id ON public.client_assets;
+CREATE TRIGGER client_assets_set_org_id
+  BEFORE INSERT ON public.client_assets
+  FOR EACH ROW EXECUTE FUNCTION public.set_organization_id_from_profile();
+
+DROP TRIGGER IF EXISTS client_team_set_org_id ON public.client_team;
+CREATE TRIGGER client_team_set_org_id
+  BEFORE INSERT ON public.client_team
+  FOR EACH ROW EXECUTE FUNCTION public.set_organization_id_from_profile();
+
+DROP TRIGGER IF EXISTS client_events_set_org_id ON public.client_events;
+CREATE TRIGGER client_events_set_org_id
+  BEFORE INSERT ON public.client_events
+  FOR EACH ROW EXECUTE FUNCTION public.set_organization_id_from_profile();
+
 CREATE OR REPLACE FUNCTION public.check_client_company_tenant()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -373,12 +442,60 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Falha alta se o preenchimento não aconteceu. Sem isto, uma inversão na
+  -- ordem dos triggers deixaria a comparação com NULL passar em silêncio.
+  IF NEW.organization_id IS NULL THEN
+    RAISE EXCEPTION 'organization_id não foi preenchido — confira o trigger client_*_set_org_id';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM crm_companies
     WHERE id = NEW.company_id AND organization_id = NEW.organization_id
   ) THEN
     RAISE EXCEPTION 'company_id não pertence à organização informada';
   END IF;
+
+  -- Perfis referenciados também têm que ser da mesma organização. RLS protege
+  -- a LINHA; nada impede a linha da organização A apontar um perfil da B, e a
+  -- FK aceita o UUID sem opinião.
+  IF TG_TABLE_NAME = 'client_contracts' AND NEW.owner_id IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM profiles
+       WHERE id = NEW.owner_id AND organization_id = NEW.organization_id
+     ) THEN
+    RAISE EXCEPTION 'owner_id não pertence à organização informada';
+  END IF;
+
+  IF TG_TABLE_NAME = 'client_assets' AND NEW.created_by IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM profiles
+       WHERE id = NEW.created_by AND organization_id = NEW.organization_id
+     ) THEN
+    RAISE EXCEPTION 'created_by não pertence à organização informada';
+  END IF;
+
+  IF TG_TABLE_NAME = 'client_events' AND NEW.actor_id IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM profiles
+       WHERE id = NEW.actor_id AND organization_id = NEW.organization_id
+     ) THEN
+    RAISE EXCEPTION 'actor_id não pertence à organização informada';
+  END IF;
+
+  -- O contrato assinado tem que ser um asset DA MESMA EMPRESA e do tipo
+  -- contrato — senão dá pra apontar o contrato de outro cliente como se
+  -- fosse deste.
+  IF TG_TABLE_NAME = 'client_contracts' AND NEW.signed_asset_id IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM client_assets
+       WHERE id = NEW.signed_asset_id
+         AND company_id = NEW.company_id
+         AND organization_id = NEW.organization_id
+         AND kind = 'contrato'
+     ) THEN
+    RAISE EXCEPTION 'signed_asset_id não é um contrato desta empresa';
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -416,6 +533,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  IF NEW.organization_id IS NULL THEN
+    RAISE EXCEPTION 'organization_id não foi preenchido — confira o trigger client_team_set_org_id';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM crm_companies
     WHERE id = NEW.company_id AND organization_id = NEW.organization_id

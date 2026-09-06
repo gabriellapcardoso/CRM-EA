@@ -49,13 +49,18 @@ export const ClientsPage: React.FC = () => {
         setPagina(Number.isFinite(p) && p >= 0 ? p : 0);
     }, []);
 
+    // Debounce da busca. Só volta pra primeira página quando o termo MUDOU de
+    // verdade: sem esta comparação, o efeito dispara também na montagem e, 300ms
+    // depois, apaga a página que o efeito acima acabou de restaurar do `?p=` —
+    // abrir /clients?p=2 terminava sempre na página 1.
     React.useEffect(() => {
+        if (busca === buscaAplicada) return;
         const t = setTimeout(() => {
             setBuscaAplicada(busca);
             setPagina(0);
         }, 300);
         return () => clearTimeout(t);
-    }, [busca]);
+    }, [busca, buscaAplicada]);
 
     React.useEffect(() => {
         const params = new URLSearchParams();
@@ -93,17 +98,25 @@ export const ClientsPage: React.FC = () => {
         [clientes],
     );
 
+    // `mutateAsync` rejeita quando a criação falha. Sem o catch a exceção sobe
+    // pelo handler do formulário e vira rejeição não tratada: o modal fica
+    // aberto, sem mensagem, e a pessoa não sabe se tenta de novo. O estado de
+    // erro da mutation é mostrado no modal.
     const aoCadastrar = async (dados: ClientFormData) => {
-        await criar.mutateAsync({
-            name: dados.name,
-            niche: dados.niche || undefined,
-            industry: dados.industry || undefined,
-            website: dados.website || undefined,
-            lifecycleStage: dados.lifecycleStage,
-            category: dados.category || undefined,
-            healthScore: dados.healthScore ? Number(dados.healthScore) : undefined,
-        });
-        setModalAberto(false);
+        try {
+            await criar.mutateAsync({
+                name: dados.name,
+                niche: dados.niche || undefined,
+                industry: dados.industry || undefined,
+                website: dados.website || undefined,
+                lifecycleStage: dados.lifecycleStage,
+                category: dados.category || undefined,
+                healthScore: dados.healthScore ? Number(dados.healthScore) : undefined,
+            });
+            setModalAberto(false);
+        } catch {
+            // A mensagem sai por `criar.error` no modal; nada a fazer aqui.
+        }
     };
 
     return (
@@ -200,6 +213,7 @@ export const ClientsPage: React.FC = () => {
                 onClose={() => setModalAberto(false)}
                 onSubmit={aoCadastrar}
                 salvando={criar.isPending}
+                erro={criar.isError ? (criar.error as Error)?.message : undefined}
             />
         </div>
     );

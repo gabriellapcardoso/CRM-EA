@@ -66,6 +66,28 @@ Fases seguintes no `PLANO-CLIENTES.md`: ficha completa (F2), grade e kanban
 (F3), dossiê com RAG (F4), contexto criativo (F5), assistente de cadastro com
 leitura do site (F6).
 
+**A revisão do PR #77 achou sete defeitos, seis já corrigidos aqui.** O maior:
+as seis tabelas novas declaravam `organization_id NOT NULL`, o service não
+enviava o campo, e **nenhum trigger o preenchia** — todo cadastro de contrato
+falharia. `set_organization_id_from_profile()` existe desde `20260222000000`,
+criada por esse mesmo motivo, e cobria cinco tabelas; agora cobre as seis novas
+também. A função de checagem cross-org levanta exceção se o campo chegar vazio,
+para que uma inversão na ordem dos triggers falhe alto em vez de gravar linha
+sem organização.
+
+Os outros: o `CHECK` do documento aceitava CPF sem tipo declarado (em SQL,
+`NULL AND TRUE` é `NULL`, e `CHECK` só rejeita `FALSE`); `monthly_value` aceitava
+negativo, o que faria o MRR diminuir; a listagem baixava documento e endereço de
+todos os contratos de 25 empresas por página numa tela que exibe três campos;
+editar o valor mensal apagava escopo e observações; `/clients/{id}` abria
+qualquer empresa e criava contrato pra quem não está na carteira; e restaurar
+`?p=2` da URL caía sempre na página 1, porque o debounce da busca zerava a
+página 300ms depois.
+
+`client_contracts` usa `ON DELETE RESTRICT`, sozinho entre as satélites:
+`companiesService.delete()` faz DELETE físico, e com CASCADE um clique em
+"excluir empresa" apagaria contrato com CNPJ sem aviso.
+
 Arquivos: `supabase/migrations/20260905120000_modulo_clientes.sql`,
 `types/clients.ts`, `lib/clients/{health,documento,metricas}.ts`,
 `lib/supabase/clients.ts`, `lib/query/hooks/useClientsQuery.ts`,

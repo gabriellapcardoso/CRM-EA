@@ -73,7 +73,8 @@ type DbClientCompany = {
     client_contracts?: DbContract[] | null;
 };
 
-export function transformContract(db: DbContract): ClientContract {
+/** Aceita tanto o resumo da listagem quanto a linha completa da ficha. */
+export function transformContract(db: Partial<DbContract> & Pick<DbContract, 'id' | 'company_id' | 'starts_at' | 'status' | 'organization_id' | 'created_at'>): ClientContract {
     return {
         id: db.id,
         companyId: db.company_id,
@@ -132,11 +133,23 @@ function transformClient(db: DbClientCompany): ClientView {
     };
 }
 
+/**
+ * Colunas do contrato que a LISTAGEM usa. Nunca `*`.
+ *
+ * `client_contracts!left(*)` traria documento e endereço completo de todos os
+ * contratos de 25 empresas por página, incluindo os excluídos — PII no
+ * navegador que a tela nem exibe. A ficha (`SELECT_CONTRATO_COMPLETO`) é o
+ * único lugar que pede os campos cadastrais, e lá o usuário abriu aquele
+ * cliente de propósito.
+ */
+const SELECT_CONTRATO_RESUMO =
+    'id, company_id, monthly_value, starts_at, ends_at, renewal_date, status, deleted_at, created_at, organization_id';
+
 const SELECT_CLIENTE = `
     id, organization_id, name, industry, website, owner_id,
     is_client, client_since, niche, lifecycle_stage, category,
     health_score, health_source, created_at, updated_at,
-    client_contracts!left(*)
+    client_contracts!left(${SELECT_CONTRATO_RESUMO})
 `;
 
 export interface ClientsPage {
@@ -202,6 +215,10 @@ export const clientsService = {
                 .from('crm_companies')
                 .select(SELECT_CLIENTE)
                 .eq('id', companyId)
+                // Só quem está na carteira. Sem isto, /clients/{id} de uma
+                // empresa qualquer abriria a aba Comercial e criaria contrato
+                // pra quem nunca aparece na listagem nem nos indicadores.
+                .eq('is_client', true)
                 .is('deleted_at', null);
             if (options?.signal) query = query.abortSignal(options.signal);
 
@@ -332,31 +349,44 @@ export const clientContractsService = {
         try {
             if (!supabase) return { data: null, error: new Error('Supabase não configurado') };
 
-            const db: Record<string, unknown> = {
-                company_id: entrada.companyId,
-                monthly_value: entrada.monthlyValue ?? 0,
-                starts_at: entrada.startsAt,
-                ends_at: entrada.endsAt ?? null,
-                renewal_date: entrada.renewalDate ?? null,
-                status: entrada.status ?? 'rascunho',
-                payment_method: entrada.paymentMethod ?? null,
-                scope: entrada.scope ?? [],
-                document_type: entrada.documentType ?? null,
-                document_number: entrada.documentNumber ?? null,
-                address_zip: entrada.addressZip ?? null,
-                address_street: entrada.addressStreet ?? null,
-                address_number: entrada.addressNumber ?? null,
-                address_complement: entrada.addressComplement ?? null,
-                address_district: entrada.addressDistrict ?? null,
-                address_city: entrada.addressCity ?? null,
-                address_state: entrada.addressState ?? null,
-                notes: entrada.notes ?? null,
-            };
+            // Só escreve o que veio. `?? null` em campo ausente do formulário
+            // apaga dado existente: o ContractForm não tem `scope` nem
+            // `notes`, então editar o valor mensal zeraria os dois em silêncio.
+            const db: Record<string, unknown> = { company_id: entrada.companyId };
+            const mapa: Array<[keyof ClientContract, string]> = [
+                ['monthlyValue', 'monthly_value'],
+                ['startsAt', 'starts_at'],
+                ['endsAt', 'ends_at'],
+                ['renewalDate', 'renewal_date'],
+                ['status', 'status'],
+                ['paymentMethod', 'payment_method'],
+                ['scope', 'scope'],
+                ['documentType', 'document_type'],
+                ['documentNumber', 'document_number'],
+                ['addressZip', 'address_zip'],
+                ['addressStreet', 'address_street'],
+                ['addressNumber', 'address_number'],
+                ['addressComplement', 'address_complement'],
+                ['addressDistrict', 'address_district'],
+                ['addressCity', 'address_city'],
+                ['addressState', 'address_state'],
+                ['notes', 'notes'],
+            ];
+            for (const [campo, coluna] of mapa) {
+                if (entrada[campo] !== undefined) db[coluna] = entrada[campo];
+            }
+            // Na criação os obrigatórios precisam existir mesmo se vierem vazios.
+            if (!entrada.id) {
+                db.monthly_value = entrada.monthlyValue ?? 0;
+                db.starts_at = entrada.startsAt;
+                db.status = entrada.status ?? 'rascunho';
+            }
 
             const query = entrada.id
                 ? supabase.from('client_contracts')
                     .update({ ...db, updated_at: new Date().toISOString() })
                     .eq('id', entrada.id)
+                    .is('deleted_at', null)
                 : supabase.from('client_contracts').insert(db);
 
             const { data, error } = await query.select('*').single();

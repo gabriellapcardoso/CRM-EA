@@ -32,14 +32,44 @@ describe('contrato vigente', () => {
     // Sem o índice, o join da listagem multiplica a empresa por contrato e o
     // MRR total sobe sem nada acusar: a soma fica maior e parece certa.
     it('declara índice único parcial de um contrato vigente por empresa', () => {
-        expect(SQL).toMatch(
-            /CREATE UNIQUE INDEX IF NOT EXISTS idx_client_contracts_um_vigente[\s\S]{0,200}?WHERE status = 'vigente'/,
+        // Afirma a COLUNA indexada e o predicado inteiro. A primeira versão só
+        // procurava o nome do índice e a palavra 'vigente' em algum lugar
+        // depois dele: trocar company_id por organization_id (um contrato
+        // vigente por ORGANIZAÇÃO) ou tirar o `deleted_at IS NULL` (renovação
+        // impossível depois de excluir) mantinha o teste verde.
+        const bloco = SQL.match(
+            /CREATE UNIQUE INDEX IF NOT EXISTS idx_client_contracts_um_vigente([\s\S]*?);/,
+        )?.[1];
+        expect(bloco, 'índice idx_client_contracts_um_vigente não existe').toBeDefined();
+        expect(bloco).toContain('ON public.client_contracts(company_id)');
+        expect(bloco).toContain("WHERE status = 'vigente' AND deleted_at IS NULL");
+    });
+
+    it('amarra o tamanho do documento ao tipo, e exige o tipo', () => {
+        const bloco = SQL.match(
+            /client_contracts_doc_number_check([\s\S]*?);/,
+        )?.[1];
+        expect(bloco).toContain("document_type = 'cpf'  AND document_number ~ '^[0-9]{11}$'");
+        expect(bloco).toContain("document_type = 'cnpj' AND document_number ~ '^[0-9]{14}$'");
+        // Sem esta linha o CHECK inteiro avalia NULL quando document_type é
+        // NULL (NULL AND TRUE = NULL), e CHECK só rejeita FALSE — um CPF
+        // entraria sem tipo declarado.
+        expect(bloco).toContain('document_type IS NOT NULL');
+    });
+
+    // Com CASCADE, o DELETE físico de companiesService.delete() apagaria
+    // contrato com CNPJ e endereço sem aviso. RESTRICT faz a exclusão falhar.
+    it('o contrato bloqueia a exclusão da empresa em vez de sumir junto', () => {
+        const bloco = SQL.match(
+            /CREATE TABLE IF NOT EXISTS public\.client_contracts([\s\S]*?\n\);)/,
+        )?.[1];
+        expect(bloco).toContain(
+            'company_id UUID NOT NULL REFERENCES public.crm_companies(id) ON DELETE RESTRICT',
         );
     });
 
-    it('amarra o tamanho do documento ao tipo declarado', () => {
-        expect(SQL).toContain("document_type = 'cpf'  AND document_number ~ '^[0-9]{11}$'");
-        expect(SQL).toContain("document_type = 'cnpj' AND document_number ~ '^[0-9]{14}$'");
+    it('recusa valor mensal negativo', () => {
+        expect(SQL).toMatch(/client_contracts_valor_check[\s\S]{0,80}?CHECK \(monthly_value >= 0\)/);
     });
 });
 
@@ -128,11 +158,54 @@ describe('integridade entre organizações', () => {
         'client_assets',
         'client_events',
     ])('%s tem trigger que confere a organização da empresa', tabela => {
-        expect(SQL).toMatch(
-            new RegExp(
-                `CREATE TRIGGER trg_${tabela}_tenant[\\s\\S]{0,200}?ON public\\.${tabela}[\\s\\S]{0,200}?check_client_company_tenant`,
-            ),
+        const bloco = SQL.match(
+            new RegExp(`CREATE TRIGGER trg_${tabela}_tenant([\\s\\S]*?);`),
+        )?.[1];
+        expect(bloco, `trigger trg_${tabela}_tenant não existe`).toBeDefined();
+        expect(bloco).toContain(`ON public.${tabela}`);
+        expect(bloco).toContain('check_client_company_tenant');
+        // `BEFORE INSERT` sozinho deixaria trocar company_id ou
+        // organization_id num UPDATE e montar a referência cruzada depois.
+        expect(bloco).toContain('BEFORE INSERT OR UPDATE');
+    });
+
+    // O trigger que preenche organization_id existe desde 20260222000000,
+    // criado porque services inseriam sem o campo e levavam 403 da RLS. As
+    // tabelas deste módulo declaram a coluna NOT NULL e o service não a envia.
+    it.each([
+        'client_contracts',
+        'client_context',
+        'client_rag_store',
+        'client_assets',
+        'client_team',
+        'client_events',
+    ])('%s preenche organization_id por trigger', tabela => {
+        const bloco = SQL.match(
+            new RegExp(`CREATE TRIGGER ${tabela}_set_org_id([\\s\\S]*?);`),
+        )?.[1];
+        expect(bloco, `trigger ${tabela}_set_org_id não existe`).toBeDefined();
+        expect(bloco).toContain(`BEFORE INSERT ON public.${tabela}`);
+        expect(bloco).toContain('set_organization_id_from_profile');
+    });
+
+    // Ordem dos triggers BEFORE é alfabética por nome. `client_*_set_org_id`
+    // vem antes de `trg_client_*_tenant`, mas isso não pode ficar de pé por
+    // sorte: a função de checagem levanta exceção se chegar NULL.
+    it('a checagem falha alto se organization_id chegar vazia', () => {
+        expect(SQL).toContain(
+            "RAISE EXCEPTION 'organization_id não foi preenchido",
         );
+    });
+
+    it('valida também os perfis referenciados e o contrato assinado', () => {
+        for (const trecho of [
+            "RAISE EXCEPTION 'owner_id não pertence à organização informada'",
+            "RAISE EXCEPTION 'created_by não pertence à organização informada'",
+            "RAISE EXCEPTION 'actor_id não pertence à organização informada'",
+            "RAISE EXCEPTION 'signed_asset_id não é um contrato desta empresa'",
+        ]) {
+            expect(SQL).toContain(trecho);
+        }
     });
 
     it('client_team confere empresa E perfil', () => {
