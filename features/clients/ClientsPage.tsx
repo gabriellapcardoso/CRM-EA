@@ -128,7 +128,9 @@ export const ClientsPage: React.FC = () => {
                         ? 'Os números aparecem quando a carteira carregar.'
                         : total > PAGE_SIZE
                             ? `Calculado sobre os ${clientes.length} clientes desta página, de ${total} na carteira.`
-                            : `Calculado sobre os ${total} clientes da carteira.`}
+                            : total === 1
+                                ? 'Calculado sobre o único cliente da carteira.'
+                                : `Calculado sobre os ${total} clientes da carteira.`}
                 </p>
             </section>
 
