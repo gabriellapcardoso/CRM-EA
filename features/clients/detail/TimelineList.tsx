@@ -67,9 +67,17 @@ export const TimelineList: React.FC<Props> = ({
                                 className="btn btn--quiet"
                                 aria-label={`Remover o marco "${item.titulo}"`}
                                 disabled={removendo}
+                                // Confirma antes: o botão se repete em cada
+                                // linha da lista, e marco é escrito à mão — no
+                                // banco vira soft-delete, mas pela tela não há
+                                // desfazer nem lixeira, então clique errado é
+                                // perda definitiva pra quem está usando o CRM.
                                 // O id vem prefixado (`marco:<uuid>`) pra não
                                 // colidir com o de atividade na mesma lista.
-                                onClick={() => onRemoverMarco(item.id.replace(/^marco:/, ''))}
+                                onClick={() => {
+                                    if (!window.confirm(`Remover o marco "${item.titulo}"?`)) return;
+                                    onRemoverMarco(item.id.replace(/^marco:/, ''));
+                                }}
                             >
                                 <Trash2 size={13} aria-hidden />
                             </button>

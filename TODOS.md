@@ -66,6 +66,23 @@ O advisor de segurança flagra: a função de trigger de `contact_product_intere
 fora de trigger — mas é endpoint que não devia existir. As duas equivalentes do
 Módulo Clientes já foram revogadas em `20260905130000`; falta esta.
 
+### `.in()` sem teto na contagem de ações da IA — P3
+
+Achado no `/review` da F2. `contarAcoesDeIA` (`lib/supabase/clients.ts`) faz três
+saltos — contatos da empresa, conversas desses contatos, registros de IA dessas
+conversas — e os dois últimos passam a lista inteira de ids dentro de um
+`.in(...)`. O Supabase manda isso na URL do GET, e nenhuma das duas consultas
+intermediárias tem `limit`.
+
+Hoje não acontece: a maior empresa da base tem 1 contato e 0 conversas. Vira
+problema quando entrar um cliente com muitos contatos — a URL cresce até o
+servidor recusar com 414, e o indicador quebra justamente no cliente maior, o
+único em que o número interessava.
+
+Conserto: fatiar os `.in()` em lotes de ~200 ids e somar as contagens. Não foi
+feito agora porque não há volume real pra exercitar o laço — mesmo tratamento
+que o teto de 1000 linhas das outras fontes da timeline recebeu.
+
 ### Toda mudança de estágio grava DUAS atividades — P2
 
 Achado na verificação da F2, olhando a timeline de um cliente real: cada

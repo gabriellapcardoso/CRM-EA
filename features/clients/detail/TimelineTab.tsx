@@ -38,8 +38,12 @@ export const TimelineTab: React.FC<Props> = ({ companyId }) => {
                 body: corpo.trim() || undefined,
                 // A data vem do input como `YYYY-MM-DD`; o campo no banco é
                 // timestamptz. Meio-dia evita que a conversão de fuso jogue o
-                // marco pro dia anterior.
-                occurredAt: `${quando}T12:00:00`,
+                // marco pro dia anterior — de -11 a +12 o dia continua o mesmo.
+                // O `Z` é obrigatório: sem ele o Postgres resolve o horário pelo
+                // fuso do SERVIDOR, então a margem de segurança passaria a
+                // depender de uma configuração que não está neste arquivo e que
+                // ninguém pensaria em conferir ao mexer aqui.
+                occurredAt: `${quando}T12:00:00Z`,
             });
             setTitulo('');
             setCorpo('');

@@ -492,6 +492,9 @@ export const clientEventsService = {
     },
 };
 
+/** `unique_violation` do Postgres. Ver https://www.postgresql.org/docs/current/errcodes-appendix.html */
+const CODIGO_CHAVE_DUPLICADA = '23505';
+
 type DbClientTeam = {
     id: string;
     company_id: string;
@@ -550,6 +553,13 @@ export const clientTeamService = {
                 profile_id: entrada.profileId,
                 role: entrada.role ?? null,
             });
+            // A tela já tira do seletor quem está na equipe, mas duas abas
+            // atribuindo ao mesmo tempo furam esse filtro e batem no índice
+            // único `idx_client_team_unico`. O índice fez o trabalho dele — o
+            // que não pode é o nome dele aparecer na tela de quem usa o CRM.
+            if (error && (error as { code?: string }).code === CODIGO_CHAVE_DUPLICADA) {
+                return { error: new Error('Essa pessoa já está na equipe deste cliente.') };
+            }
             return { error };
         } catch (e) {
             return { error: e as Error };
