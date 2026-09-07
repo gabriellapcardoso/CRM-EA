@@ -85,9 +85,9 @@ memória compartilhada.
 
 ### 17 itens resolvidos ainda ocupam a seção aberta do TODOS — P3
 
-Achado no `/retro` de 2026-09-06. A seção aberta tem 61 títulos, mas 17 deles
+Achado no `/retro` de 2026-09-06. A seção aberta tem 63 títulos, mas 17 deles
 já estão marcados `~~RESOLVIDO~~` ou `~~DECIDIDO~~` e nunca foram movidos pra
-`## Completed`. Abertos de verdade: 44.
+`## Completed`. Abertos de verdade: 46.
 
 O custo não é estético. Qualquer leitura rápida do arquivo — humana ou de
 agente — conta 61 e superestima a dívida em 39%. Foi exatamente o que aconteceu
