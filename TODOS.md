@@ -66,6 +66,53 @@ O advisor de segurança flagra: a função de trigger de `contact_product_intere
 fora de trigger — mas é endpoint que não devia existir. As duas equivalentes do
 Módulo Clientes já foram revogadas em `20260905130000`; falta esta.
 
+### Rajada do lead ainda não tem debounce de verdade — P2
+
+O webhook dispara o processamento da IA **por mensagem recebida**. Duas
+mensagens do lead em 12 segundos viraram duas respostas em 2 segundos no
+incidente de 06/09/2026, uma sem enxergar a outra: a primeira genérica, a
+segunda correta. Do lado de quem recebe, dois textos seguidos de um robô.
+
+A contenção que entrou em 07/09 (`iaRespondeuHaPoucosSegundos`, 45 segundos)
+resolve o sintoma pelo lado errado: ela **descarta** a segunda mensagem em vez
+de responder ao conjunto. Se o lead manda "oi" e depois "queria um orçamento", a
+segunda — a que importa — é a ignorada.
+
+O conserto certo é esperar a rajada assentar (uns 10 segundos sem mensagem nova)
+e processar o conjunto como uma única entrada. Precisa de fila ou de agendamento
+com cancelamento, porque cada mensagem hoje chega numa execução separada, sem
+memória compartilhada.
+
+### 17 itens resolvidos ainda ocupam a seção aberta do TODOS — P3
+
+Achado no `/retro` de 2026-09-06. A seção aberta tem 61 títulos, mas 17 deles
+já estão marcados `~~RESOLVIDO~~` ou `~~DECIDIDO~~` e nunca foram movidos pra
+`## Completed`. Abertos de verdade: 44.
+
+O custo não é estético. Qualquer leitura rápida do arquivo — humana ou de
+agente — conta 61 e superestima a dívida em 39%. Foi exatamente o que aconteceu
+no retro desta data, que reportou "61 itens abertos" antes de alguém conferir.
+
+Conserto: mover os 17 pra `## Completed` preservando a data de resolução. Cada
+um pede uma conferida antes de mover — "resolvido" escrito em 03/09 não prova
+que segue resolvido em 06/09, e alguns citam PRs que vale reconferir.
+
+### `AuthSessionMissingError` no console de toda página — P3
+
+Achado no `/qa` da F2, mas não é da F2: `context/AuthContext.tsx:188` chama
+`sb.auth.getUser()` na montagem, antes de a sessão ser restaurada do storage. O
+erro esperado desse estado vira `console.error`, duas vezes por carregamento, em
+toda página da app. O `onAuthStateChange` assume logo em seguida e a tela
+funciona normalmente.
+
+Confirmado em `/dashboard` e na ficha do cliente. A linha é de 2026-04-02
+(`201a0d9`).
+
+Não quebra nada, e é exatamente por isso que incomoda: ensina a ignorar erro de
+console, que é onde um problema de auth de verdade apareceria. Conserto: tratar
+`AuthSessionMissingError` como o estado esperado de "ainda não há sessão" e não
+logar como erro — mantendo o `console.error` para os outros casos.
+
 ### `.in()` sem teto na contagem de ações da IA — P3
 
 Achado no `/review` da F2. `contarAcoesDeIA` (`lib/supabase/clients.ts`) faz três

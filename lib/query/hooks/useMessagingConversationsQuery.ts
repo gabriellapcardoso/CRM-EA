@@ -544,3 +544,91 @@ export function useLinkConversationToContact() {
     },
   });
 }
+
+// =============================================================================
+// Takeover — humano atendendo a conversa (2026-09-07)
+// =============================================================================
+
+/** Mesma lista do agente (`REMETENTES_AUTOMATICOS` em agent.service.ts). */
+const REMETENTES_AUTOMATICOS = ['ai', 'agent', 'system'];
+
+/**
+ * A IA está calada nesta conversa porque um humano respondeu?
+ *
+ * Faz a MESMA pergunta que o agente faz antes de falar, para que a tela mostre
+ * o estado real em vez de um palpite: mensagem de saída que não é da IA,
+ * posterior à última liberação. Sem isso o painel diria "IA ativa" numa conversa
+ * onde ela não vai falar — que é pior do que não mostrar nada.
+ */
+export function useIaObservandoConversa(
+  conversationId?: string,
+  liberadaEm?: string | null
+) {
+  return useQuery({
+    queryKey: [...queryKeys.messagingConversations.detail(conversationId ?? ''), 'humano-atendeu', liberadaEm ?? null],
+    queryFn: async () => {
+      const supabase = getClient();
+      if (!supabase) return false;
+
+      let consulta = supabase
+        .from('messaging_messages')
+        .select('id')
+        .eq('conversation_id', conversationId!)
+        .eq('direction', 'outbound')
+        .or(`sender_type.is.null,sender_type.not.in.(${REMETENTES_AUTOMATICOS.join(',')})`);
+
+      if (liberadaEm) consulta = consulta.gt('created_at', liberadaEm);
+
+      const { data, error } = await consulta.limit(1);
+      if (error) throw error;
+      return (data?.length ?? 0) > 0;
+    },
+    enabled: !!conversationId,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Devolve a conversa ao agente.
+ *
+ * Carimba `ia_liberada_em` com o instante da liberação e tira a pausa manual.
+ * O carimbo é o que faz a devolução valer: o agente passa a ignorar toda
+ * mensagem humana anterior a ele. Se alguém do time responder depois, a IA
+ * cala de novo sozinha — a liberação vale até a próxima intervenção, não para
+ * sempre.
+ */
+export function useDevolverConversaAoAgente() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      conversationId,
+      currentMetadata,
+    }: {
+      conversationId: string;
+      currentMetadata: Record<string, unknown>;
+    }): Promise<void> => {
+      const supabase = getClient();
+      if (!supabase) throw new Error('Supabase não configurado');
+
+      const { error } = await supabase
+        .from('messaging_conversations')
+        .update({
+          metadata: {
+            ...currentMetadata,
+            ai_paused: false,
+            ia_liberada_em: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', conversationId);
+
+      if (error) throw error;
+    },
+    onSettled: (_, _err, { conversationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.messagingConversations.detail(conversationId),
+      });
+    },
+  });
+}

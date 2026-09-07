@@ -96,3 +96,5 @@ debug_navigation_failed_*.png
 .env*.local
 .dmux/
 .gstack/
+# Snapshots de retrospectiva do gstack — artefato local de sessão.
+.context/

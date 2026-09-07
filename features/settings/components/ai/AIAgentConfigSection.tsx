@@ -165,7 +165,6 @@ function AITakeoverSection({
   onUpdate: (params: { ai_takeover_enabled?: boolean; ai_takeover_minutes?: number }) => Promise<unknown>;
 }) {
   const takeoverEnabled = config?.ai_takeover_enabled ?? false;
-  const takeoverMinutes = config?.ai_takeover_minutes ?? 15;
 
   const handleToggle = async () => {
     try {
@@ -175,14 +174,11 @@ function AITakeoverSection({
     }
   };
 
-  const handleMinutesChange = async (minutes: number) => {
-    const clamped = Math.max(5, Math.min(120, minutes));
-    try {
-      await onUpdate({ ai_takeover_minutes: clamped });
-    } catch (e) {
-      console.error('[AITakeover] Minutes update failed:', e);
-    }
-  };
+  // O seletor de "tempo de inatividade" saiu daqui em 07/09/2026. A regra
+  // deixou de ter janela: conversa que um humano atendeu é do humano até alguém
+  // devolvê-la ao agente. Manter o campo na tela seria oferecer um botão que o
+  // código não lê mais — a coluna `ai_takeover_minutes` continua no banco por
+  // compatibilidade, sem ninguém escrevendo nela por aqui.
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-lg p-3">
@@ -193,10 +189,10 @@ function AITakeoverSection({
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              AI Takeover
+              Conversa Atendida por Humano
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              AI assume quando o operador ficar inativo
+              Se alguém do time responder, a IA para de falar naquela conversa
             </p>
           </div>
         </div>
@@ -219,26 +215,13 @@ function AITakeoverSection({
 
       {takeoverEnabled && (
         <div className="mt-4 pl-10">
-          <label className="flex items-center gap-3">
-            <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
-              Tempo de inatividade:
-            </span>
-            <select
-              value={takeoverMinutes}
-              onChange={(e) => handleMinutesChange(Number(e.target.value))}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-            >
-              <option value={5}>5 minutos</option>
-              <option value={10}>10 minutos</option>
-              <option value={15}>15 minutos</option>
-              <option value={30}>30 minutos</option>
-              <option value={60}>1 hora</option>
-              <option value={120}>2 horas</option>
-            </select>
-          </label>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Basta uma resposta de alguém do time — pelo CRM ou pelo WhatsApp no celular — para
+            a IA passar a só observar aquela conversa. Ela não volta a falar sozinha depois de
+            um tempo: quem devolve a conversa ao agente é você, pelo painel da conversa.
+          </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-            Se o operador atribuído não responder dentro deste tempo, o AI assume a conversa automaticamente.
-            Quando o operador voltar a responder, o AI cede o controle.
+            Conversa que ninguém do time respondeu continua com o agente normalmente.
           </p>
         </div>
       )}
