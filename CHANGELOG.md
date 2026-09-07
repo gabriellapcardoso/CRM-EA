@@ -50,6 +50,19 @@ deixou de ter janela, e manter o campo seria oferecer um botão que o código n�
 lê mais. A coluna `ai_takeover_minutes` continua no banco, sem ninguém escrever
 nela pela tela.
 
+**Controle manual por conversa**, no painel direito das Mensagens. O controle
+que existia mostrava dois estados e passou a mostrar três: `ativo`,
+`pausado por você` e `só observando — alguém do time já respondeu aqui`. Os dois
+últimos calam a IA pelo mesmo efeito prático e por motivos diferentes, e sem
+distinguir os dois o painel diria "ativo" numa conversa onde ela não vai falar.
+
+Reativar agora devolve a conversa ao agente de verdade: carimba
+`metadata.ia_liberada_em`, e a guarda passa a ignorar toda mensagem humana
+anterior àquele instante. Sem o carimbo o botão seria decorativo — o histórico
+não some, e a IA continuaria calada depois de o usuário mandar destravá-la.
+Quem responder depois de liberar cala a IA de novo, sem ninguém precisar
+lembrar de desfazer nada.
+
 Arquivos: `lib/ai/agent/agent.service.ts`,
 `supabase/functions/messaging-webhook-evolution/index.ts`,
 `features/settings/components/ai/AIAgentConfigSection.tsx`,

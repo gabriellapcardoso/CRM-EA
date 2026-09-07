@@ -329,6 +329,15 @@ O webhook da Evolution agora grava `sender_type: 'user'` para mensagem
 `fromMe`. **Ao mexer nessa guarda, conferir no banco se o valor procurado existe
 em alguma linha** — foi o que ninguém fez. Guardas: `test/aiTakeoverHumano.test.ts`.
 
+**Devolver a conversa ao agente é `metadata.ia_liberada_em`**, carimbo de tempo
+escrito pelo painel (`useDevolverConversaAoAgente`). A guarda só conta mensagem
+humana POSTERIOR a ele — sem isso o botão seria enfeite, porque o histórico
+antigo nunca some. Quem responde depois de liberar cala a IA de novo sozinho.
+O `ContactPanel` mostra três estados, não dois: `ativo`, `pausado por você`
+(`ai_paused`, manual) e `só observando` (takeover automático) — os dois últimos
+calam pelo mesmo efeito e por motivos diferentes, e quem olha precisa saber qual
+é pra saber o que fazer.
+
 **Rajada do lead: contenção, não debounce.** O webhook dispara o processamento
 por mensagem recebida. `iaRespondeuHaPoucosSegundos()` (45s) impede duas
 respostas seguidas, mas **descartando** a segunda mensagem em vez de responder

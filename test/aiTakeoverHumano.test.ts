@@ -28,7 +28,7 @@ const CONVERSA = 'conv-001';
 function supabaseComMensagens(resultado: { data: unknown[] | null; error: unknown }) {
     const filtros: { metodo: string; args: unknown[] }[] = [];
     const qb: Record<string, unknown> = {};
-    for (const m of ['select', 'eq', 'or', 'gte', 'limit']) {
+    for (const m of ['select', 'eq', 'or', 'gt', 'gte', 'limit']) {
         qb[m] = vi.fn((...args: unknown[]) => {
             filtros.push({ metodo: m, args });
             return m === 'limit' ? Promise.resolve(resultado) : qb;
@@ -77,6 +77,33 @@ describe('humanoJaAtendeuAConversa', () => {
     });
 });
 
+describe('devolver a conversa ao agente', () => {
+    it('mensagem humana ANTERIOR à liberação deixa de calar a IA', async () => {
+        // Sem isto o botão de devolver seria enfeite: as mensagens antigas
+        // continuam no histórico para sempre e calariam a IA de novo.
+        const { cliente, filtros } = supabaseComMensagens({ data: [], error: null });
+        const liberada = '2026-09-07T12:00:00Z';
+
+        await expect(humanoJaAtendeuAConversa(cliente, CONVERSA, liberada)).resolves.toBe(false);
+
+        const corte = filtros.find(f => f.metodo === 'gte' || f.metodo === 'gt');
+        expect(corte, 'a liberação não virou corte de tempo na consulta').toBeDefined();
+    });
+
+    it('mensagem humana POSTERIOR à liberação cala de novo', async () => {
+        const { cliente } = supabaseComMensagens({ data: [{ id: 'm1' }], error: null });
+        await expect(
+            humanoJaAtendeuAConversa(cliente, CONVERSA, '2026-09-07T12:00:00Z')
+        ).resolves.toBe(true);
+    });
+
+    it('sem liberação, não corta por tempo', async () => {
+        const { cliente, filtros } = supabaseComMensagens({ data: [], error: null });
+        await humanoJaAtendeuAConversa(cliente, CONVERSA, null);
+        expect(filtros.some(f => f.metodo === 'gt' || f.metodo === 'gte')).toBe(false);
+    });
+});
+
 describe('iaRespondeuHaPoucosSegundos', () => {
     it('resposta recente da IA bloqueia a próxima da rajada', async () => {
         const { cliente } = supabaseComMensagens({ data: [{ id: 'm1' }], error: null });
@@ -122,7 +149,7 @@ describe('a guarda de takeover não pode voltar a ser código morto', () => {
     });
 
     it('a checagem de humano é chamada dentro do bloco', () => {
-        expect(AGENTE).toMatch(/humanoJaAtendeuAConversa\(\s*supabase,\s*conversationId\s*\)/);
+        expect(AGENTE).toMatch(/humanoJaAtendeuAConversa\(\s*[\s\S]{0,80}?supabase,\s*conversationId,/);
     });
 });
 

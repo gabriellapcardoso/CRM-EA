@@ -441,7 +441,22 @@ export async function processIncomingMessage(
   // negociação de três dias já fechada, perguntando ao lead se ele tinha
   // "revisado o pacote". Ver DESAFIOS.md.
   if (aiConfig.takeoverEnabled) {
-    const humanoNaConversa = await humanoJaAtendeuAConversa(supabase, conversationId);
+    // `ia_liberada_em` é o carimbo de quando alguém devolveu a conversa ao
+    // agente pelo painel. Só mensagem humana POSTERIOR a ele volta a calar a
+    // IA — senão o botão de devolver seria decorativo, já que as mensagens
+    // antigas continuam no histórico para sempre. E se a pessoa voltar a
+    // responder depois de liberar, cala de novo sozinho, sem ninguém precisar
+    // lembrar de desfazer nada.
+    const liberadaEm =
+      typeof conversationMetadata.ia_liberada_em === 'string'
+        ? conversationMetadata.ia_liberada_em
+        : null;
+
+    const humanoNaConversa = await humanoJaAtendeuAConversa(
+      supabase,
+      conversationId,
+      liberadaEm
+    );
 
     if (humanoNaConversa) {
       console.log(
@@ -1293,17 +1308,26 @@ export async function iaRespondeuHaPoucosSegundos(
  */
 export async function humanoJaAtendeuAConversa(
   supabase: SupabaseClient,
-  conversationId: string
+  conversationId: string,
+  /**
+   * Quando a conversa foi devolvida ao agente pelo painel (ISO). Mensagem
+   * humana ANTERIOR a esse instante deixa de contar — é o que torna o botão
+   * "devolver ao agente" um botão de verdade e não um enfeite.
+   */
+  liberadaEm: string | null = null
 ): Promise<boolean> {
-  const { data, error } = await supabase
+  let consulta = supabase
     .from('messaging_messages')
     .select('id')
     .eq('conversation_id', conversationId)
     .eq('direction', 'outbound')
     .or(
       `sender_type.is.null,sender_type.not.in.(${REMETENTES_AUTOMATICOS.join(',')})`
-    )
-    .limit(1);
+    );
+
+  if (liberadaEm) consulta = consulta.gt('created_at', liberadaEm);
+
+  const { data, error } = await consulta.limit(1);
 
   if (error) {
     // Falha de leitura não pode virar "pode falar". Diante da dúvida a IA cala:
