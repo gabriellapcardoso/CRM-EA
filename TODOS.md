@@ -66,6 +66,20 @@ O advisor de segurança flagra: a função de trigger de `contact_product_intere
 fora de trigger — mas é endpoint que não devia existir. As duas equivalentes do
 Módulo Clientes já foram revogadas em `20260905130000`; falta esta.
 
+### 17 itens resolvidos ainda ocupam a seção aberta do TODOS — P3
+
+Achado no `/retro` de 2026-09-06. A seção aberta tem 61 títulos, mas 17 deles
+já estão marcados `~~RESOLVIDO~~` ou `~~DECIDIDO~~` e nunca foram movidos pra
+`## Completed`. Abertos de verdade: 44.
+
+O custo não é estético. Qualquer leitura rápida do arquivo — humana ou de
+agente — conta 61 e superestima a dívida em 39%. Foi exatamente o que aconteceu
+no retro desta data, que reportou "61 itens abertos" antes de alguém conferir.
+
+Conserto: mover os 17 pra `## Completed` preservando a data de resolução. Cada
+um pede uma conferida antes de mover — "resolvido" escrito em 03/09 não prova
+que segue resolvido em 06/09, e alguns citam PRs que vale reconferir.
+
 ### `AuthSessionMissingError` no console de toda página — P3
 
 Achado no `/qa` da F2, mas não é da F2: `context/AuthContext.tsx:188` chama

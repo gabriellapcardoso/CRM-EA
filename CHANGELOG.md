@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### test(qa): QA da ficha do cliente e um achado que não é dela — 2026-09-06
+
+QA das telas da F2 contra a base real, com sessão fornecida pela fundadora no
+navegador — nenhuma credencial passou pelo agente. Dado de teste criado com
+autorização explícita e revertido: 7 empresas ativas, 10 no total, 78
+atividades, carteira vazia, os mesmos números antes e depois.
+
+**Nenhum defeito da F2.** Exercitados pela tela: as três abas, o link direto por
+`?aba=`, o marco entrando na posição cronológica certa, a confirmação de remoção
+nas duas respostas, e o ciclo de atribuir/remover da equipe — incluindo o
+seletor excluir quem já está atribuído e o estado "Todo o time já está
+atribuído".
+
+O mapeamento do 23505 ganhou teste em vez de clique: reproduzir a corrida pela
+tela exige inserir o vínculo por fora com a página carregada, e o resultado
+depende de qual clique chega primeiro. Três casos cobertos — a frase amigável, o
+erro de outro tipo passando inteiro (senão falha de rede e de permissão viram a
+mesma frase e ninguém diagnostica nada), e sucesso não inventando erro.
+
+Achado registrado no `TODOS.md` e **não** consertado por ser pré-existente e da
+app inteira: `context/AuthContext.tsx:188` loga `AuthSessionMissingError` como
+erro duas vezes por carregamento, em toda página, porque chama `getUser()` antes
+de a sessão ser restaurada. Não quebra nada — e é por isso que incomoda, porque
+ensina a ignorar o console, que é onde um erro de auth de verdade apareceria.
+
+Arquivos: `test/clientesServiceGuards.test.ts`, `TODOS.md`.
+
+### fix(clientes): três achados do `/review` na F2 — 2026-09-06
+
+**Marco gravava `T12:00:00` sem designador de fuso**, então o Postgres resolvia
+o horário pelo fuso do *servidor*. Funciona hoje porque o servidor é UTC, mas
+isso fazia a margem de segurança contra virada de dia depender de uma
+configuração que não está no arquivo e que ninguém conferiria ao mexer ali.
+Agora `Z`. Provado por cast no banco, sem escrever linha: os dois formatos dão
+`2026-08-20 12:00:00+00` neste servidor, e `at time zone 'America/Sao_Paulo'`
+cai no dia pretendido.
+
+**Atribuir alguém já na equipe devolvia o texto cru do Postgres** —
+`duplicate key value violates unique constraint "idx_client_team_unico"` — na
+tela. O índice fez o trabalho dele; o que não pode é o nome dele virar mensagem
+pra quem usa o CRM. Código 23505 agora vira frase legível, e o comentário do
+arquivo que prometia "erro legível" passou a ser verdade.
+
+**Remover marco apagava num clique, sem pergunta.** É soft-delete no banco, mas
+pela tela não há desfazer nem lixeira, e o botão se repete em cada linha da
+lista. Confirma antes, nomeando o marco.
+
+Arquivos: `features/clients/detail/TimelineTab.tsx`,
+`features/clients/detail/TimelineList.tsx`, `lib/supabase/clients.ts`,
+`TODOS.md`.
+
 ### feat(clientes): ficha com abas, timeline derivada e equipe atribuída (F2) — 2026-09-06
 
 Três abas na ficha do cliente: Visão Geral, Comercial e Timeline. A aba vive na
