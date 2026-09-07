@@ -2,7 +2,7 @@
 
 # Plano — Módulo Clientes (governança de carteira pós-venda)
 
-**Status:** F1 e F2 entregues (2026-09-05 e 06) · F3 a F6 em aberto · **Branch alvo:** `feat/modulo-clientes` · **Data:** 2026-09-05
+**Status:** F1, F2 e F3 entregues (2026-09-05, 06 e 07) · F4 a F6 em aberto · **Branch alvo:** `feat/modulo-clientes` · **Data:** 2026-09-05
 
 ## 1. O problema
 
@@ -185,7 +185,14 @@ operacional · timeline · comercial.
 > recorte enviesado. A mudança de estágio já chega como atividade `STATUS_CHANGE`.
 > E as ações de IA saem de `ai_conversation_log`, não de `ai_decisions` — esta tem
 > as colunas certas e zero linhas.
-| **F3** | Grade de cartões · kanban do ciclo de vida · filtros combináveis · ordenação | Camada de visualização |
+| **F3** | ✅ Grade de cartões · kanban do ciclo de vida · filtros combináveis · ordenação | Camada de visualização |
+
+> **Correção que a F3 fez no plano.** O kanban NÃO é só visualização: arrastar
+> escreve `lifecycle_stage`. Esse campo é o único do módulo que nenhuma
+> automação preenche, então sem escrita pela tela ele ficaria nulo pra sempre e
+> o kanban nasceria com uma coluna só. E `filtros.status` ficou de fora:
+> "arquivado" é `is_client = false`, que a consulta da carteira exclui no
+> servidor — o filtro devolveria lista vazia sempre.
 | **F4** | Dossiê: bucket, upload, e o RAG **consertado** — `uploadToFileSearchStore` ganha call site e passa a devolver o id do documento | Depende de mexer no fornecedor de RAG, risco isolado |
 | **F5** | Contexto Criativo · Identidade & Produtos · Operacional | Campos livres sobre a estrutura da F1 |
 | **F6** | Assistente de cadastro em 3 camadas + scraping | Ver §7.3 — maior risco, menor certeza |

@@ -66,6 +66,20 @@ O advisor de segurança flagra: a função de trigger de `contact_product_intere
 fora de trigger — mas é endpoint que não devia existir. As duas equivalentes do
 Módulo Clientes já foram revogadas em `20260905130000`; falta esta.
 
+### Filtro "arquivado" da carteira não tem como funcionar — P3
+
+`ClientsFilters.status` aceita `'arquivado'` desde a F1, e a F3 deixou o filtro
+de fora da tela de propósito. "Arquivado" significa `is_client = false` (ver
+`estaNaCarteira`, em `metricas.ts`), e `clientsService.listar()` filtra
+`is_client = true` no servidor: nenhum cliente arquivado chega à lista.
+Implementar o filtro sobre a página carregada devolveria lista vazia sempre,
+com cara de "não há" — o defeito que este módulo passou três fases evitando.
+
+Conserto: `listar()` passa a aceitar um parâmetro de escopo e deixa de fixar
+`is_client = true` quando alguém pede os arquivados. Decidir junto se a barra de
+indicadores deve mudar nessa vista — hoje ela soma a carteira, e um arquivado
+não pertence a ela.
+
 ### Rajada do lead ainda não tem debounce de verdade — P2
 
 O webhook dispara o processamento da IA **por mensagem recebida**. Duas

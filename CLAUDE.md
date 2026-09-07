@@ -254,6 +254,26 @@ por automação de deal**. Timeline é derivada de `activities` + `deal_stage_ev
 listagem de multiplicar a linha e inflar o MRR sem nada acusar. Guarda:
 `test/clientesMigrationGuards.test.ts`.
 
+**Vocabulário do módulo Clientes tem UMA fonte: `lib/clients/vocabulario.ts`.**
+Nichos, estágios do ciclo e categorias são fixados por CHECK no banco; o arquivo
+acrescenta o rótulo e, no ciclo de vida, a ORDEM (que é a das colunas do
+kanban). Estava em quatro cópias até 2026-09-07 — `ClientFormModal`,
+`ClientDetailPage`, `ClientsList` e a que a F3 ia escrever — e uma já divergia
+("Negócio Local" contra "Local"). Formatação de moeda e leitura de data de
+renovação vivem em `lib/clients/apresentacao.ts` pelo mesmo motivo: a data tem
+armadilha de fuso (`new Date(iso)` lê como UTC e em GMT-3 volta um dia), e a
+enésima cópia é onde alguém "simplifica" e reintroduz o bug.
+
+**O kanban do ciclo de vida ESCREVE, e é o único caminho que alimenta
+`lifecycle_stage`.** Nenhuma automação preenche esse campo — movimentação de
+deal nunca o toca, por decisão da F1. Arrastar para `churn` pede confirmação
+porque é o único movimento que tira o cliente de `estaNaCarteira()`, e a coluna
+"Sem Estágio" é origem e nunca destino. Filtro e ordenação são funções puras em
+`lib/clients/filtros.ts`, aplicadas sobre a página carregada (decisão da F1,
+vira server-side acima de mil) — e puras porque a carteira em produção está
+vazia, então só o teste prova essa lógica. `filtros.status` não é aplicado: ver
+`TODOS.md`.
+
 **Policy de bucket privado não é `USING (bucket_id = '...')`.** Esse formato libera
 todo objeto do bucket pra qualquer `authenticated`, de qualquer organização — a
 linha na tabela fica isolada e os bytes não. É o estado do `deal-files` até hoje

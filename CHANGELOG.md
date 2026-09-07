@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(clientes): vistas da carteira — cartões, kanban, filtros e ordenação (F3) — 2026-09-07
+
+Três vistas da mesma carteira: tabela, grade de cartões e kanban do ciclo de
+vida. Vista, filtros e ordenação vivem na URL — um recorte tipo "saúde detrator
++ renovação atrasada" é o que alguém quer recarregar ou mandar pra outra pessoa.
+
+**O kanban escreve.** `lifecycle_stage` é o único campo de governança que
+nenhuma automação preenche: movimentação de deal nunca o toca, porque ele
+descreve a relação com a conta, não a venda. Estava nulo em todos os registros
+da base — sem escrita pela tela ficaria nulo pra sempre e o kanban nasceria com
+uma coluna só. Arrastar para churn pede confirmação nomeando o cliente e a
+consequência, porque é o único movimento que o tira das contas da carteira.
+"Sem Estágio" é origem e nunca destino: desclassificar não é decisão que se tome
+arrastando, e destino que aceita tudo transforma esbarrão em perda de dado.
+
+`ClientsSort` existia em `types/clients.ts` desde a F1 **sem nenhum consumidor**
+— a consulta fixava `.order('name')` e nada mais ordenava. `ordenarClientes()` é
+o call site que faltava. Quarta ocorrência do padrão "capacidade sem call site"
+neste repositório.
+
+Filtro e ordenação são funções puras (`lib/clients/filtros.ts`), e isso é
+deliberado: a carteira em produção tem zero clientes e todas as dimensões que a
+F3 desenha estão vazias, então a tela não prova nada sobre essa lógica. Quinze
+testes provam, com quatro regressões injetadas.
+
+`filtros.status` NÃO foi implementado: "arquivado" significa `is_client = false`
+e a consulta filtra `is_client = true` no servidor, então o filtro devolveria
+lista vazia sempre — com cara de "não há", que é o defeito que este módulo
+passou a fase inteira evitando. Registrado no `TODOS.md`.
+
+**Consolidação que a fase forçou.** O vocabulário (nichos, estágios, categorias)
+estava em QUATRO cópias: `ClientFormModal`, `ClientDetailPage`, `ClientsList` e
+a que eu ia escrever pro kanban. Uma já divergia do meu rascunho — "Negócio
+Local" contra "Local". Virou `lib/clients/vocabulario.ts`. O formatador de moeda
+e a leitura de data de renovação viraram `lib/clients/apresentacao.ts` pelo mesmo
+motivo: a data tem armadilha de fuso embutida, e a terceira cópia é onde alguém
+simplifica pra `new Date(iso)` e reintroduz o bug.
+
+Filtro que esconde tudo diz "nenhum bate com os filtros", nunca "nenhum cliente
+cadastrado" — o mesmo defeito que `estadoDaConsulta` existe pra evitar.
+
+Verificado na tela com 6 clientes semeados em produção e apagados no fim: as 7
+colunas com a distribuição certa, arrastar persistindo no banco (conferido por
+`updated_at`), a confirmação de churn nas duas respostas, "Sem Estágio"
+recusando receber, o indicador caindo de 6 para 5 ativos ao marcar churn, e os
+filtros combinando. Base conferida antes e depois: 10 empresas, 7 ativas, 0
+clientes, 78 atividades, 19 contatos — idêntica.
+
+Arquivos: `lib/clients/{vocabulario,filtros,apresentacao}.ts`,
+`features/clients/components/{ClientCard,ClientsKanban,ClientsViewToolbar}.tsx`,
+`features/clients/ClientsPage.tsx`, `app/globals.css`,
+`test/clientesFiltrosOrdenacao.test.ts`.
+
 ### fix(ai): conversa que um humano atendeu é do humano — 2026-09-07
 
 Em 06/09 a IA respondeu um lead no meio de uma negociação de três dias já
