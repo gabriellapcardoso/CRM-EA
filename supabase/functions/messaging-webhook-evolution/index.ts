@@ -656,6 +656,14 @@ async function handleMessagesUpsert(
         ? { sent_at: timestamp.toISOString() }
         : { delivered_at: timestamp.toISOString() }),
       sender_name: isFromMe ? null : pushName,
+      // Mensagem que sai daqui e não foi a IA que mandou é a equipe respondendo
+      // pelo WhatsApp do próprio celular. Sem esta linha ela entrava com
+      // `sender_type` nulo, e a guarda de takeover — que procurava por 'user' —
+      // não enxergava atendimento humano nenhum: zero linhas do banco tinham
+      // esse valor. Foi assim que a IA entrou no meio de uma negociação de três
+      // dias em 06/09/2026. 'user' é o valor do CHECK da coluna que significa
+      // "pessoa", e é o mesmo que a rota de envio do CRM grava.
+      ...(isFromMe ? { sender_type: "user" } : {}),
       metadata: {
         evolution_message_id: externalMessageId,
         message_type: data.messageType,

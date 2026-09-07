@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ai): conversa que um humano atendeu é do humano — 2026-09-07
+
+Em 06/09 a IA respondeu um lead no meio de uma negociação de três dias já
+fechada, com tom de primeiro contato. Três falhas empilhadas, nenhuma visível
+como erro:
+
+- **o bloco do takeover era código morto**: rodava só
+  `if (takeoverEnabled && conversation?.assigned_user_id)`, e `assigned_user_id`
+  só é preenchido pelo compositor do CRM. A equipe responde pelo WhatsApp do
+  celular, então o campo era sempre nulo;
+- **a checagem procurava `sender_type = 'user'`**, valor escrito só pela rota de
+  envio do CRM. O webhook da Evolution não gravava `sender_type` nenhum — zero
+  linhas do banco tinham esse valor;
+- **a janela era de 15 minutos** numa conversa em que a atendente escreveu às
+  09:42 e o lead respondeu às 20:14.
+
+O que muda:
+
+`isOperatorActive()` (janela de minutos, dependente de atribuição) deu lugar a
+`humanoJaAtendeuAConversa()`: **sem janela de tempo**. Uma resposta humana em
+qualquer momento cala a IA naquela conversa até alguém devolvê-la ao agente pelo
+painel. Reconhece humano por exclusão — saída que não é `ai`, `agent` nem
+`system`, incluindo `sender_type` nulo, que é como chega tudo que a equipe manda
+do próprio celular. O custo dos dois erros é assimétrico: IA muda numa conversa
+que um humano cuida não custa nada, IA falando por cima de negociação fechada
+custa o cliente. Falha de leitura também cala, pelo mesmo motivo.
+
+O webhook passa a gravar `sender_type: 'user'` para mensagem que sai do celular
+da equipe, em vez de deixar nulo. Verificado que o eco da própria IA não vira
+falso humano: as 19 mensagens de saída da base aparecem uma vez cada, a
+deduplicação por `external_id` funciona.
+
+Contenção de rajada: o webhook dispara o processamento por mensagem recebida, e
+duas mensagens do lead em 12 segundos viraram duas respostas em 2 segundos, uma
+sem ver a outra. A IA passa a se recusar a falar de novo se já falou nos últimos
+45 segundos naquela conversa. É contenção, não o conserto certo — o debounce de
+verdade ficou no `TODOS.md`.
+
+A tela de Configurações perdeu o seletor de "tempo de inatividade": a regra
+deixou de ter janela, e manter o campo seria oferecer um botão que o código não
+lê mais. A coluna `ai_takeover_minutes` continua no banco, sem ninguém escrever
+nela pela tela.
+
+Arquivos: `lib/ai/agent/agent.service.ts`,
+`supabase/functions/messaging-webhook-evolution/index.ts`,
+`features/settings/components/ai/AIAgentConfigSection.tsx`,
+`test/aiTakeoverHumano.test.ts`.
+
 ### test(qa): QA da ficha do cliente e um achado que não é dela — 2026-09-06
 
 QA das telas da F2 contra a base real, com sessão fornecida pela fundadora no

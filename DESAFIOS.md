@@ -1,5 +1,46 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## A guarda que protegia a conversa humana nunca rodou (2026-09-07)
+
+Em 06/09 a IA entrou numa conversa com três dias de negociação humana — pacote
+já fechado, contrato sendo redigido — e perguntou ao lead se ele tinha "revisado
+o pacote". Tom de primeiro contato, num negócio praticamente ganho.
+
+Não foi o modelo alucinando. Foram três coisas empilhadas, e nenhuma delas
+aparecia como erro em lugar nenhum:
+
+**1. O bloco do takeover era código morto.** A condição era
+`if (takeoverEnabled && conversation?.assigned_user_id)`. `assigned_user_id` só
+é preenchido por `claimConversation()`, que vive no compositor do CRM. A equipe
+responde pelo WhatsApp do próprio celular, então o campo é sempre nulo e o
+bloco inteiro nunca executava. A função de dentro dele estava correta e
+irrelevante.
+
+**2. A checagem procurava um valor que não existe.** `isOperatorActive()`
+filtrava `sender_type = 'user'`, escrito só pela rota de envio do CRM. O insert
+do webhook da Evolution **não gravava `sender_type` nenhum**. Consulta no banco
+no dia do incidente: zero linhas com `'user'`, em 40 mensagens.
+
+**3. A janela era de minutos numa conversa que respira em horas.** 15 minutos,
+pensados para atendimento ao vivo. A atendente escreveu às 09:42 e o lead
+respondeu às 20:14 — dez horas depois.
+
+Cada camada sozinha já bastava para o incidente. As três juntas fizeram uma
+funcionalidade documentada, testada e visível na tela de configurações não
+existir na prática.
+
+**A regra: guarda que depende de um campo só preenchido por um caminho da
+interface protege só quem usa aquele caminho.** Antes de confiar numa proteção,
+perguntar por qual porta o dado entra de verdade — e conferir no banco se o
+valor que ela procura existe em alguma linha. `select count(*) ... where <o
+valor que a guarda espera>` custa uma consulta e teria matado isso no primeiro
+dia.
+
+É a terceira vez que "capacidade implementada sem call site é indistinguível de
+capacidade ausente" aparece aqui, agora numa variante pior: **tinha call site,
+atrás de uma condição que nunca era verdadeira.** Grep encontra o call site.
+Só o dado mostra que ele nunca roda. Guardas: `test/aiTakeoverHumano.test.ts`.
+
 ## Clique que não chega não deixa rastro nenhum (2026-09-06)
 
 No QA da F2, o clique da ferramenta de navegador não acionava o botão "Atribuir"

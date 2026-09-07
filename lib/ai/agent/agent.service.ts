@@ -431,27 +431,57 @@ export async function processIncomingMessage(
     };
   }
 
-  // 4b. Verificar inatividade do operador (AI Takeover)
-  if (aiConfig.takeoverEnabled && conversation?.assigned_user_id) {
-    const operatorActive = await isOperatorActive(
-      supabase,
-      conversationId,
-      conversation.assigned_at,
-      aiConfig.takeoverMinutes
-    );
+  // 4b. Conversa que um humano já atendeu é do humano (AI Takeover).
+  //
+  // NÃO depende de `assigned_user_id`. Essa condição existia aqui e tornava o
+  // bloco inteiro código morto: `assigned_user_id` só é preenchido por
+  // `claimConversation()`, que vive no compositor do CRM — e a equipe responde
+  // pelo WhatsApp do celular, não por dentro do sistema. O campo era sempre
+  // nulo, a guarda nunca rodava, e em 06/09/2026 a IA entrou no meio de uma
+  // negociação de três dias já fechada, perguntando ao lead se ele tinha
+  // "revisado o pacote". Ver DESAFIOS.md.
+  if (aiConfig.takeoverEnabled) {
+    const humanoNaConversa = await humanoJaAtendeuAConversa(supabase, conversationId);
 
-    if (operatorActive) {
-      console.log('[AIAgent] Operator is active, skipping AI response');
+    if (humanoNaConversa) {
+      console.log(
+        '[AIAgent] Humano já atendeu esta conversa — IA em modo observador. Conversa:',
+        conversationId
+      );
       return {
         success: true,
         decision: {
           action: 'skipped',
-          reason: `Operador ativo (última mensagem há menos de ${aiConfig.takeoverMinutes} min)`,
+          reason:
+            'Humano já respondeu nesta conversa: a IA só observa. Religue pelo painel da conversa quando quiser devolvê-la ao agente.',
         },
       };
     }
+  }
 
-    console.log(`[AIAgent] Operator inactive for >${aiConfig.takeoverMinutes}min, AI taking over`);
+  // 4c. Rajada do lead vira uma resposta, não uma por mensagem.
+  //
+  // O webhook dispara o processamento por mensagem recebida. Em 06/09/2026 o
+  // lead mandou duas em 12 segundos e saíram duas respostas em 2 segundos, uma
+  // sem enxergar a outra — a primeira genérica, a segunda correta. Do lado de
+  // quem recebe são duas mensagens seguidas de um robô.
+  //
+  // Isto é contenção, não o conserto certo: o certo é esperar a rajada assentar
+  // e responder ao conjunto (registrado no TODOS.md). Aqui só se recusa a falar
+  // de novo em cima da própria fala recente.
+  const respostaRecente = await iaRespondeuHaPoucosSegundos(supabase, conversationId);
+  if (respostaRecente) {
+    console.log(
+      '[AIAgent] IA respondeu há poucos segundos nesta conversa — ignorando a mensagem seguinte da rajada. Conversa:',
+      conversationId
+    );
+    return {
+      success: true,
+      decision: {
+        action: 'skipped',
+        reason: 'A IA acabou de responder nesta conversa (rajada de mensagens do lead).',
+      },
+    };
   }
 
   // 5. Montar contexto do lead
@@ -1198,35 +1228,95 @@ async function logAIInteraction(params: {
 // Helpers
 // =============================================================================
 
+/** Quem manda mensagem de saída sem ser a IA é gente. */
+const REMETENTES_AUTOMATICOS = ['ai', 'agent', 'system'];
+
+/** Janela da contenção de rajada. Curta: separa mensagens de uma mesma
+ *  digitação, não respostas legítimas em momentos diferentes da conversa. */
+const SEGUNDOS_ENTRE_RESPOSTAS_DA_IA = 45;
+
 /**
- * Verifica se o operador atribuído enviou mensagem recentemente.
- * Compara o tempo desde a última mensagem outbound do operador (ou assignment)
- * contra o limiar de takeover.
+ * A IA respondeu nesta conversa nos últimos segundos?
+ *
+ * Lê o banco em vez de guardar estado em memória de propósito: o
+ * processamento roda por requisição, e duas mensagens da mesma rajada podem
+ * cair em execuções diferentes que não compartilham memória nenhuma.
  */
-async function isOperatorActive(
+export async function iaRespondeuHaPoucosSegundos(
   supabase: SupabaseClient,
-  conversationId: string,
-  assignedAt: string | null,
-  takeoverMinutes: number
+  conversationId: string
 ): Promise<boolean> {
-  const { data: lastUserMessage } = await supabase
+  const limite = new Date(Date.now() - SEGUNDOS_ENTRE_RESPOSTAS_DA_IA * 1000).toISOString();
+
+  const { data, error } = await supabase
     .from('messaging_messages')
-    .select('created_at')
+    .select('id')
     .eq('conversation_id', conversationId)
     .eq('direction', 'outbound')
-    .eq('sender_type', 'user')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq('sender_type', 'ai')
+    .gte('created_at', limite)
+    .limit(1);
 
-  const referenceTime = lastUserMessage?.created_at || assignedAt;
-
-  if (!referenceTime) {
-    return false; // Nunca respondeu e não tem assignment → inativo
+  if (error) {
+    // Mesma postura da guarda de humano: na dúvida, calar.
+    console.error(
+      '[AIAgent] Falha ao checar resposta recente da IA — calando por precaução. Conversa:',
+      conversationId,
+      error
+    );
+    return true;
   }
 
-  const minutesSince = (Date.now() - new Date(referenceTime).getTime()) / 60000;
-  return minutesSince < takeoverMinutes;
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * A conversa já foi atendida por um humano em algum momento?
+ *
+ * **Sem janela de tempo, de propósito.** A regra anterior era "operador ativo
+ * nos últimos 15 minutos", pensada para atendimento ao vivo, com a pessoa
+ * digitando naquele instante. Não é como a equipe trabalha: no incidente de
+ * 06/09/2026 a atendente escreveu às 09:42 e o lead respondeu às 20:14 — dez
+ * horas depois, com qualquer janela de minutos vencida havia muito. Uma
+ * negociação real respira em horas e dias, não em minutos.
+ *
+ * O custo dos dois erros é assimétrico: IA muda numa conversa que um humano já
+ * cuida não custa nada, e IA falando por cima de negociação fechada custa o
+ * cliente. Por isso o sinal não expira. Devolver a conversa ao agente é decisão
+ * consciente, pelo painel.
+ *
+ * Reconhece humano por EXCLUSÃO — mensagem de saída que não é `ai`, `agent` nem
+ * `system`. Inclui `sender_type` nulo de propósito: é assim que chega tudo que
+ * a equipe manda do próprio WhatsApp, e era exatamente o caso que a regra
+ * antiga (`sender_type = 'user'`) não enxergava. Zero linhas do banco tinham
+ * esse valor quando o incidente aconteceu.
+ */
+export async function humanoJaAtendeuAConversa(
+  supabase: SupabaseClient,
+  conversationId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('messaging_messages')
+    .select('id')
+    .eq('conversation_id', conversationId)
+    .eq('direction', 'outbound')
+    .or(
+      `sender_type.is.null,sender_type.not.in.(${REMETENTES_AUTOMATICOS.join(',')})`
+    )
+    .limit(1);
+
+  if (error) {
+    // Falha de leitura não pode virar "pode falar". Diante da dúvida a IA cala:
+    // o silêncio indevido custa uma resposta atrasada, o oposto custa o lead.
+    console.error(
+      '[AIAgent] Falha ao verificar atendimento humano — assumindo que há humano e calando a IA. Conversa:',
+      conversationId,
+      error
+    );
+    return true;
+  }
+
+  return (data?.length ?? 0) > 0;
 }
 
 function checkHandoffKeywords(message: string, keywords: string[]): string | null {
