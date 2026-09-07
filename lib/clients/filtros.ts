@@ -14,7 +14,8 @@
  */
 
 import type { ClientView, ClientsFilters, ClientsSort } from '@/types/clients';
-import { faixaDeSaude } from './health';
+import { faixaDeSaude, FAIXAS_DE_SAUDE } from './health';
+import { ESTAGIOS_DO_CICLO, CATEGORIAS } from './vocabulario';
 import { diasAte } from './metricas';
 
 // `filtros.status` NÃO é aplicado aqui, e isso é deliberado. "Arquivado"
@@ -123,4 +124,27 @@ export function ordenarClientes(clientes: ClientView[], sort: ClientsSort): Clie
         if (!db) return -1;
         return da.localeCompare(db);
     });
+}
+
+/**
+ * Lê os filtros da URL, descartando o que não pertence ao vocabulário.
+ *
+ * A URL é entrada de fora: dá pra editar à mão, e um link antigo pode carregar
+ * um valor que o vocabulário não tem mais. Sem validação, `?estagio=lixo` vira
+ * um filtro que não casa com ninguém — a lista mostra "nenhum bate com os
+ * filtros" enquanto o `<select>` fica em branco, porque o valor não é nenhuma
+ * das opções. A pessoa vê tela vazia e nenhum filtro aparente pra limpar.
+ *
+ * `vista` e `ordem` já eram validados; estes quatro não eram.
+ */
+export function lerFiltrosDaURL(params: URLSearchParams): ClientsFilters {
+    const umDe = <T extends string>(valor: string | null, aceitos: readonly T[]): T | undefined =>
+        valor && (aceitos as readonly string[]).includes(valor) ? (valor as T) : undefined;
+
+    return {
+        stage: umDe(params.get('estagio'), ESTAGIOS_DO_CICLO.map(e => e.value)),
+        category: umDe(params.get('categoria'), CATEGORIAS.map(c => c.value)),
+        band: umDe(params.get('saude'), FAIXAS_DE_SAUDE.map(f => f.band)),
+        renewal: umDe(params.get('renovacao'), ['atrasada', 'proximos_30', 'proximos_60'] as const),
+    };
 }

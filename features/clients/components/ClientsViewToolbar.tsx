@@ -160,7 +160,7 @@ export const ClientsViewToolbar: React.FC<Props> = ({
             </div>
 
             {filtrando && (
-                <p className="meta" style={{ flexBasis: '100%' }}>
+                <p className="meta client-toolbar__aviso">
                     Mostrando {visiveis} de {total} cliente{total === 1 ? '' : 's'} desta página. Os
                     filtros valem sobre a página carregada, não sobre a carteira inteira.
                 </p>

@@ -14,7 +14,7 @@ import {
     ehVistaValida,
     type VistaDaCarteira,
 } from './components/ClientsViewToolbar';
-import { aplicarFiltros, ordenarClientes } from '@/lib/clients/filtros';
+import { aplicarFiltros, ordenarClientes, lerFiltrosDaURL } from '@/lib/clients/filtros';
 import { hojeLocalISO, dataLocalISOEmDias } from '@/lib/utils/dataLocal';
 import type { ClientsFilters, ClientsSort } from '@/types/clients';
 import { ClientFormModal } from './components/ClientFormModal';
@@ -65,12 +65,10 @@ export const ClientsPage: React.FC = () => {
         if (ehVistaValida(v)) setVista(v);
         const o = params.get('ordem');
         if (o === 'mrr' || o === 'saude' || o === 'renovacao' || o === 'nome') setOrdem(o);
-        setFiltros({
-            stage: (params.get('estagio') as ClientsFilters['stage']) ?? undefined,
-            category: (params.get('categoria') as ClientsFilters['category']) ?? undefined,
-            band: (params.get('saude') as ClientsFilters['band']) ?? undefined,
-            renewal: (params.get('renovacao') as ClientsFilters['renewal']) ?? undefined,
-        });
+        // Valida contra o vocabulário: a URL é entrada de fora, e valor
+        // inválido viraria filtro que não casa com ninguém, com o select em
+        // branco e nada visível pra limpar.
+        setFiltros(lerFiltrosDaURL(params));
     }, []);
 
     // Debounce da busca. Só volta pra primeira página quando o termo MUDOU de

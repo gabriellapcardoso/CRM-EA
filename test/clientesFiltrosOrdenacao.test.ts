@@ -7,8 +7,16 @@
  * então a prova é aqui.
  */
 import { describe, expect, it } from 'vitest';
-import { aplicarFiltros, ordenarClientes } from '@/lib/clients/filtros';
+import { aplicarFiltros, ordenarClientes, lerFiltrosDaURL } from '@/lib/clients/filtros';
 import type { ClientView } from '@/types/clients';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+    ESTAGIOS_DO_CICLO,
+    CATEGORIAS,
+    NICHOS,
+    ehEstagioConhecido,
+} from '@/lib/clients/vocabulario';
 
 const HOJE = '2026-09-07';
 
@@ -148,5 +156,89 @@ describe('ordenarClientes', () => {
         const original = [...carteira];
         ordenarClientes(carteira, 'nome');
         expect(carteira.map(c => c.name)).toEqual(original.map(c => c.name));
+    });
+});
+
+describe('lerFiltrosDaURL', () => {
+    const url = (qs: string) => new URLSearchParams(qs);
+
+    it('aceita os valores do vocabulário', () => {
+        expect(lerFiltrosDaURL(url('estagio=kickoff&categoria=ouro&saude=promotor&renovacao=atrasada')))
+            .toEqual({ stage: 'kickoff', category: 'ouro', band: 'promotor', renewal: 'atrasada' });
+    });
+
+    it('descarta valor que não pertence ao vocabulário', () => {
+        // Sem isto vira um filtro que não casa com ninguém: a lista mostra
+        // "nenhum bate com os filtros" e o select fica em branco, sem nada
+        // aparente pra limpar.
+        expect(lerFiltrosDaURL(url('estagio=lixo&categoria=platina&saude=otimo&renovacao=ontem')))
+            .toEqual({ stage: undefined, category: undefined, band: undefined, renewal: undefined });
+    });
+
+    it('URL sem filtro nenhum devolve tudo indefinido', () => {
+        expect(lerFiltrosDaURL(url('q=alfa&p=2')))
+            .toEqual({ stage: undefined, category: undefined, band: undefined, renewal: undefined });
+    });
+
+    it("'todos' não é valor de URL — some, em vez de virar filtro", () => {
+        // A tela usa 'todos' como "sem filtro" no select, e o gravador de URL
+        // já omite esse caso. Se ele chegar pela URL, não vira filtro.
+        expect(lerFiltrosDaURL(url('estagio=todos')).stage).toBeUndefined();
+    });
+});
+
+describe('o vocabulário do código tem que bater com o CHECK do banco', () => {
+    /**
+     * O kanban monta as colunas a partir de `ESTAGIOS_DO_CICLO`. Um valor que o
+     * banco aceita e a lista não tem cai na coluna "Outro" (proteção em
+     * runtime), mas isso é rede de segurança, não o estado desejado: o cliente
+     * aparece sob um rótulo genérico em vez do estágio real dele.
+     *
+     * Este teste é o aviso. Lê a migration como texto — a migration é a fonte
+     * de verdade do CHECK, e comparar contra ela pega o descompasso no CI, na
+     * hora em que alguém mexe num lado só.
+     */
+    const MIGRATION = 'supabase/migrations/20260905120000_modulo_clientes.sql';
+
+    function valoresDoCheck(sql: string, coluna: string): string[] {
+        const re = new RegExp(`${coluna} IS NULL OR ${coluna} IN \\(([^)]*)\\)`, 's');
+        const bruto = sql.match(re)?.[1];
+        if (!bruto) throw new Error(`CHECK de ${coluna} não encontrado em ${MIGRATION}`);
+        return [...bruto.matchAll(/'([^']+)'/g)].map(m => m[1]);
+    }
+
+    const SQL = readFileSync(join(process.cwd(), MIGRATION), 'utf-8');
+
+    it('os estágios do ciclo são exatamente os do CHECK, na mesma ordem', () => {
+        // A ordem importa: é a das colunas do kanban, e ela é semântica.
+        expect(ESTAGIOS_DO_CICLO.map(e => e.value)).toEqual(valoresDoCheck(SQL, 'lifecycle_stage'));
+    });
+
+    it('as categorias são exatamente as do CHECK', () => {
+        expect(CATEGORIAS.map(c => c.value).sort()).toEqual(valoresDoCheck(SQL, 'category').sort());
+    });
+
+    it('os nichos são exatamente os do CHECK', () => {
+        expect(NICHOS.map(n => n.value).sort()).toEqual(valoresDoCheck(SQL, 'niche').sort());
+    });
+});
+
+describe('ehEstagioConhecido', () => {
+    // O kanban usa isto pra decidir entre coluna do estágio e a coluna "Outro".
+    // Sem o terceiro caso, valor novo no CHECK fazia o cliente sumir da tela.
+    it('reconhece os seis do vocabulário', () => {
+        for (const e of ESTAGIOS_DO_CICLO) {
+            expect(ehEstagioConhecido(e.value), e.value).toBe(true);
+        }
+    });
+
+    it('recusa valor que o banco aceitaria mas o código não conhece', () => {
+        expect(ehEstagioConhecido('pausado')).toBe(false);
+    });
+
+    it('nulo e vazio não são estágio conhecido — são "sem estágio"', () => {
+        expect(ehEstagioConhecido(null)).toBe(false);
+        expect(ehEstagioConhecido(undefined)).toBe(false);
+        expect(ehEstagioConhecido('')).toBe(false);
     });
 });

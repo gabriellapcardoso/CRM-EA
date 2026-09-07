@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ESTAGIOS_DO_CICLO } from '@/lib/clients/vocabulario';
+import { ESTAGIOS_DO_CICLO, ehEstagioConhecido } from '@/lib/clients/vocabulario';
 import { useUpdateClient } from '@/lib/query/hooks/useClientsQuery';
 import { ClientCard } from './ClientCard';
 import type { ClientLifecycleStage, ClientView } from '@/types/clients';
@@ -14,7 +14,19 @@ interface Props {
 
 /** Coluna dos que ainda não foram classificados. */
 const SEM_ESTAGIO = 'sem_estagio';
-type ColunaId = ClientLifecycleStage | typeof SEM_ESTAGIO;
+
+/**
+ * Coluna de escape para estágio que o vocabulário não conhece.
+ *
+ * Sem ela, um valor aceito pelo CHECK do banco mas ausente de
+ * `ESTAGIOS_DO_CICLO` não casaria com coluna nenhuma e o cartão simplesmente
+ * NÃO seria desenhado — o cliente sumia da tela sem erro, e o rodapé ainda o
+ * contava como classificado. Só aparece quando tem alguém dentro: coluna
+ * permanentemente vazia é ruído.
+ */
+const OUTRO = 'outro';
+
+type ColunaId = ClientLifecycleStage | typeof SEM_ESTAGIO | typeof OUTRO;
 
 /**
  * Kanban do ciclo de vida da conta.
@@ -45,15 +57,22 @@ export const ClientsKanban: React.FC<Props> = ({ clientes, hoje, limite30 }) => 
         null,
     );
 
+    function estagioNaTela(c: ClientView): ColunaId {
+        if (movendo?.id === c.id) return movendo.para;
+        if (!c.lifecycleStage) return SEM_ESTAGIO;
+        return ehEstagioConhecido(c.lifecycleStage) ? c.lifecycleStage : OUTRO;
+    }
+
+    const temDesconhecido = clientes.some(c => estagioNaTela(c) === OUTRO);
+
     const colunas: { id: ColunaId; titulo: string; aceita: boolean }[] = [
         { id: SEM_ESTAGIO, titulo: 'Sem Estágio', aceita: false },
         ...ESTAGIOS_DO_CICLO.map(e => ({ id: e.value as ColunaId, titulo: e.label, aceita: true })),
+        // Só entra na lista quando recolheu alguém.
+        ...(temDesconhecido
+            ? [{ id: OUTRO as ColunaId, titulo: 'Outro', aceita: false }]
+            : []),
     ];
-
-    function estagioNaTela(c: ClientView): ColunaId {
-        if (movendo?.id === c.id) return movendo.para;
-        return c.lifecycleStage ?? SEM_ESTAGIO;
-    }
 
     async function soltarEm(destino: ClientLifecycleStage, clienteId: string) {
         const cliente = clientes.find(c => c.id === clienteId);

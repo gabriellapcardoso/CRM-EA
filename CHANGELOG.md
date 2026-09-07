@@ -55,6 +55,20 @@ recusando receber, o indicador caindo de 6 para 5 ativos ao marcar churn, e os
 filtros combinando. Base conferida antes e depois: 10 empresas, 7 ativas, 0
 clientes, 78 atividades, 19 contatos — idêntica.
 
+**Achados do `/review`, consertados na mesma fase.** O mais sério: cliente com
+`lifecycle_stage` que o banco aceita mas o código não conhece **não casava com
+coluna nenhuma e não era desenhado** — sumia da tela sem erro, e o rodapé ainda
+o contava como classificado. Agora cai numa coluna "Outro", que só aparece
+quando recolhe alguém, e um teste amarra `ESTAGIOS_DO_CICLO`, `CATEGORIAS` e
+`NICHOS` aos CHECKs da migration: mexer num lado só fica vermelho no CI.
+
+Os outros dois: os filtros vindos da URL eram convertidos sem validação
+(`vista` e `ordem` já eram validados, os quatro filtros não), então
+`?estagio=lixo` virava um filtro que não casa com ninguém, com a lista vazia e o
+select em branco — nada aparente pra limpar. E o título do cartão era uma âncora
+dentro de um `<li>` arrastável, o que faz o navegador iniciar arraste de LINK
+justamente onde a mão vai pegar.
+
 Arquivos: `lib/clients/{vocabulario,filtros,apresentacao}.ts`,
 `features/clients/components/{ClientCard,ClientsKanban,ClientsViewToolbar}.tsx`,
 `features/clients/ClientsPage.tsx`, `app/globals.css`,

@@ -44,7 +44,15 @@ export const ClientCard: React.FC<Props> = ({
             draggable={arrastavel && !movendo}
             onDragStart={e => onDragStart?.(e, cliente.id)}
         >
-            <Link href={`/clients/${cliente.id}?from=clientes`} className="client-card__nome">
+            {/* `draggable={false}` porque âncora é arrastável por padrão: sem
+                isto, agarrar o card pelo título faz o navegador iniciar um
+                arraste de LINK em vez do arraste do cartão, e o título é
+                exatamente onde a mão vai. */}
+            <Link
+                href={`/clients/${cliente.id}?from=clientes`}
+                className="client-card__nome"
+                draggable={false}
+            >
                 {cliente.name}
             </Link>
 

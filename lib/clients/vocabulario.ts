@@ -61,3 +61,17 @@ function rotulo<T extends string>(lista: ReadonlyArray<Termo<T>>, valor?: T | nu
 export const rotuloDoEstagio = (v?: ClientLifecycleStage | null) => rotulo(ESTAGIOS_DO_CICLO, v);
 export const rotuloDoNicho = (v?: ClientNiche | null) => rotulo(NICHOS, v);
 export const rotuloDaCategoria = (v?: ClientCategory | null) => rotulo(CATEGORIAS, v);
+
+const VALORES_DE_ESTAGIO = new Set<string>(ESTAGIOS_DO_CICLO.map(e => e.value));
+
+/**
+ * O valor pertence ao vocabulário de estágios?
+ *
+ * Existe porque o kanban precisa distinguir três coisas que parecem duas: sem
+ * estágio (nulo), estágio conhecido, e estágio que o BANCO aceita mas o código
+ * não conhece. Sem o terceiro caso, um valor novo no CHECK faria o cartão não
+ * casar com coluna nenhuma e o cliente sumia da tela sem erro.
+ */
+export function ehEstagioConhecido(v: string | null | undefined): v is ClientLifecycleStage {
+    return !!v && VALORES_DE_ESTAGIO.has(v);
+}

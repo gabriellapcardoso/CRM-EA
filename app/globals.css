@@ -957,6 +957,7 @@ body {
 .client-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
 .client-toolbar__grupo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .client-toolbar__rotulo { font-size: var(--text-meta); font-weight: var(--weight-bold); letter-spacing: var(--tracking-wide); color: var(--text-faint); }
+.client-toolbar__aviso { flex-basis: 100%; }
 .client-toolbar__acoes { display: flex; gap: 6px; margin-left: auto; }
 
 /* Grade de cartões: `auto-fill` com `min()` — piso puro de 260px sobrepõe a
