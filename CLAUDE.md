@@ -264,6 +264,23 @@ renovação vivem em `lib/clients/apresentacao.ts` pelo mesmo motivo: a data tem
 armadilha de fuso (`new Date(iso)` lê como UTC e em GMT-3 volta um dia), e a
 enésima cópia é onde alguém "simplifica" e reintroduz o bug.
 
+**Vocabulário fechado que vira coluna precisa de guarda E de escape.** O kanban
+distribui por igualdade (`card.stage === coluna.id`), e distribuição por
+igualdade tem um `else` implícito que ninguém escreve: valor aceito pelo CHECK
+do banco e ausente de `ESTAGIOS_DO_CICLO` não casa com coluna nenhuma e **não é
+desenhado** — o cliente some da tela sem erro. Duas proteções, porque fazem
+coisas diferentes: `test/clientesFiltrosOrdenacao.test.ts` amarra os três
+vocabulários aos CHECKs da migration e AVISA (inclusive sobre mudança de ordem,
+que é semântica); a coluna "Outro" (`ehEstagioConhecido`) recolhe o desconhecido
+e PROTEGE mesmo se a guarda for ignorada. Ver `DESAFIOS.md`.
+
+**Parâmetro lido da URL se valida em bloco, numa função pura.**
+`lerFiltrosDaURL` (`lib/clients/filtros.ts`) lê os quatro filtros e descarta o
+que não pertence ao vocabulário. Cast (`as ClientsFilters['stage']`) não valida
+nada em runtime: `?estagio=lixo` virava filtro que não casava com ninguém, com a
+lista vazia e o `<select>` em branco — nada aparente pra limpar. Validar campo a
+campo é como isso nasceu (dois validados, quatro por cast, na mesma função).
+
 **O kanban do ciclo de vida ESCREVE, e é o único caminho que alimenta
 `lifecycle_stage`.** Nenhuma automação preenche esse campo — movimentação de
 deal nunca o toca, por decisão da F1. Arrastar para `churn` pede confirmação
