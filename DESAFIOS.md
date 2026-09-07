@@ -1,5 +1,33 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Injeção de regressão que não injetou nada passa por teste aprovado (2026-09-07)
+
+Ao provar as guardas do incidente da IA, quatro injeções: três ficaram vermelhas
+e uma passou verde. A tentação é ler isso como "esta asserção é fraca". Era o
+contrário — **a injeção não tinha alterado o código que eu queria alterar.**
+
+O script achava o alvo por posição de string:
+
+```python
+i = s.index('humanoJaAtendeuAConversa')      # acha a CHAMADA, linha ~444
+j = s.index('return true;', i)               # e um `return true` qualquer depois dela
+```
+
+A definição da função estava 850 linhas abaixo da chamada. Troquei um `return`
+de outra função, o teste continuou verde com razão, e a guarda do caminho de erro
+seguiu não provada. Refeita mirando a linha certa (número da definição + offset
+dentro dela, com `assert` no conteúdo da linha antes de trocar), ficou vermelha.
+
+**A regra: injeção precisa provar que mudou o que dizia que ia mudar.** `assert`
+no texto da linha antes de substituir, e desconfiar quando o resultado for verde
+— num teste que você acabou de escrever para aquele conserto, verde depois da
+injeção é quase sempre injeção furada, não asserção fraca. Vale também conferir
+se o NÚMERO de falhas bate com o número de asserções que dependiam do conserto.
+
+É a terceira variação da mesma família aqui: guarda que casa arquivo por menção
+pegou o arquivo errado, asserção que casou no comentário em vez do código, e
+agora injeção que mirou a chamada em vez da definição. Todas passam por verde.
+
 ## A guarda que protegia a conversa humana nunca rodou (2026-09-07)
 
 Em 06/09 a IA entrou numa conversa com três dias de negociação humana — pacote

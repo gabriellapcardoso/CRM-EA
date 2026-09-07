@@ -63,6 +63,16 @@ não some, e a IA continuaria calada depois de o usuário mandar destravá-la.
 Quem responder depois de liberar cala a IA de novo, sem ninguém precisar
 lembrar de desfazer nada.
 
+**Contenção aplicada em produção antes do merge**, com autorização: os 4 contatos
+cujas conversas já tinham resposta humana ficaram com `ai_paused = true`,
+aplicando a regra nova retroativamente sem depender de deploy. Um deles era um
+lead onde a atendente havia escrito "vou passar sua demanda para o setor
+responsável" e a IA já respondera duas vezes — o próximo caso, se ele
+escrevesse. A decisão foi manter os quatro em observação para revisão manual.
+
+O webhook é Edge Function e **não sobe pela Vercel**: precisou de
+`supabase functions deploy` separado (versão 8, publicada 2026-09-07 13:52 UTC).
+
 Arquivos: `lib/ai/agent/agent.service.ts`,
 `supabase/functions/messaging-webhook-evolution/index.ts`,
 `features/settings/components/ai/AIAgentConfigSection.tsx`,
