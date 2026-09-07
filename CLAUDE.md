@@ -36,6 +36,17 @@ Teste específico:
 npx vitest run path/to/file.test.ts
 ```
 
+**Mensagem de commit passa por commitlint no CI** (job "Validate Conventional
+Commits"), e o tipo precisa estar nesta lista:
+
+```
+feat, fix, docs, style, refactor, perf, test, chore, ci, revert
+```
+
+`merge:` não está — commit de merge feito à mão reprova o PR inteiro com os
+testes verdes, e o erro (`type must be one of [...]`, `[type-enum]`) só aparece
+no log do job. Usar `chore:` para merge e resolução de conflito.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Supabase (PostgreSQL + Auth + Edge Functions) · TanStack Query v5 · Zustand v5 · Tailwind CSS v4 · Radix UI · Zod v4 · AI SDK v6 (OpenRouter — provider único, roteador multi-modelo)
@@ -362,6 +373,25 @@ Webhooks de mensageria são Edge Functions (não API Routes):
 - `messaging-webhook-zapi` — Z-API (WhatsApp)
 
 Webhooks retornam HTTP 200 mesmo em erros de processamento (evita retry storms).
+
+**Mudança em `supabase/functions/` NÃO sobe no deploy da Vercel.** O merge em
+`main` publica o app e deixa a Edge Function na versão antiga, sem erro em lugar
+nenhum: o CI passa, a Vercel fica verde, e metade do conserto está no ar. Deploy
+é comando separado:
+
+```bash
+supabase functions deploy <nome-da-funcao> --project-ref zuuqcwxletrfmpcqagxc
+```
+
+Conferir depois, porque "o comando não deu erro" não é a mesma pergunta que "a
+versão nova está servindo":
+
+```bash
+supabase functions list --project-ref zuuqcwxletrfmpcqagxc   # VERSION e UPDATED_AT
+```
+
+Aconteceu em 2026-09-07: o conserto do takeover tocava o agente (Vercel) e o
+webhook (Edge Function) ao mesmo tempo, e só o primeiro subiria sozinho.
 
 ### Credenciais de Canal
 
