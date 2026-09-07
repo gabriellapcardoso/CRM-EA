@@ -177,7 +177,7 @@ operacional · timeline · comercial.
 
 | Fase | Entrega | Por que essa ordem |
 |---|---|---|
-| **F1** | Migration completa (colunas de governança + `client_contracts` + satélites + RLS + integridade cross-org) · cadastro de cliente · aba Comercial · listagem em tabela · os 4 indicadores | Primeira fase utilizável de ponta a ponta: dá pra cadastrar, contratar e ver o MRR |
+| **F1** | ✅ Migration completa (colunas de governança + `client_contracts` + satélites + RLS + integridade cross-org) · cadastro de cliente · aba Comercial · listagem em tabela · os 4 indicadores | Primeira fase utilizável de ponta a ponta: dá pra cadastrar, contratar e ver o MRR |
 | **F2** | ✅ Ficha: abas, Visão Geral, Timeline derivada, equipe atribuída | Leitura sobre dado que a F1 já produz |
 
 > **Correções que a F2 fez no plano.** A timeline NÃO usa `deal_stage_events`: é

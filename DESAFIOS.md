@@ -1,5 +1,53 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Clique que não chega não deixa rastro nenhum (2026-09-06)
+
+No QA da F2, o clique da ferramenta de navegador não acionava o botão "Atribuir"
+— enquanto acionava o de remover marco na MESMA página, na mesma sessão. Sintoma
+enganoso: o botão habilitado, a ferramenta reportando o clique com sucesso, e
+absolutamente nada acontecendo.
+
+Cheguei a um passo de registrar "o botão Atribuir não funciona". Não era: um
+`.click()` disparado por JS acionou o handler inteiro e o fluxo funcionou.
+
+Duas coisas separam as hipóteses, e as duas são baratas:
+
+- **erro na tela ou no console** — mutation que falha deixa rastro; clique que
+  não chegou não deixa nenhum. Silêncio total aponta pro clique, não pro código;
+- **requisição na rede** — se nada saiu, o handler não rodou.
+
+Segundo tropeço no mesmo dia: `form_input` num `<select>` controlado pelo React
+escreve o valor no DOM e **não dispara o `onChange`**, então o estado do
+componente continua vazio. Usar o setter nativo do prototype e despachar o
+evento:
+
+```js
+const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+setter.call(sel, valor);
+sel.dispatchEvent(new Event('change', { bubbles: true }));
+```
+
+**A regra: antes de reportar botão quebrado, provar que o clique chegou.** Vale
+pra qualquer arnês de automação — o custo de errar aqui é abrir bug contra
+código que funciona, e o de acertar é uma linha de verificação.
+
+## Ausência num log desligado não é prova de nada (2026-09-06)
+
+O retro leu `~/.gstack/analytics/skill-usage.jsonl` procurando quais skills
+rodaram na semana e achou zero entradas na janela. Zero seria uma mentira
+confortável: `/review`, `/qa` e o próprio `/retro` tinham acabado de rodar. A
+entrada mais recente do arquivo é de 06/08, um mês antes, e o preamble já tinha
+avisado `TELEMETRY: off`.
+
+O arquivo existia, era legível, e a consulta estava certa. O que faltava era
+perguntar se alguém ainda escreve nele.
+
+**A regra: antes de tratar um log vazio como medição, conferir se a escrita está
+ligada.** É a mesma família do `connectionStatus: open` da Evolution e do
+`activities.client_company_id` vazio — a fonte responde, só não responde sobre o
+que se perguntou. Distinguir sempre "verifiquei e não há" de "não consegui
+verificar".
+
 ## Escrevi um segundo `.timeline` e as duas famílias brigaram (2026-09-06)
 
 Criei `.timeline`, `.timeline__item` e mais quatro regras para a linha do tempo

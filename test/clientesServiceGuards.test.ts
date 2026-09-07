@@ -248,3 +248,80 @@ describe('invalidação cruzada empresa ↔ cliente', () => {
         }
     });
 });
+
+describe('atribuir() traduz a violação de chave única', () => {
+    /**
+     * A tela tira do seletor quem já está na equipe, mas duas abas atribuindo
+     * ao mesmo tempo furam esse filtro e batem no índice `idx_client_team_unico`
+     * (migration 20260905120000). O índice fazer o trabalho dele está certo; o
+     * que não pode é o nome dele virar a mensagem que a pessoa lê.
+     *
+     * Coberto aqui e não no navegador de propósito: reproduzir a corrida pela
+     * tela exige inserir a linha por fora com a página já carregada, e o
+     * resultado depende de qual clique chega primeiro. Aqui é determinístico.
+     */
+    function comErroNoInsert(erro: unknown) {
+        const b: Record<string, unknown> = {};
+        b.insert = vi.fn(() => Promise.resolve({ error: erro }));
+        return b;
+    }
+
+    beforeEach(() => {
+        vi.resetModules();
+    });
+
+    it('23505 vira frase legível, sem vazar o nome do índice', async () => {
+        vi.doMock('@/lib/supabase/client', () => ({
+            supabase: {
+                from: vi.fn(() =>
+                    comErroNoInsert({
+                        code: '23505',
+                        message:
+                            'duplicate key value violates unique constraint "idx_client_team_unico"',
+                    }),
+                ),
+            },
+        }));
+        const { clientTeamService } = await import('@/lib/supabase/clients');
+        const { error } = await clientTeamService.atribuir({
+            companyId: 'e1',
+            profileId: 'p1',
+        });
+
+        expect(error).toBeInstanceOf(Error);
+        expect(error!.message).toBe('Essa pessoa já está na equipe deste cliente.');
+        expect(error!.message).not.toContain('idx_client_team_unico');
+        expect(error!.message).not.toMatch(/duplicate key|unique constraint/i);
+    });
+
+    it('erro de outro tipo passa inteiro, sem ser mascarado', async () => {
+        // Mascarar tudo esconderia falha de rede e de permissão atrás da mesma
+        // frase, e aí ninguém diagnostica nada.
+        vi.doMock('@/lib/supabase/client', () => ({
+            supabase: {
+                from: vi.fn(() =>
+                    comErroNoInsert({ code: '42501', message: 'permission denied for table client_team' }),
+                ),
+            },
+        }));
+        const { clientTeamService } = await import('@/lib/supabase/clients');
+        const { error } = await clientTeamService.atribuir({
+            companyId: 'e1',
+            profileId: 'p1',
+        });
+
+        expect((error as { message: string }).message).toContain('permission denied');
+    });
+
+    it('sucesso não inventa erro', async () => {
+        vi.doMock('@/lib/supabase/client', () => ({
+            supabase: { from: vi.fn(() => comErroNoInsert(null)) },
+        }));
+        const { clientTeamService } = await import('@/lib/supabase/clients');
+        const { error } = await clientTeamService.atribuir({
+            companyId: 'e1',
+            profileId: 'p1',
+        });
+        expect(error).toBeNull();
+    });
+});
