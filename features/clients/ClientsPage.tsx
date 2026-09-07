@@ -7,6 +7,16 @@ import { calcularMetricas } from '@/lib/clients/metricas';
 import { estadoDaConsulta } from '@/lib/clients/estadoDaConsulta';
 import { ClientsMetricsBar } from './components/ClientsMetricsBar';
 import { ClientsList } from './components/ClientsList';
+import { ClientCard } from './components/ClientCard';
+import { ClientsKanban } from './components/ClientsKanban';
+import {
+    ClientsViewToolbar,
+    ehVistaValida,
+    type VistaDaCarteira,
+} from './components/ClientsViewToolbar';
+import { aplicarFiltros, ordenarClientes, lerFiltrosDaURL } from '@/lib/clients/filtros';
+import { hojeLocalISO, dataLocalISOEmDias } from '@/lib/utils/dataLocal';
+import type { ClientsFilters, ClientsSort } from '@/types/clients';
 import { ClientFormModal } from './components/ClientFormModal';
 import type { ClientFormData } from '@/lib/validations/schemas';
 import type { ClientsMetrics } from '@/types/clients';
@@ -37,6 +47,9 @@ export const ClientsPage: React.FC = () => {
     const [buscaAplicada, setBuscaAplicada] = React.useState('');
     const [pagina, setPagina] = React.useState(0);
     const [modalAberto, setModalAberto] = React.useState(false);
+    const [vista, setVista] = React.useState<VistaDaCarteira>('tabela');
+    const [filtros, setFiltros] = React.useState<ClientsFilters>({});
+    const [ordem, setOrdem] = React.useState<ClientsSort>('nome');
 
     // Lê a URL uma vez no mount. `window.history.pushState` mantém a URL em dia
     // sem remontar a árvore do App Router a cada tecla.
@@ -47,6 +60,15 @@ export const ClientsPage: React.FC = () => {
         setBusca(q);
         setBuscaAplicada(q);
         setPagina(Number.isFinite(p) && p >= 0 ? p : 0);
+
+        const v = params.get('vista');
+        if (ehVistaValida(v)) setVista(v);
+        const o = params.get('ordem');
+        if (o === 'mrr' || o === 'saude' || o === 'renovacao' || o === 'nome') setOrdem(o);
+        // Valida contra o vocabulário: a URL é entrada de fora, e valor
+        // inválido viraria filtro que não casa com ninguém, com o select em
+        // branco e nada visível pra limpar.
+        setFiltros(lerFiltrosDaURL(params));
     }, []);
 
     // Debounce da busca. Só volta pra primeira página quando o termo MUDOU de
@@ -66,9 +88,18 @@ export const ClientsPage: React.FC = () => {
         const params = new URLSearchParams();
         if (buscaAplicada) params.set('q', buscaAplicada);
         if (pagina > 0) params.set('p', String(pagina));
+        // Vista, filtros e ordenação também vão pra URL: uma carteira filtrada
+        // por "saúde detrator, renovação atrasada" é exatamente o tipo de
+        // recorte que alguém quer recarregar ou mandar pra outra pessoa.
+        if (vista !== 'tabela') params.set('vista', vista);
+        if (ordem !== 'nome') params.set('ordem', ordem);
+        if (filtros.stage && filtros.stage !== 'todos') params.set('estagio', filtros.stage);
+        if (filtros.category && filtros.category !== 'todos') params.set('categoria', filtros.category);
+        if (filtros.band && filtros.band !== 'todos') params.set('saude', filtros.band);
+        if (filtros.renewal && filtros.renewal !== 'todos') params.set('renovacao', filtros.renewal);
         const qs = params.toString();
         window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
-    }, [buscaAplicada, pagina]);
+    }, [buscaAplicada, pagina, vista, ordem, filtros]);
 
     const { data, isSuccess, isError, error, isFetching } = useClients(
         { pageIndex: pagina, pageSize: PAGE_SIZE },
@@ -91,6 +122,16 @@ export const ClientsPage: React.FC = () => {
         quantidade: clientes.length,
         temFiltro: !!buscaAplicada,
     });
+    // Filtro e ordenação são aplicados sobre a página carregada (decisão da
+    // F1; ver lib/clients/filtros.ts). `hoje` entra como parâmetro porque as
+    // janelas de renovação são relativas.
+    const hoje = hojeLocalISO();
+    const limite30 = dataLocalISOEmDias(30);
+    const visiveis = React.useMemo(() => {
+        const filtrados = aplicarFiltros(clientes, filtros, hoje);
+        return vista === 'kanban' ? filtrados : ordenarClientes(filtrados, ordem);
+    }, [clientes, filtros, ordem, vista, hoje]);
+
     const total = data?.total ?? 0;
     const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const metricas = React.useMemo(
@@ -182,7 +223,37 @@ export const ClientsPage: React.FC = () => {
 
                 {estado === 'com-dados' && (
                     <>
-                        <ClientsList clientes={clientes} />
+                        <ClientsViewToolbar
+                            vista={vista}
+                            onVista={setVista}
+                            filtros={filtros}
+                            onFiltros={setFiltros}
+                            ordem={ordem}
+                            onOrdem={setOrdem}
+                            total={clientes.length}
+                            visiveis={visiveis.length}
+                        />
+
+                        {/* Filtro que esconde tudo NÃO é "nenhum cliente
+                            cadastrado": a carteira tem gente, o recorte é que
+                            não tem. Confundir os dois é o mesmo defeito que
+                            `estadoDaConsulta` existe pra evitar. */}
+                        {visiveis.length === 0 ? (
+                            <p className="muted">
+                                Nenhum cliente desta página bate com os filtros. A carteira tem{' '}
+                                {clientes.length} aqui — limpe um filtro pra vê-los.
+                            </p>
+                        ) : vista === 'tabela' ? (
+                            <ClientsList clientes={visiveis} />
+                        ) : vista === 'cartoes' ? (
+                            <ul className="client-cards">
+                                {visiveis.map(c => (
+                                    <ClientCard key={c.id} cliente={c} hoje={hoje} limite30={limite30} />
+                                ))}
+                            </ul>
+                        ) : (
+                            <ClientsKanban clientes={visiveis} hoje={hoje} limite30={limite30} />
+                        )}
                         {totalPaginas > 1 && (
                             <div className="list-toolbar" style={{ justifyContent: 'space-between' }}>
                                 <button

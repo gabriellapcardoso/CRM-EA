@@ -3,44 +3,8 @@ import Link from 'next/link';
 import { hojeLocalISO, dataLocalISOEmDias } from '@/lib/utils/dataLocal';
 import { faixaDeSaude, rotuloDaFaixa } from '@/lib/clients/health';
 import type { ClientView } from '@/types/clients';
-
-const MOEDA = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-});
-
-const NICHOS: Record<string, string> = {
-    local: 'Negócio Local',
-    ecommerce: 'E-commerce',
-    infoproduto: 'Infoproduto',
-    servicos_digitais: 'Serviços Digitais',
-    politico_mandato: 'Político · Mandato',
-    politico_eleitoral: 'Político · Eleitoral',
-};
-
-const CATEGORIAS: Record<string, string> = {
-    ouro: 'Ouro',
-    prata: 'Prata',
-    bronze: 'Bronze',
-};
-
-/**
- * Data de renovação por extenso, com o aviso de atraso.
- *
- * A data vem do banco como `YYYY-MM-DD` e é formatada por corte de string, não
- * por `new Date(iso)` — o construtor lê data pura como UTC meia-noite e, em
- * GMT-3, mostra o dia anterior. Comparação também é entre strings ISO, que
- * ordenam igual à data.
- */
-function renovacao(dataISO: string | undefined, hoje: string, limite30: string) {
-    if (!dataISO) return { texto: '—', estado: 'vazio' as const };
-    const [ano, mes, dia] = dataISO.split('-');
-    const texto = `${dia}/${mes}/${ano}`;
-    if (dataISO < hoje) return { texto, estado: 'atrasada' as const };
-    if (dataISO <= limite30) return { texto, estado: 'proxima' as const };
-    return { texto, estado: 'ok' as const };
-}
+import { rotuloDoNicho, rotuloDaCategoria } from '@/lib/clients/vocabulario';
+import { MOEDA, renovacao } from '@/lib/clients/apresentacao';
 
 interface Props {
     clientes: ClientView[];
@@ -88,8 +52,8 @@ export const ClientsList: React.FC<Props> = ({ clientes }) => {
                                         </div>
                                     </div>
                                 </td>
-                                <td>{cliente.niche ? NICHOS[cliente.niche] : '—'}</td>
-                                <td>{cliente.category ? CATEGORIAS[cliente.category] : '—'}</td>
+                                <td>{rotuloDoNicho(cliente.niche)}</td>
+                                <td>{rotuloDaCategoria(cliente.category)}</td>
                                 <td>
                                     {/* Sem pontuação é estado próprio, diferente de zero:
                                         cliente novo ainda não foi avaliado, e zero é churn. */}

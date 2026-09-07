@@ -8,32 +8,13 @@ import { Modal, ModalForm } from '@/components/ui/Modal';
 import { InputField, SelectField, SubmitButton } from '@/components/ui/FormField';
 import { clientFormSchema, type ClientFormData } from '@/lib/validations/schemas';
 import type { ClientView } from '@/types/clients';
+import {
+    NICHOS,
+    ESTAGIOS_DO_CICLO as ESTAGIOS,
+    CATEGORIAS,
+} from '@/lib/clients/vocabulario';
 
 type ClientFormInput = z.input<typeof clientFormSchema>;
-
-const NICHOS = [
-    { value: 'local', label: 'Negócio Local' },
-    { value: 'ecommerce', label: 'E-commerce' },
-    { value: 'infoproduto', label: 'Infoproduto' },
-    { value: 'servicos_digitais', label: 'Serviços Digitais' },
-    { value: 'politico_mandato', label: 'Político · Mandato' },
-    { value: 'politico_eleitoral', label: 'Político · Eleitoral' },
-];
-
-const ESTAGIOS = [
-    { value: 'lead', label: 'Lead' },
-    { value: 'contrato_assinado', label: 'Contrato Assinado' },
-    { value: 'kickoff', label: 'Kickoff' },
-    { value: 'setup_concluido', label: 'Setup Concluído' },
-    { value: 'em_operacao', label: 'Em Operação' },
-    { value: 'churn', label: 'Churn' },
-];
-
-const CATEGORIAS = [
-    { value: 'ouro', label: 'Ouro' },
-    { value: 'prata', label: 'Prata' },
-    { value: 'bronze', label: 'Bronze' },
-];
 
 interface Props {
     isOpen: boolean;

@@ -6,29 +6,12 @@ import { useSearchParams } from 'next/navigation';
 import { useClient } from '@/lib/query/hooks/useClientsQuery';
 import { resolverOrigem } from '@/lib/navigation/origem';
 import { faixaDeSaude, rotuloDaFaixa } from '@/lib/clients/health';
+import { rotuloDoNicho, rotuloDoEstagio } from '@/lib/clients/vocabulario';
 import { estadoDaConsulta } from '@/lib/clients/estadoDaConsulta';
 import { ClientTabs, ehAbaValida, type AbaDoCliente } from './ClientTabs';
 import { VisaoGeralTab } from './VisaoGeralTab';
 import { ComercialTab } from './ComercialTab';
 import { TimelineTab } from './TimelineTab';
-
-const NICHOS: Record<string, string> = {
-    local: 'Negócio Local',
-    ecommerce: 'E-commerce',
-    infoproduto: 'Infoproduto',
-    servicos_digitais: 'Serviços Digitais',
-    politico_mandato: 'Político · Mandato',
-    politico_eleitoral: 'Político · Eleitoral',
-};
-
-const ESTAGIOS: Record<string, string> = {
-    lead: 'Lead',
-    contrato_assinado: 'Contrato Assinado',
-    kickoff: 'Kickoff',
-    setup_concluido: 'Setup Concluído',
-    em_operacao: 'Em Operação',
-    churn: 'Churn',
-};
 
 /** `YYYY-MM-DD` por corte de string: `new Date(iso)` lê como UTC e, em GMT-3, mostra o dia anterior. */
 function dataBR(iso?: string): string {
@@ -142,13 +125,13 @@ export default function ClientDetailPage({ companyId }: { companyId: string }) {
                     <div className="field">
                         <span className="field__label">Nicho</span>
                         <span className="field__value">
-                            {cliente.niche ? NICHOS[cliente.niche] : '—'}
+                            {rotuloDoNicho(cliente.niche)}
                         </span>
                     </div>
                     <div className="field">
                         <span className="field__label">Estágio</span>
                         <span className="field__value">
-                            {cliente.lifecycleStage ? ESTAGIOS[cliente.lifecycleStage] : '—'}
+                            {rotuloDoEstagio(cliente.lifecycleStage)}
                         </span>
                     </div>
                     <div className="field">
