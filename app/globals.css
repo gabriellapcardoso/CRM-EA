@@ -947,6 +947,42 @@ body {
 .client-timeline__title { font-size: 13.5px; font-weight: var(--weight-semibold); color: var(--text-strong); overflow-wrap: anywhere; }
 .client-timeline__body { font-size: 13px; color: var(--text-body); overflow-wrap: anywhere; }
 
+/* Vistas da carteira (Módulo Clientes F3, 2026-09-07).
+   Prefixo `client-` pelo mesmo motivo do `client-timeline`: `.card`, `.cards` e
+   `.kanban` são nomes genéricos demais para um arquivo compartilhado, e estender
+   classe de outro vocabulário já custou uma tela centralizada aqui. */
+
+/* Barra de vistas e filtros. Quebra em várias linhas em vez de rolar: são
+   controles, e controle escondido atrás de rolagem horizontal não é usado. */
+.client-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.client-toolbar__grupo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.client-toolbar__rotulo { font-size: var(--text-meta); font-weight: var(--weight-bold); letter-spacing: var(--tracking-wide); color: var(--text-faint); }
+.client-toolbar__acoes { display: flex; gap: 6px; margin-left: auto; }
+
+/* Grade de cartões: `auto-fill` com `min()` — piso puro de 260px sobrepõe a
+   largura do container e devolve rolagem lateral quando a barra e o painel de
+   IA estão abertos juntos. Mesma correção do `.card-approval`. */
+.client-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: var(--space-3); list-style: none; margin: 0; padding: 0; }
+.client-cards--coluna { grid-template-columns: 1fr; }
+.client-card { display: flex; flex-direction: column; gap: 7px; padding: 13px 15px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); min-width: 0; }
+.client-card__nome { font-size: 14px; font-weight: var(--weight-bold); color: var(--text-strong); overflow-wrap: anywhere; }
+.client-card__linha { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: 12.5px; color: var(--text-body); }
+.client-card__chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* Kanban: rolagem lateral é intencional AQUI e só aqui — são 7 colunas de
+   largura fixa, e espremê-las para caber tornaria o cartão ilegível. A rolagem
+   fica no contêiner das colunas, nunca no body da página. */
+.client-kanban { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2); align-items: flex-start; }
+.client-kanban__col { flex: 0 0 240px; display: flex; flex-direction: column; gap: 9px; padding: 11px; background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); min-height: 120px; }
+.client-kanban__col--alvo { border-color: var(--purple-700); background: var(--surface-card); }
+.client-kanban__cabeca { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.client-kanban__titulo { font-size: var(--text-meta); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); color: var(--text-strong); }
+.client-kanban__conta { font-size: var(--text-meta); color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.client-kanban__vazia { font-size: 12px; color: var(--text-faint); padding: var(--space-2) 0; }
+.client-kanban .client-card { cursor: grab; }
+.client-kanban .client-card--movendo { opacity: .55; cursor: progress; }
+
+
 .state-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; padding: var(--space-11) var(--space-5); }
 .state-empty--boxed { background: var(--surface-card); border: 1px dashed var(--border-default); border-radius: var(--radius-lg); }
 .state-empty__title { font-family: var(--font-display-rd); font-weight: var(--weight-black); font-size: 19px; letter-spacing: -.03em; color: var(--text-strong); }

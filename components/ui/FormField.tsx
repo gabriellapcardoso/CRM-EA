@@ -320,7 +320,10 @@ interface SelectFieldProps extends Omit<
   'className'
 > {
   label: string;
-  options: SelectOption[];
+  // `readonly` aceita array mutável também, então isto só amplia: permite
+  // passar as listas de vocabulário congeladas (`lib/clients/vocabulario.ts`)
+  // sem copiar a cada render só para satisfazer o tipo.
+  options: readonly SelectOption[];
   error?: FieldError;
   hint?: string;
   registration?: UseFormRegisterReturn;
