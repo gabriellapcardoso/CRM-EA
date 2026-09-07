@@ -1,5 +1,61 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Distribuir por igualdade contra lista fechada some com quem não casa (2026-09-07)
+
+O kanban da carteira monta as colunas a partir de `ESTAGIOS_DO_CICLO` e joga
+cada cartão na coluna cujo id bate com o estágio dele:
+
+```ts
+const daColuna = clientes.filter(c => estagioNaTela(c) === coluna.id);
+```
+
+Parece exaustivo e não é. `lifecycle_stage` é governado por um CHECK no banco,
+e o dia em que alguém acrescentar um valor lá sem acrescentar na lista do
+código, esse cliente **não casa com coluna nenhuma e não é desenhado**. Não cai
+na coluna de "sem estágio" — essa só pega `null`. Ele simplesmente some da tela,
+sem erro, e o rodapé continua contando ele como classificado.
+
+O mesmo vale pra abas, agrupamentos e qualquer lista renderizada por
+`filter(x => x.chave === grupo.id)`: **o `else` não existe.** Distribuição por
+igualdade tem um caso implícito que ninguém escreve, e o custo dele é registro
+que desaparece.
+
+**A regra: onde a UI distribui por um vocabulário fechado, escrever as duas
+proteções, porque elas fazem coisas diferentes.** Uma guarda de teste amarrando
+a lista à fonte de verdade (aqui, o CHECK da migration) *avisa* — e pega
+inclusive mudança de ORDEM, quando a ordem é semântica. Uma coluna/grupo de
+escape recolhendo o desconhecido *protege*, mesmo se a guarda for ignorada. Só a
+segunda mantém alguém visível quando a primeira falha.
+
+Guardas: `test/clientesFiltrosOrdenacao.test.ts`, que compara
+`ESTAGIOS_DO_CICLO`, `CATEGORIAS` e `NICHOS` com os CHECKs de
+`20260905120000_modulo_clientes.sql`.
+
+## Validei dois parâmetros da URL e esqueci quatro, no mesmo commit (2026-09-07)
+
+Ao mover o estado da tela de clientes pra URL, escrevi `ehVistaValida()` pra
+`vista`, uma checagem explícita pra `ordem`, e passei os quatro filtros por cast
+cru:
+
+```ts
+stage: (params.get('estagio') as ClientsFilters['stage']) ?? undefined,
+```
+
+O cast não valida nada em runtime — é só o TypeScript olhando pro outro lado.
+`?estagio=lixo` vira um filtro que não casa com ninguém: a lista mostra "nenhum
+bate com os filtros" e o `<select>` fica em branco, porque o valor não é nenhuma
+das opções. A pessoa vê tela vazia e nenhum filtro aparente pra limpar.
+
+O que chama atenção não é o descuido isolado: é que **eu fiz certo em dois
+campos e errado em quatro na mesma função**, seguidos, com o exemplo bom na
+linha de cima. Cuidado não se propaga sozinho pela vizinhança.
+
+**A regra: entrada externa se valida em bloco, não campo a campo.** Uma função
+pura que lê TODOS os parâmetros e devolve o objeto validado — `lerFiltrosDaURL`
+aqui — é testável e não deixa espaço pra meia validação. E URL é entrada de
+fora: dá pra editar à mão, e link antigo carrega valor que o vocabulário não tem
+mais.
+
 ## Injeção de regressão que não injetou nada passa por teste aprovado (2026-09-07)
 
 Ao provar as guardas do incidente da IA, quatro injeções: três ficaram vermelhas
