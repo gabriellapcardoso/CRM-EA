@@ -28,7 +28,11 @@ import { ChannelIndicator } from './ChannelIndicator';
 import { WindowExpiryBadge } from './WindowExpiryBadge';
 import { ContactPanelSkeleton } from './skeletons/ContactPanelSkeleton';
 import { useUpdateContact } from '@/lib/query/hooks/useContactsQuery';
-import { useToggleConversationAiPause } from '@/lib/query/hooks/useMessagingConversationsQuery';
+import {
+  useToggleConversationAiPause,
+  useDevolverConversaAoAgente,
+  useIaObservandoConversa,
+} from '@/lib/query/hooks/useMessagingConversationsQuery';
 
 interface ContactPanelProps {
   conversation: ConversationView | null | undefined;
@@ -102,22 +106,53 @@ export const ContactPanel = memo(function ContactPanel({
   // Hooks must be called unconditionally before any early returns
   const updateContact = useUpdateContact();
   const toggleConversationAiPause = useToggleConversationAiPause();
+  const devolverAoAgente = useDevolverConversaAoAgente();
 
   const contactId = conversation?.contactId;
-  const isAiPaused = contactId
+  const pausadoManualmente = contactId
     ? (conversation?.contactAiPaused ?? false)
     : (conversation?.metadata?.ai_paused === true);
-  const isPending = updateContact.isPending || toggleConversationAiPause.isPending;
+
+  // A IA também cala sozinha quando alguém do time já respondeu (takeover).
+  // Sem consultar isso, o painel diria "ativo" numa conversa onde ela não vai
+  // falar — pior do que não mostrar nada.
+  const liberadaEm =
+    typeof conversation?.metadata?.ia_liberada_em === 'string'
+      ? conversation.metadata.ia_liberada_em
+      : null;
+  const observando = useIaObservandoConversa(conversation?.id, liberadaEm);
+  const iaObservandoPorHumano = observando.data === true && !pausadoManualmente;
+
+  const iaCalada = pausadoManualmente || iaObservandoPorHumano;
+  const isPending =
+    updateContact.isPending ||
+    toggleConversationAiPause.isPending ||
+    devolverAoAgente.isPending;
 
   function handleToggleAiPause() {
     if (!conversation) return;
+
+    if (iaCalada) {
+      // Reativar é sempre "devolver ao agente": tira a pausa manual E carimba a
+      // liberação, senão as mensagens humanas antigas continuariam calando a IA
+      // e o botão não faria nada visível.
+      if (contactId && pausadoManualmente) {
+        updateContact.mutate({ id: contactId, updates: { aiPaused: false } });
+      }
+      devolverAoAgente.mutate({
+        conversationId: conversation.id,
+        currentMetadata: (conversation.metadata ?? {}) as Record<string, unknown>,
+      });
+      return;
+    }
+
     if (contactId) {
-      updateContact.mutate({ id: contactId, updates: { aiPaused: !isAiPaused } });
+      updateContact.mutate({ id: contactId, updates: { aiPaused: true } });
     } else {
       toggleConversationAiPause.mutate({
         conversationId: conversation.id,
-        paused: !isAiPaused,
-        currentMetadata: conversation.metadata as Record<string, unknown>,
+        paused: true,
+        currentMetadata: (conversation.metadata ?? {}) as Record<string, unknown>,
       });
     }
   }
@@ -236,26 +271,35 @@ export const ContactPanel = memo(function ContactPanel({
         <div className="setting-row">
           <span className="setting-row__text">
             <span className="setting-row__title">
-              {isAiPaused ? (
+              {iaCalada ? (
                 <BotOff className="w-3.5 h-3.5 inline align-[-2px] mr-1" aria-hidden="true" />
               ) : (
                 <Bot className="w-3.5 h-3.5 inline align-[-2px] mr-1" aria-hidden="true" />
               )}
               agente IA {contactId ? '(contato)' : '(conversa)'}
             </span>
-            <span className="setting-row__desc">{isAiPaused ? 'pausado' : 'ativo'}</span>
+            {/* Três estados, não dois: "pausado" e "observando" calam a IA pelo
+                mesmo efeito prático e por motivos diferentes, e quem olha o
+                painel precisa saber qual dos dois é pra saber o que fazer. */}
+            <span className="setting-row__desc">
+              {pausadoManualmente
+                ? 'pausado por você'
+                : iaObservandoPorHumano
+                  ? 'só observando — alguém do time já respondeu aqui'
+                  : 'ativo'}
+            </span>
           </span>
           <button
             type="button"
             role="switch"
-            aria-checked={isAiPaused}
+            aria-checked={iaCalada}
             disabled={isPending}
             onClick={handleToggleAiPause}
-            className={cn('toggle', isAiPaused && 'toggle--hitl', isPending && 'opacity-50 cursor-not-allowed')}
+            className={cn('toggle', iaCalada && 'toggle--hitl', isPending && 'opacity-50 cursor-not-allowed')}
             title={
-              isAiPaused
-                ? contactId ? 'Reativar IA para este contato' : 'Reativar IA para esta conversa'
-                : contactId ? 'Pausar IA para este contato' : 'Pausar IA para esta conversa'
+              iaCalada
+                ? 'Devolver esta conversa ao agente. Ele volta a responder até alguém do time escrever de novo aqui.'
+                : 'Pausar a IA nesta conversa'
             }
           />
         </div>
