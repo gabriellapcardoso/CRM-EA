@@ -1,4 +1,4 @@
-<!-- /autoplan restore point: ~/.gstack/projects/gabriellapcardoso-CRM-EA/main-autoplan-restore-20260905-213008.md -->
+<!-- /autoplan restore point: ~/.gstack/projects/gabriellapcardoso-CRM-EA/main-autoplan-restore-20260911-192945.md -->
 
 # Plano — Módulo Clientes (governança de carteira pós-venda)
 
@@ -193,9 +193,41 @@ operacional · timeline · comercial.
 > o kanban nasceria com uma coluna só. E `filtros.status` ficou de fora:
 > "arquivado" é `is_client = false`, que a consulta da carteira exclui no
 > servidor — o filtro devolveria lista vazia sempre.
-| **F4** | Dossiê: bucket, upload, e o RAG **consertado** — `uploadToFileSearchStore` ganha call site e passa a devolver o id do documento | Depende de mexer no fornecedor de RAG, risco isolado |
-| **F5** | Contexto Criativo · Identidade & Produtos · Operacional | Campos livres sobre a estrutura da F1 |
+| **F4a** | ✅ Dossiê puro: aba, upload, listar, baixar, **excluir**. Zero IA | O bucket já saiu na F1; esta fase entrega valor sem depender de nenhuma decisão de IA |
+| **F5** | Contexto Criativo · Identidade & Produtos · Operacional | Campos livres sobre a estrutura da F1 — e o teste barato da premissa de RAG |
+| **F4b** | RAG por empresa, **condicional**: só se a F5 provar que contexto no prompt não basta | Requisitos de entrada em §7.6, não pendências de saída |
 | **F6** | Assistente de cadastro em 3 camadas + scraping | Ver §7.3 — maior risco, menor certeza |
+
+> **Correção que a revisão da F4 fez no plano (2026-09-11).** A F4 original dizia
+> "bucket, upload, e o RAG **consertado**". Três palavras estavam erradas.
+> **"Bucket"**: `client-assets` e as quatro policies com prefixo de organização
+> saíram na F1 (`20260905120000:571-610`) — a linha envelheceu dentro do próprio
+> plano. **"Consertado"**: pressupõe via que funciona com defeito pontual; o banco
+> diz que **nenhum board tem `knowledge_store_id`**, então o ramo de RAG do agente
+> nunca executou em produção. É primeira implementação, e isso muda estimativa e
+> risco. **"Risco isolado"**: o risco não está no fornecedor, está em
+> `agent.service.ts`, o arquivo mais quente do produto.
+>
+> E o desenho entregava **produtor sem leitor**: `client_rag_store` é por EMPRESA,
+> o agente lê `board_ai_config.knowledge_store_id`, por BOARD. Dar call site ao
+> upload não cria o leitor — é o antipadrão que o `CLAUDE.md` já registra três
+> vezes, deslocado um nível, e o `grep` que o §7.4 prescreve passaria sem pegar nada.
+>
+> Por isso a fase virou duas, com a F5 no meio: ela entrega `client_context` (tom
+> de voz, público, concorrentes, benchmarks), que é o conteúdo que o §1 diz faltar
+> à IA, cabe no prompt e não precisa de fornecedor novo. Se resolver, a F4b não
+> acontece.
+
+> **O que a revisão da F4a achou (2026-09-24).** Um bug real: o download fazia
+> `window.open` depois do `await`, e o Safari bloqueava em silêncio — botão mudo,
+> tela sem erro. Corrigido. O resto foi **lacuna de guarda, não defeito**: teste
+> de mutação mostrou que trocar a ordem dos argumentos no call site de
+> `caminhoDoAsset` passa verde e quebraria todo upload, e que o desfazimento do
+> upload não tem teste nenhum. Duas asserções sobre a migration foram apagadas
+> por serem duplicata mais fraca da guarda da F1. Tudo que ficou aberto está no
+> `TODOS.md`, incluindo dois achados de arquitetura que são anteriores à F4a:
+> excluir empresa deixa os bytes órfãos no bucket, e a guarda do contrato tem
+> TOCTOU.
 
 **A migration inteira sai na F1, não fatiada.** Duas correções da revisão só existem se
 forem decididas antes da primeira linha de SQL: a cardinalidade do RAG (store por empresa,
@@ -316,6 +348,48 @@ já resolve isso com Apify, mas é outro repositório e outro Supabase.
 | Contrato assinado sobe pro File Search Store | CPF e endereço vão parar em fornecedor de IA | `kind='contrato'` fora do caminho de RAG, com teste de injeção |
 | Capacidade sem call site | Hook/rota escrita e nunca chamada | `grep` pelo nome fora do arquivo de definição antes de fechar cada fase |
 
+### 7.6 Requisitos de ENTRADA da F4b (RAG), não pendências de saída
+
+A F4b não começa sem estes quatro. Cada um nasceu de um achado que as duas vozes
+da revisão levantaram independentes.
+
+- **O leitor existe antes do produtor.** Nenhuma linha sobe pro store enquanto não
+  houver caminho que leia o store da empresa e coloque o conteúdo numa resposta.
+  Critério de aceite escrito por igualdade, não por status: *uma pergunta X sobre o
+  cliente Y produz resposta que só é possível com o arquivo Z no dossiê*. "O upload
+  devolveu 200" não prova nada — é a lição do `configureWebhook()`.
+- **RAG é tool, não desvio.** Hoje `agent.service.ts:818` retorna dentro do ramo de
+  RAG: sem tools, sem `generateWithFailover`, sem avanço de estágio/HITL, com modelo
+  fixo do Google. Ligar o dossiê, do jeito que está, deixa o agente **mais burro**.
+  A recuperação entra como ferramenta dentro do laço normal, ou a F4b não acontece.
+- **Exclusão antes de ingestão.** Não existe `deleteFileSearchStore` nem exclusão de
+  documento. Subir arquivo cria obrigação de LGPD **fora do alcance do banco**: o
+  soft-delete oculta a linha e a cópia no Google fica. A função de excluir documento
+  e store, acionada no churn e no soft-delete da empresa, é pré-requisito. Se a API
+  não suportar exclusão granular, isso é motivo para não usar o fornecedor.
+- **Consentimento por cliente, não por tipo de arquivo.** O §7.5 barra
+  `kind='contrato'` e deixa `documento`, `foto_autorizada` e `gerado` subirem livres.
+  Briefing sob NDA, planilha de vendas e foto de pessoa são dado do qual a agência é
+  **operadora**, não controladora. Uma flag por empresa (`rag_consent_at`, default
+  desligado) é pré-requisito de qualquer upload pro store, com a autorização
+  correspondente no contrato-modelo.
+
+**Roteamento, que o plano nunca definiu:** como a conversa resolve a empresa certa;
+se usa conhecimento do board, da empresa ou os dois; qual tem precedência quando
+divergem; o que acontece quando o contato não tem empresa; e o que impede escolher o
+store da empresa errada. Sem isso, `rag_document_id` é contabilidade técnica.
+
+### 7.7 Modos de falha que faltavam
+
+| Falha | Sintoma | Guarda |
+|---|---|---|
+| Upload copia o caminho do `dealFiles.ts` | `${dealId}/uuid.ext` não tem prefixo de organização, e a policy do `client-assets` exige `(storage.foldername(name))[1] = org` — **todo upload falha** | Caminho começa pelo id da organização; teste estático amarra o formato do caminho à policy |
+| Ligar RAG degrada o agente | Resposta perde tools, failover e HITL, e ninguém nota porque continua respondendo | §7.6, item "RAG é tool, não desvio" |
+| Documento órfão no fornecedor | Arquivo excluído do CRM segue indexado no Google, invisível para qualquer consulta do produto | Exclusão sincronizada, §7.6 |
+| Store criado e nunca associado | `createFileSearchStore` também não tem call site; store órfão custa e não serve | Criação e associação no mesmo caminho transacional, com reconciliação |
+| Retry duplica documento | Upload repetido cria segunda cópia no store, e a resposta cita o mesmo trecho duas vezes | Idempotência por `client_assets.id`, conferida antes de subir |
+
+
 ## 8. Testes
 
 - `test/clientesMetricas.test.ts` — as 4 fórmulas do painel, incluindo cliente sem contrato
@@ -331,6 +405,13 @@ já resolve isso com Apify, mas é outro repositório e outro Supabase.
 - `test/clientPiiForaDoRag.test.ts` — asset `kind='contrato'` não entra no upload pro store.
 - `lib/clients/documento.test.ts` — CPF/CNPJ: normalização, tamanho e dígito verificador,
   incluindo os repetidos que passam no tamanho.
+- `test/clientAssetsCaminhoPorOrganizacao.test.ts` — **F4a**: o caminho gravado pelo
+  serviço de upload começa pelo id da organização, batendo com
+  `(storage.foldername(name))[1]` da policy. Copiar o formato do `dealFiles.ts`
+  (`${dealId}/uuid.ext`) faz todo upload falhar; o teste amarra código e policy.
+- `test/clientAssetsExclusao.test.ts` — **F4a**: excluir remove do Storage E da
+  tabela, e o erro do Storage não é engolido (o `dealFiles.ts` faz `console.warn` e
+  segue, deixando byte órfão no bucket).
 - **Injeção de regressão obrigatória** em todo teste estático novo: apagar a linha do
   conserto e exigir vermelho.
 
@@ -350,3 +431,7 @@ já resolve isso com Apify, mas é outro repositório e outro Supabase.
 | 8 | Eng | Migration inteira na F1, não fatiada por fase | mecânica | P1 completude | Cardinalidade do RAG e vigência do contrato têm que estar certas antes do dado real |
 | 9 | Eng | Corrigir `deal-files` fica FORA | mecânica | P3 escopo | Bug pré-existente de outra funcionalidade; vai pro `TODOS.md` |
 | 10 | Eng | `lifecycle_stage` é terceiro estado, deliberado | gosto | P5 explícito | Descreve a conta, não o negócio; nunca escrito por automação de deal |
+| 11 | CEO | F4 vira F4a (dossiê) + F4b (RAG), com a F5 no meio | **desafio ao usuário — aceito por ela em 2026-09-11** | P1 completude | As duas vozes, independentes: produtor sem leitor, e a F5 provavelmente resolve o problema declarado sem fornecedor novo |
+| 12 | CEO | Exclusão e consentimento por cliente são requisito de ENTRADA da F4b | mecânica | P1 completude | Subir arquivo sem poder apagar cria obrigação de LGPD fora do alcance do banco |
+| 13 | CEO | RAG entra como tool, não como desvio que retorna cedo | mecânica | P2 blast radius | O ramo atual pula tools, failover e HITL — ligar o dossiê deixaria o agente pior |
+| 14 | CEO | "bucket" sai da descrição da F4 | mecânica | P4 DRY | Bucket e as 4 policies saíram na F1; a linha envelheceu dentro do plano |

@@ -2,6 +2,78 @@
 
 ## Módulo Clientes
 
+### Excluir empresa deixa os arquivos do dossiê órfãos no bucket — P1
+
+`companiesService.delete()` (`lib/supabase/contacts.ts:778`) faz `.delete()`
+FÍSICO em `crm_companies`, e `client_assets.company_id` é `ON DELETE CASCADE`
+(`20260905120000_modulo_clientes.sql:239`). A linha que descreve o arquivo some;
+os bytes ficam no Storage, porque o Postgres não alcança o bucket.
+
+**Consequência:** arquivo de cliente — contrato assinado com CNPJ incluso —
+permanece no bucket sem nenhuma linha que o descreva. Invisível pra toda
+consulta do produto e fora do alcance de qualquer pedido de eliminação de LGPD.
+É exatamente o estado que o cabeçalho do `clientAssets.ts` diz impedir, entrando
+por outra porta.
+
+Achado pelas duas vozes da revisão da F4a (Claude e Codex), independentes.
+
+**Por que não foi corrigido junto:** está fora do diff da F4a — o `.delete()`
+físico é defeito pré-existente, já registrado logo abaixo como P2. O conserto
+certo não é um `if`: precisa de fluxo no servidor que bloqueie upload novo,
+remova os objetos com confirmação e só então apague a empresa. Enquanto isso não
+existir, **`client_contracts` é `ON DELETE RESTRICT`**, então empresa com
+contrato não é excluível — o buraco alcança só empresa com dossiê e sem contrato.
+
+### Exclusão de arquivo do dossiê tem TOCTOU na guarda do contrato — P2
+
+`clientAssets.excluir()` consulta `client_contracts` por `signed_asset_id` e, se
+não achar vínculo, apaga. Entre o `SELECT` e o `remove`, outra sessão pode
+vincular aquele asset a um contrato: os bytes somem e o `ON DELETE SET NULL`
+zera o vínculo recém-criado em silêncio.
+
+O comentário do método afirma que ele "recusa apagar asset que é o contrato
+assinado", e sob concorrência isso não é verdade. **Baixa probabilidade hoje**
+(agência de poucas pessoas, exclusão é ação rara), alta consequência quando
+acontece. Conserto real: claim atômico de estado no servidor, ou constraint que
+impeça vínculo novo enquanto o asset está marcado pra exclusão.
+
+### Caminhos da F4a sem guarda de teste — P2
+
+Achados por teste de mutação na revisão da F4a: o código está correto hoje, e
+nada impede que pare de estar.
+
+- **Trocar a ordem dos argumentos em `caminhoDoAsset(organizationId, companyId, …)`
+  passa em todos os testes.** Os dois são `string`, o TypeScript não acusa, e o
+  resultado é **todo upload falhando** na policy do bucket com erro opaco. O teste
+  atual amarra a função pura à migration e nunca amarra quem a chama.
+  Conserto: `test/clientAssetsEnvio.test.ts`, mock do Storage, afirmar que o
+  caminho passado ao `upload` começa pelo id da organização — com injeção de
+  regressão trocando os argumentos.
+- **O desfazimento do upload quando o insert falha não tem teste nenhum.**
+  Substituir o rollback por nada passa verde. É a única das três correções que o
+  arquivo declara sobre o `dealFiles` que não tem guarda, e a única que produz
+  dado permanente e invisível.
+- **`clientAssetsService` não está em `test/softDeleteFilters.test.ts`.** Remover
+  o `.is('deleted_at', null)` do `listar()` passa verde. O arquivo enumera
+  serviços um a um; acrescentar o caso no molde dos cinco que já estão lá.
+- **`ClientAssetKind` é vocabulário fechado sem guarda contra o CHECK do banco**,
+  e não mora em `lib/clients/vocabulario.ts`, que o `CLAUDE.md` declara fonte
+  única do módulo. Quebra o precedente que a F3 estabeleceu.
+- **`DossieTab.tsx` tem 241 linhas e zero teste de componente.** Sem cobertura:
+  os seis estados de `estadoDaConsulta`, o reset do input que o comentário diz
+  ser deliberado, e o `disabled` dos botões.
+- **O limite de tamanho (`TAMANHO_MAXIMO_BYTES`) afirma bater com o
+  `file_size_limit` do bucket e nada verifica.** O número aparece na tela, então
+  divergir faz a interface mentir antes de o upload falhar no servidor.
+
+### `formatFileSize` existe em três cópias — P3
+
+`lib/supabase/dealFiles.ts:133`, `features/messaging/components/MessageInput.tsx:126`
+e `lib/supabase/clientAssets.ts` (`formatarTamanho`, a terceira, escrita na F4a
+com um comentário admitindo a cópia). Extrair pra `lib/utils/` e converter os
+três call sites.
+
+
 ### Bucket `deal-files` deixa qualquer autenticado ler qualquer arquivo — P1
 
 A RLS da tabela `deal_files` foi corrigida em

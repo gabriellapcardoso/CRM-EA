@@ -983,6 +983,15 @@ body {
 .client-kanban .client-card { cursor: grab; }
 .client-kanban .client-card--movendo { opacity: .55; cursor: progress; }
 
+/* Dossiê (F4a). Vocabulário próprio (`client-dossie__*`) porque `.dossie` solto
+   colidiria com qualquer bloco futuro de mesmo nome — foi o que aconteceu com
+   `.timeline` na F2, onde regras de telas distintas se sobrescreveram por
+   compartilharem o vocabulário. As ações ficam numa flex-row pra que Baixar e
+   Excluir não quebrem em duas linhas na coluna estreita da tabela. */
+.client-dossie__tipo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.client-dossie__nome { overflow-wrap: anywhere; }
+.client-dossie__acoes { display: flex; gap: 6px; flex-wrap: nowrap; }
+
 
 .state-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; padding: var(--space-11) var(--space-5); }
 .state-empty--boxed { background: var(--surface-card); border: 1px dashed var(--border-default); border-radius: var(--radius-lg); }

@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(clientes): dossiê do cliente — upload, download e exclusão (F4a) — 2026-09-24
+
+Aba Dossiê na ficha do cliente. Guarda contrato assinado, briefing, manual de
+marca e foto autorizada num bucket privado isolado por organização. **Zero IA**:
+o caminho de RAG virou a F4b e tem requisitos de entrada próprios (§7.6 do
+plano), sendo o primeiro deles poder apagar o documento do lado do fornecedor.
+`rag_uploaded_at` nulo em toda linha é a verdade, e a tela diz isso.
+
+O bucket `client-assets` e as quatro policies já tinham saído na F1 — a
+descrição original da F4 ("bucket, upload, e o RAG consertado") envelheceu
+dentro do próprio plano.
+
+**Três coisas em que o `dealFiles.ts` serviu de modelo e foi deliberadamente
+contrariado**, porque o bucket dele tem a policy cega que é P1 no `TODOS.md`:
+
+1. **O caminho começa pelo id da organização** (`org/empresa/uuid.ext`). A policy
+   do `client-assets` compara `(storage.foldername(name))[1]` com
+   `get_user_org_id()`. O `dealFiles` grava `${dealId}/uuid.ext` e funciona lá
+   só porque a policy dele não olha nada — copiar aquele formato aqui faria
+   **todo upload falhar**, com erro de policy que não explica a causa.
+2. **Upload é desfeito quando o insert falha.** Senão sobra byte no bucket sem
+   linha que o descreva: invisível pro produto e fora do alcance de qualquer
+   pedido de eliminação.
+3. **Erro de Storage na exclusão não é engolido.** O `dealFiles` faz
+   `console.warn` e apaga a linha assim mesmo — que é exatamente como se fabrica
+   byte órfão. Aqui a ordem é bytes primeiro, linha depois: se o Storage falha,
+   nada é apagado; se a linha falha depois, sobra linha visível que dá pra
+   excluir de novo. A ordem inversa produz o órfão invisível.
+
+Excluir recusa apagar arquivo que é o `signed_asset_id` de um contrato — a FK é
+`ON DELETE SET NULL` e zeraria o vínculo em silêncio.
+
+**Um bug real corrigido na revisão**: o download fazia `window.open` depois do
+`await` da URL assinada. A ativação do clique já expirou nesse ponto, e o Safari
+devolve `null` sem erro — o botão não fazia nada e a tela não dizia nada. Agora
+a aba abre vazia dentro do clique e recebe a URL depois, com mensagem explícita
+se o navegador bloquear mesmo assim.
+
+`kind` tem duas listas de propósito: o que dá pra escolher no upload (sem
+`gerado`, que é arquivo produzido pelo sistema) e o que dá pra exibir (com ele,
+senão a linha aparece crua).
+
+### fix(ai-health): sonda com teto de tokens acusava IA fora do ar com a IA sã — 2026-09-24
+
+O health check pedia JSON com `maxOutputTokens: 64`. Esse orçamento é dividido
+com o raciocínio interno do modelo: estourado, o conteúdo volta vazio com
+`finish_reason: "length"` e o AI SDK levanta `No output generated.`, que o check
+reporta como "IA fora do ar". **182 falsos alarmes em 7 dias (27% das
+execuções) e 57 e-mails críticos**, com a IA saudável o tempo todo.
+
+O teto já tinha sido 5 e virado 64 pelo mesmo motivo. Subir o número trata o
+sintoma: a variável não é o modelo, é **qual provedor a OpenRouter sorteia** por
+chamada. Mesmo `deepseek/deepseek-v4-flash-0731`, mesmo prompt — DeepInfra
+gastou 7 tokens raciocinando, Sail Research gastou 64 e truncou, e sem teto
+nenhum um provedor chegou a **289**. Nenhum número escolhido olhando as
+medições de hoje sobreviveria.
+
+Conserto: tirar o teto das duas sondas (`ai-health` e `verificarCaminhoRAG`).
+Elas existem pra exercitar o caminho real, e o caminho real não tem teto — só
+esses dois arquivos definiam `maxOutputTokens` no repositório inteiro. Limite
+que só o vigia tem faz o vigia falhar onde a aplicação não falharia.
+
+Confirmado por causa, não por ausência: 24 chamadas no mesmo minuto e no mesmo
+pool de provedores, variando só o teto — com teto, 2 truncadas e 1 vazia; sem
+teto, zero.
+
 ### feat(clientes): vistas da carteira — cartões, kanban, filtros e ordenação (F3) — 2026-09-07
 
 Três vistas da mesma carteira: tabela, grade de cartões e kanban do ciclo de

@@ -3,7 +3,7 @@
 ## O que é este documento
 
 Decisão prática de quanto tempo guardar dado pessoal nos 3 bancos do
-ecossistema (`prospeccao-aaagencia`, `crm-ea-tmp`, `gerador de propostas
+ecossistema (`prospeccao-aaagencia`, `crm-ea`, `gerador de propostas
 comerciai`) e como atender um pedido de exclusão. **Não é análise jurídica
 formal** — é o registro interno da decisão da fundadora (aprovada
 2026-07-26), complementar ao `lgpd-legitimo-interesse-prospeccao.md` (que
