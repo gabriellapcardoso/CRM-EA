@@ -16,8 +16,16 @@ on:
   push:
     branches:
       - main
+      # `feat/**` E `feature/**`: o repositório usa `feat/` (prefixo dos
+      # conventional commits) em quase toda branch — `feat/clientes-f2`,
+      # `feat/clientes-f3`, `feat/clientes-dossie-f4a` — e só `feature/**`
+      # estava listado. Essas branches dependiam do gatilho `pull_request`
+      # sozinho, sem a rede do push.
+      - "feat/**"
       - "feature/**"
       - "fix/**"
+      - "docs/**"
+      - "qa/**"
   pull_request:
     branches:
       - main
