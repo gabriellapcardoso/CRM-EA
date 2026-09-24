@@ -115,6 +115,38 @@ export interface ClientsMetrics {
 }
 
 // =============================================================================
+// F4a — dossiê
+// =============================================================================
+
+/**
+ * Arquivo do dossiê do cliente.
+ *
+ * `filePath` começa SEMPRE pelo id da organização: a policy do bucket
+ * `client-assets` compara `(storage.foldername(name))[1]` com
+ * `get_user_org_id()`, então caminho sem esse prefixo é upload recusado.
+ */
+export interface ClientAsset {
+    id: string;
+    companyId: string;
+    fileName: string;
+    /** `<organizationId>/<companyId>/<uuid>.<ext>`. Ver `lib/supabase/clientAssets.ts`. */
+    filePath: string;
+    fileSize?: number;
+    mimeType?: string;
+    kind: ClientAssetKind;
+    /**
+     * Id do documento dentro do store da empresa. Nulo = não chegou no RAG.
+     * A F4a nunca preenche isto — o caminho de RAG é a F4b, e ela tem
+     * requisitos de entrada próprios (PLANO-CLIENTES.md §7.6).
+     */
+    ragDocumentId?: string;
+    ragUploadedAt?: string;
+    createdAt: string;
+    createdBy?: string;
+    organizationId?: string;
+}
+
+// =============================================================================
 // F2 — ficha do cliente
 // =============================================================================
 

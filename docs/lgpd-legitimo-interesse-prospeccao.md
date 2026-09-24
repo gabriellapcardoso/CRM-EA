@@ -50,7 +50,7 @@ Como isso se aplica aqui:
 ## Direitos do titular — como são respeitados na prática
 
 O Art. 10 só sustenta o tratamento se os direitos do titular (Art. 18) forem
-preserváveis. Mecanismos já implementados no T4 (`crm-ea-tmp`):
+preserváveis. Mecanismos já implementados no T4 (`crm-ea`):
 
 - **Opt-out imediato e automático**: rodapé fixo na 1ª mensagem convida a
   responder "SAIR" (ou variantes: parar/descadastrar/stop). O parser

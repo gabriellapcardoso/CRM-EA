@@ -2,15 +2,15 @@
 
 import React from 'react';
 
-export type AbaDoCliente = 'visao-geral' | 'comercial' | 'timeline';
+export type AbaDoCliente = 'visao-geral' | 'comercial' | 'dossie' | 'timeline';
 
 /**
  * Abas da ficha do cliente.
  *
- * A F2 entrega três das sete que a spec pede. As outras quatro (dossiê,
- * contexto criativo, identidade e produtos, operacional) chegam nas F4 e F5 —
- * e só aparecem aqui quando existirem. Barra com item morto é pior que barra
- * curta: ela promete tela que não abre.
+ * A F2 entregou três das sete que a spec pede; a F4a acrescentou o Dossiê. As
+ * outras três (contexto criativo, identidade e produtos, operacional) chegam na
+ * F5 — e só aparecem aqui quando existirem. Barra com item morto é pior que
+ * barra curta: ela promete tela que não abre.
  *
  * A aba escolhida vive na URL (`?aba=`), não em `useState`: dá pra recarregar
  * na aba certa e mandar o endereço pra outra pessoa.
@@ -18,6 +18,7 @@ export type AbaDoCliente = 'visao-geral' | 'comercial' | 'timeline';
 const ABAS: ReadonlyArray<{ id: AbaDoCliente; rotulo: string }> = [
     { id: 'visao-geral', rotulo: 'Visão Geral' },
     { id: 'comercial', rotulo: 'Comercial' },
+    { id: 'dossie', rotulo: 'Dossiê' },
     { id: 'timeline', rotulo: 'Timeline' },
 ];
 

@@ -302,6 +302,10 @@ certo é o do `messaging-media`: `(storage.foldername(name))[1] =
 get_user_org_id()::text`, aplicado a INSERT, SELECT, UPDATE e DELETE. Bucket novo
 copia esse, e o caminho do arquivo começa pelo id da organização.
 
+**Dossiê do cliente: o caminho no Storage é contrato de segurança, não organização de pastas (F4a, 2026-09-24).** `client-assets` compara `(storage.foldername(name))[1]` com `get_user_org_id()`, então o caminho **começa pelo id da organização** (`org/empresa/uuid.ext`) — `lib/supabase/clientAssets.ts`. O `dealFiles.ts` serviu de modelo pro fluxo e foi contrariado em três pontos, porque o bucket dele tem a policy cega: caminho sem prefixo de organização (copiar faz todo upload falhar), upload não desfeito quando o insert falha (byte órfão é pior que linha órfã), e erro de Storage engolido na exclusão. **Excluir apaga bytes primeiro e linha depois**: se o Storage falha nada é apagado; se a linha falha depois sobra linha visível, que dá pra excluir de novo. A ordem inversa produz órfão invisível. Excluir recusa asset que é `signed_asset_id` de contrato (a FK é `ON DELETE SET NULL` e zeraria o vínculo em silêncio). Guardas: `test/clientAssetsCaminhoPorOrganizacao.test.ts` (código) e `test/clientAssetsExclusao.test.ts`; a migration é guardada pela F1, não aqui.
+
+**Abrir aba depois de `await` é bloqueado como pop-up.** `window.open(url)` depois de uma chamada assíncrona já não está na pilha de ativação do usuário: o Safari devolve `null` sem erro e o botão fica mudo. Abrir a aba vazia **dentro do clique** e atribuir `location.href` depois. Achado no download do dossiê.
+
 **PII não entra no caminho de IA.** `client_assets.kind = 'contrato'` é excluído do
 upload pro File Search Store por constraint no banco (`CHECK (NOT (kind =
 'contrato' AND rag_document_id IS NOT NULL))`), não só por `if` na aplicação — a

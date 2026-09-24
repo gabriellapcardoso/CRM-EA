@@ -11,6 +11,7 @@ import { estadoDaConsulta } from '@/lib/clients/estadoDaConsulta';
 import { ClientTabs, ehAbaValida, type AbaDoCliente } from './ClientTabs';
 import { VisaoGeralTab } from './VisaoGeralTab';
 import { ComercialTab } from './ComercialTab';
+import { DossieTab } from './DossieTab';
 import { TimelineTab } from './TimelineTab';
 
 /** `YYYY-MM-DD` por corte de string: `new Date(iso)` lê como UTC e, em GMT-3, mostra o dia anterior. */
@@ -154,6 +155,7 @@ export default function ClientDetailPage({ companyId }: { companyId: string }) {
 
             {aba === 'visao-geral' && <VisaoGeralTab cliente={cliente} />}
             {aba === 'comercial' && <ComercialTab companyId={companyId} />}
+            {aba === 'dossie' && <DossieTab companyId={companyId} />}
             {aba === 'timeline' && <TimelineTab companyId={companyId} />}
         </div>
     );

@@ -44,6 +44,7 @@ export const queryKeys = {
         events: (companyId: string) => [...base.all, 'events', companyId] as const,
         team: (companyId: string) => [...base.all, 'team', companyId] as const,
         aiActions: (companyId: string) => [...base.all, 'aiActions', companyId] as const,
+        assets: (companyId: string) => [...base.all, 'assets', companyId] as const,
     })),
     boards: createQueryKeys('boards'),
 

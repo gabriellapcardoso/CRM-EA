@@ -8,8 +8,9 @@ import {
     clientTeamService,
     contarAcoesDeIA,
 } from '@/lib/supabase/clients';
+import { clientAssetsService } from '@/lib/supabase/clientAssets';
 import type { PaginationState } from '@/types';
-import type { ClientContract, ClientsFilters, ClientView } from '@/types/clients';
+import type { ClientAsset, ClientContract, ClientsFilters, ClientView } from '@/types/clients';
 
 /**
  * Página da carteira. `keepPreviousData` evita a tela piscar em branco a cada
@@ -272,5 +273,69 @@ export const useClientAIActions = (companyId?: string) => {
         },
         staleTime: 5 * 60 * 1000,
         enabled: !authLoading && !!user && !!companyId,
+    });
+};
+
+
+// =============================================================================
+// F4a — dossiê
+// =============================================================================
+
+export const useClientAssets = (companyId?: string) => {
+    const { user, loading: authLoading } = useAuth();
+    return useQuery({
+        queryKey: queryKeys.clients.assets(companyId ?? ''),
+        queryFn: async ({ signal }) => {
+            const { data, error } = await clientAssetsService.listar(companyId!, { signal });
+            if (error) throw error;
+            return data ?? [];
+        },
+        staleTime: 60 * 1000,
+        enabled: !authLoading && !!user && !!companyId,
+    });
+};
+
+/**
+ * Upload. `organizationId` sai do `useAuth` aqui, e não do componente, pra que
+ * nenhuma tela precise lembrar que o caminho do arquivo depende dele — esquecer
+ * isso faz o upload falhar na policy do bucket, com erro que não explica nada.
+ */
+export const useUploadClientAsset = () => {
+    const queryClient = useQueryClient();
+    const { organizationId } = useAuth();
+    return useMutation({
+        mutationFn: async (entrada: {
+            companyId: string;
+            file: File;
+            kind: ClientAsset['kind'];
+        }) => {
+            if (!organizationId) {
+                throw new Error('Organização não identificada — recarregue a página e tente de novo.');
+            }
+            const { data, error } = await clientAssetsService.enviar({ ...entrada, organizationId });
+            if (error) throw error;
+            return data!;
+        },
+        onSuccess: (_dados, entrada) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.clients.assets(entrada.companyId) });
+        },
+    });
+};
+
+export const useDeleteClientAsset = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({
+            asset,
+        }: {
+            asset: Pick<ClientAsset, 'id' | 'filePath'>;
+            companyId: string;
+        }) => {
+            const { error } = await clientAssetsService.excluir(asset);
+            if (error) throw error;
+        },
+        onSuccess: (_dados, { companyId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.clients.assets(companyId) });
+        },
     });
 };

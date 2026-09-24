@@ -1,7 +1,7 @@
 # AGENTS.md — NossoCRM
 
 ## Scope (read before touching any file)
-- **Write only inside `/Users/gabriellacardoso/AI/projetos/crm-ea-tmp`.** All documentation and files for this work live here. Do not create, edit, or commit files elsewhere on disk — the parent directory `~/AI/projetos/` is a mixed repo holding unrelated projects and a lot of the owner's uncommitted work
+- **Write only inside `/Users/gabriellacardoso/AI/projetos/crm-ea`.** All documentation and files for this work live here. Do not create, edit, or commit files elsewhere on disk — the parent directory `~/AI/projetos/` is a mixed repo holding unrelated projects and a lot of the owner's uncommitted work
 - **In scope:** this CRM, and the agency's ecosystem systems it integrates with (prospecção, gerador de propostas) — but reason about those from here; do not edit their repos without being asked
 - **One named exception: `~/AI/projetos/CLAUDE.md` is the ecosystem orchestration doc.** Updating it is part of the job when a fact genuinely crosses projects (pipeline state, a new webhook between systems, a shared secret). It carries its own rule — only cross-project facts, never CRM-internal detail duplicated, because a copy goes stale on its own. That file claimed for weeks that the WhatsApp channel was tested and working while it received nothing. Treating it as untouchable causes the same drift from the other side. The exception is that file and nothing else in `~/AI/projetos/`
 - **Out of scope:** everything else in `~/AI/projetos/`, including `gerador-foto-apoio`, `credenciais-estacionamento` and `painel-controle-eleições-2026`. Not "lower priority" — not this agent's work at all

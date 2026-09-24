@@ -1,5 +1,63 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Guarda duplicada e mais fraca ocupa o lugar mental da guarda boa (2026-09-24)
+
+A F4a escreveu `test/clientAssetsCaminhoPorOrganizacao.test.ts` com duas
+asserções sobre as policies do bucket. A guarda da F1
+(`clientesMigrationGuards.test.ts:125-147`) **já cobria as quatro policies, e
+cobria melhor**: exige a string inteira
+`(storage.foldername(name))[1] = public.get_user_org_id()::text` nas quatro,
+mais `FOR <OP> TO authenticated`, mais "exatamente quatro policies".
+
+A versão nova exigia a string inteira só no INSERT e aceitava qualquer
+`storage.foldername(name)` em SELECT, UPDATE e DELETE — inclusive `[2]`, ou
+comparação contra literal. O SELECT é o que governa a URL assinada de download:
+degradado, todo mundo lê o contrato com CNPJ de qualquer organização, e a
+asserção continua verde.
+
+**Duplicata mais fraca não é reforço, é substituição.** Quem lê o arquivo novo
+conclui que a migration está guardada e não procura mais. As duas asserções
+foram apagadas; o arquivo novo cuida do CÓDIGO, a guarda da F1 cuida da
+migration.
+
+Regra: antes de escrever guarda sobre um artefato, `grep` por quem já guarda
+aquele artefato. Se já existe, ou reforçar a existente ou não escrever.
+
+## Teste que prova a função pura e nunca prova quem a chama (2026-09-24)
+
+`caminhoDoAsset(organizationId, companyId, nome, uuid)` tem teste que prova a
+ordem dos segmentos e amarra o formato à policy do bucket. Trocar os argumentos
+**no call site** — `caminhoDoAsset(entrada.companyId, entrada.organizationId, …)`
+— passa nos 15 testes: os dois parâmetros são `string`, o TypeScript não acusa,
+e em produção **todo upload falha** na policy com erro que não explica a causa.
+
+Achado por teste de mutação, não por leitura. É a armadilha que este arquivo já
+registra ("capacidade implementada sem call site é indistinguível de capacidade
+ausente") deslocada um nível: agora existe call site, e é o **teste** que não o
+alcança.
+
+**Regra:** função pura com ordem de parâmetros do mesmo tipo precisa de teste no
+CALL SITE, não só na função. E a maneira de descobrir isso não é reler o teste —
+é mutar o código e exigir vermelho. Ler o próprio teste sempre confirma o que ele
+pretendia provar.
+
+Corolário barato: quando dois parâmetros adjacentes são `string` e trocá-los
+compila, ou o teste cobre o call site ou os tipos deviam ser distintos.
+
+## Asserção negativa passa verde pelo motivo errado (2026-09-24)
+
+`expect(FONTE).not.toMatch(/`\${companyId}\//)` proibia um formato de caminho
+errado específico. Passava — e continuaria passando se `companyId` sumisse do
+caminho por completo. **Proibir um erro não é exigir o acerto.**
+
+Trocada por asserção POSITIVA sobre a forma inteira:
+`expect(caminhoDoAsset('ORG','EMP','a.pdf','UUID')).toBe('ORG/EMP/UUID.pdf')`.
+
+Terceira aparição desta família neste repositório (as outras duas estão
+registradas acima e no aprendizado de 2026-09-18 sobre ids que nenhuma regra
+emite mais). O padrão: **asserção negativa é verde por padrão** — ela só vira
+informação quando alguém prova que ela sabe ficar vermelha.
+
 ## Teto de tokens é orçamento dividido com o raciocínio, e o provedor é sorteio (2026-09-24)
 
 O health check da IA mandou **57 e-mails "IA fora do ar" em 7 dias**, com a IA
