@@ -93,13 +93,27 @@ async function checarIA(
     // tasks com o check reportando verde — falso negativo exatamente durante o
     // incidente. Exercitar o caminho real é o ponto do check existir.
     //
-    // 64 tokens, não 5: com 5 o DeepSeek v4 consumia o orçamento inteiro no
-    // raciocínio interno e devolvia vazio, e o check acusava falha com a IA
-    // saudável.
+    // SEM `maxOutputTokens`, e isso é o conserto, não um esquecimento.
+    //
+    // O orçamento de saída é compartilhado entre o raciocínio interno do modelo
+    // e a resposta. Estourá-lo devolve conteúdo VAZIO com `finish_reason:
+    // "length"`, e o AI SDK levanta `No output generated.` — que este check leu
+    // como "IA fora do ar" 182 vezes em 7 dias, com a IA saudável.
+    //
+    // O teto era 5, virou 64 pelo mesmo motivo, e voltou a falhar. Subir o
+    // número trata o sintoma: a variável não é o modelo, é QUAL PROVEDOR a
+    // OpenRouter sorteia. O mesmo `deepseek/deepseek-v4-flash-0731`, no mesmo
+    // prompt, gastou 7 tokens pela DeepInfra e 64 pela Sail Research — medido,
+    // 8 chamadas, 1 truncou. Não existe número seguro contra um sorteio.
+    //
+    // As 17 chamadas reais da aplicação não definem teto nenhum (só este check
+    // e `verificarCaminhoRAG` definiam, no repositório inteiro). Um limite que
+    // só o vigia tem faz o vigia falhar onde a aplicação não falharia — e o
+    // ponto deste check é exercitar o caminho real. Também não economiza: o
+    // modelo para sozinho em ~40 tokens. Guarda: `test/healthCheckSemTetoDeTokens.test.ts`.
     const result = await generateText({
       model,
       prompt: 'Responda com ok: true.',
-      maxOutputTokens: 64,
       output: Output.object({ schema: z.object({ ok: z.boolean() }) }),
       abortSignal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
     });

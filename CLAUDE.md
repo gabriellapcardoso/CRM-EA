@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Escopo
 
-**Escrever só dentro de `/Users/gabriellacardoso/AI/projetos/crm-ea-tmp`.** Toda a documentação e todos os arquivos deste trabalho ficam aqui. O diretório pai `~/AI/projetos/` é um repositório misto, com projetos sem relação com a agência e bastante trabalho não commitado da fundadora — trocar de branch lá já foi bloqueado duas vezes por isso, e dar `stash` seria destruir trabalho que não é seu.
+**Escrever só dentro de `/Users/gabriellacardoso/AI/projetos/crm-ea`.** Toda a documentação e todos os arquivos deste trabalho ficam aqui. O diretório pai `~/AI/projetos/` é um repositório misto, com projetos sem relação com a agência e bastante trabalho não commitado da fundadora — trocar de branch lá já foi bloqueado duas vezes por isso, e dar `stash` seria destruir trabalho que não é seu.
 
 Em escopo: este CRM e os sistemas do ecossistema da agência com que ele se integra (prospecção, gerador de propostas), raciocinando sobre eles a partir daqui. Fora de escopo: o resto de `~/AI/projetos/`, incluindo `gerador-foto-apoio`. Se uma mudança pertencer mesmo a outro repositório, dizer isso e parar.
 
@@ -164,6 +164,8 @@ const model = getModel(config.provider, config.apiKey, config.model)
 **Health check passa pelo caminho da própria aplicação** (`getOrgAIConfig` + `getModel`), nunca um ping ao fornecedor: em 2026-09-01 o fornecedor estava de pé e a config da org é que estava quebrada — um ping teria reportado tudo saudável. Duas janelas distintas em `ai-health`: 20min decide se é a 2ª falha consecutiva, 4h decide se manda e-mail. Grava sempre, e-mail limitado. A janela precisa ser **maior que a cadência do cron** — se a cadência esticar sem a janela acompanhar, a 2ª falha nunca é reconhecida como consecutiva e o e-mail **nunca sai**, com os registros continuando a ser gravados normalmente. Guarda: `test/aiHealthWindowCadence.test.ts` lê os dois números dos arquivos reais.
 
 **RAG é um segundo caminho de IA, com chave e fornecedor separados** (`ai_google_key` + API nativa do Google, não passa pela OpenRouter). O `ai-health` cobre esse caminho via `verificarCaminhoRAG()` (`lib/ai/messaging/file-search.ts`), chamado **depois** do check de chat passar — se o chat caiu, esse é o problema maior e o motivo do alerta tem que falar dele — e **só** pra org que configurou a chave. Limitação deliberada: a chamada não usa File Search Store (o store é por board, nem toda org tem), então pega chave revogada/cota/modelo fora do catálogo, não pega store apagado.
+
+**Sonda de health check não põe teto de saída.** `maxOutputTokens` é orçamento dividido com o raciocínio do modelo; estourado, a resposta volta vazia e o check acusa "IA fora do ar" com a IA sã. Aconteceu duas vezes (teto 5, depois 64) e a segunda custou 57 e-mails falsos em 7 dias — subir o número não resolve, porque a OpenRouter sorteia o provedor a cada chamada e cada um gasta um tanto diferente pensando (7 a 64 tokens, mesmo modelo e prompt). As 17 chamadas reais não definem teto; a sonda também não define. Guarda: `test/healthCheckSemTetoDeTokens.test.ts`.
 
 **Concorrência do health check**: `comLimiteDeConcorrencia()` (`lib/utils/concurrency.ts`, pool de trabalhadores, sem dependência nova) limita a 10 orgs simultâneas. `Promise.allSettled` cru dispara todas de uma vez — o número de chamadas simultâneas à OpenRouter e ao pool do Supabase cresceria junto com o número de orgs, e rate limit vira backoff que estoura o `maxDuration=60` cortando o lote no meio sem registro.
 

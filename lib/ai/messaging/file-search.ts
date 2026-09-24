@@ -70,7 +70,12 @@ export async function verificarCaminhoRAG({
       model,
       contents: [{ role: 'user', parts: [{ text: 'Responda: ok' }] }],
       config: {
-        maxOutputTokens: 16,
+        // Sem teto de saída, pelo mesmo motivo do check de chat: o orçamento é
+        // dividido com o raciocínio interno, e estourá-lo devolve resposta
+        // vazia que o check leria como fornecedor fora do ar. Aqui o teto era
+        // 16 — pior ainda que os 64 que já produziram 182 alarmes falsos. Não
+        // disparou até hoje só porque nenhuma org configurou `ai_google_key`.
+        // `generateWithFileSearch`, o caminho real de RAG, também não põe teto.
         abortSignal: AbortSignal.timeout(timeoutMs),
       },
     });
