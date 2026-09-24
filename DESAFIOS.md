@@ -1,5 +1,91 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Teto de tokens é orçamento dividido com o raciocínio, e o provedor é sorteio (2026-09-24)
+
+O health check da IA mandou **57 e-mails "IA fora do ar" em 7 dias**, com a IA
+saudável o tempo todo. 182 falhas em 672 execuções: **27%**, mais ou menos uma em
+quatro. Erro sempre o mesmo, `No output generated.`
+
+A sonda pedia JSON com `maxOutputTokens: 64`. Esse orçamento **não é só da
+resposta** — o modelo de raciocínio gasta parte dele pensando antes de escrever.
+Estourado, o conteúdo volta **vazio** com `finish_reason: "length"`, HTTP 200, e o
+AI SDK levanta `No output generated.`, que o check lê como fornecedor fora do ar.
+
+**O que torna isso não-determinístico**: a OpenRouter sorteia um PROVEDOR por
+chamada. Mesma chave, mesmo `deepseek/deepseek-v4-flash-0731`, mesmo prompt, 15
+chamadas medidas:
+
+| Provedor | Tokens de saída |
+|---|---|
+| DeepInfra, Mancer 2 | 7 |
+| OpenInference, DigitalOcean | 30–41 |
+| Wafer | 45 |
+| Nebius | 56 |
+| **Sail Research** | **42–64** (uma truncou em 64 exatos) |
+
+**Já tinha sido "consertado" uma vez.** O teto era 5, o mesmo defeito apareceu, e
+subiram pra 64. Trataram o número, não a causa — contra sorteio de provedor não
+existe número seguro. Sinal de que o conserto é do tipo errado: quando o valor
+novo é escolhido por caber nas medições de hoje, ele expira quando o fornecedor
+muda o roteamento, sem ninguém tocar no código.
+
+**Conserto**: tirar o teto das duas sondas (`ai-health` e `verificarCaminhoRAG`).
+Elas existem pra exercitar o caminho real, e o caminho real não tem teto — só
+esses dois arquivos definiam `maxOutputTokens` no repositório inteiro. **Limite
+que só o vigia tem faz o vigia falhar onde a aplicação não falharia.** Não
+economiza nada: o modelo para sozinho em ~40 tokens. Guarda:
+`test/healthCheckSemTetoDeTokens.test.ts` recusa qualquer teto abaixo de 512 em
+`lib/ai` e `app/api`.
+
+**A regra geral**: alarme falso recorrente é mais caro que o incidente que ele
+imita. 57 e-mails numa semana ensinam a pessoa a ignorar o e-mail que um dia vai
+ser verdadeiro. Ao investigar alerta que se repete, **medir a taxa antes de
+procurar a causa** — 100% aponta pra configuração quebrada, 27% aponta pra
+sorteio, e são famílias de problema diferentes.
+
+**Como diagnosticar sem expor a chave**: `pg_net` de dentro do Postgres, lendo a
+credencial por subselect (padrão já documentado no `CLAUDE.md`). Dá pra disparar
+N chamadas iguais com `generate_series` e agregar `finish_reason`,
+`completion_tokens` e `provider` — foi assim que o sorteio apareceu. Uma chamada
+só teria mostrado sucesso e escondido o defeito.
+
+## Regex que casa "o primeiro `return` com template" pega a função errada (2026-09-11)
+
+Na F4a, a guarda estática do caminho do dossiê procurava o template assim:
+
+```ts
+const template = FONTE.match(/return `(\$\{[^`]*)`;/)?.[1];
+```
+
+O alvo era `caminhoDoAsset`, cujo retorno é:
+
+```ts
+return `${organizationId}/${companyId}/${uuid}${ext ? `.${ext}` : ''}`;
+```
+
+**A crase aninhada corta o casamento.** `[^`]*` para na crase interna de
+`` `.${ext}` ``, então o grupo nunca contém o template inteiro — e o `match`
+seguiu procurando até achar o `return` com template de `formatarTamanho`, cem
+linhas abaixo. O teste falhou, o que foi sorte: se a função errada tivesse
+contido a palavra procurada, ele teria passado **sobre o alvo errado**, que é o
+modo de falha já registrado neste arquivo (`not.toContain` sobre alvo errado é
+sempre verde).
+
+**Como isso não repete**: teste estático mira o **bloco nomeado**, nunca "a
+primeira ocorrência de um formato". Extrair por `export function <nome>\(`
+até o fecho e asserir dentro dele:
+
+```ts
+const corpo = FONTE.match(/export function caminhoDoAsset\([\s\S]*?\n\}/)?.[0];
+expect(corpo, 'função não encontrada').toBeDefined();
+```
+
+O `expect(..., 'não encontrada').toBeDefined()` é o que transforma "regex não
+casou" em falha explícita em vez de asserção sobre `undefined`. E vale a regra
+que já estava aqui: a injeção de regressão tem que bater o NÚMERO de falhas
+contra o número de asserções que dependem do conserto. Aqui foram 6 de 9, e as
+3 verdes eram as que leem o SQL da migration — não dependem do código.
+
 ## Distribuir por igualdade contra lista fechada some com quem não casa (2026-09-07)
 
 O kanban da carteira monta as colunas a partir de `ESTAGIOS_DO_CICLO` e joga
