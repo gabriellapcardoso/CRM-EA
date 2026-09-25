@@ -13,7 +13,12 @@
  * Concluído" num arquivo. Aqui a lista é uma; as duas formas saem dela.
  */
 
-import type { ClientCategory, ClientLifecycleStage, ClientNiche } from '@/types/clients';
+import type {
+    ClientAssetKind,
+    ClientCategory,
+    ClientLifecycleStage,
+    ClientNiche,
+} from '@/types/clients';
 
 interface Termo<T extends string> {
     value: T;
@@ -50,6 +55,30 @@ export const CATEGORIAS: ReadonlyArray<Termo<ClientCategory>> = [
     { value: 'bronze', label: 'Bronze' },
 ];
 
+/**
+ * Tipos de arquivo do dossiê — DUAS listas, porque são duas perguntas.
+ *
+ * `TIPOS_DE_ARQUIVO` é o que dá pra EXIBIR e espelha o CHECK do banco
+ * (`client_assets_kind_check`) inteiro. `TIPOS_DE_ARQUIVO_ENVIAVEIS` é o que dá
+ * pra ESCOLHER ao subir, e omite `gerado` de propósito: ele marca arquivo
+ * produzido pelo sistema, e oferecê-lo num seletor manual faria a origem do
+ * arquivo mentir.
+ *
+ * Derivar o rótulo só da lista de envio fazia a linha de um arquivo `gerado`
+ * aparecer crua na tabela. Duas listas explícitas, uma derivada da outra, em vez
+ * de uma lista servindo a dois propósitos diferentes.
+ */
+export const TIPOS_DE_ARQUIVO: ReadonlyArray<Termo<ClientAssetKind>> = [
+    { value: 'documento', label: 'Documento' },
+    { value: 'foto_autorizada', label: 'Foto Autorizada' },
+    { value: 'contrato', label: 'Contrato' },
+    { value: 'gerado', label: 'Gerado pelo Sistema' },
+];
+
+/** Os que uma pessoa escolhe ao subir. `gerado` fica de fora — ver acima. */
+export const TIPOS_DE_ARQUIVO_ENVIAVEIS: ReadonlyArray<Termo<ClientAssetKind>> =
+    TIPOS_DE_ARQUIVO.filter(t => t.value !== 'gerado');
+
 function rotulo<T extends string>(lista: ReadonlyArray<Termo<T>>, valor?: T | null): string {
     if (!valor) return '—';
     // Valor fora da lista é dado que o CHECK deveria ter barrado. Devolver o
@@ -61,6 +90,8 @@ function rotulo<T extends string>(lista: ReadonlyArray<Termo<T>>, valor?: T | nu
 export const rotuloDoEstagio = (v?: ClientLifecycleStage | null) => rotulo(ESTAGIOS_DO_CICLO, v);
 export const rotuloDoNicho = (v?: ClientNiche | null) => rotulo(NICHOS, v);
 export const rotuloDaCategoria = (v?: ClientCategory | null) => rotulo(CATEGORIAS, v);
+
+export const rotuloDoTipoDeArquivo = (v?: ClientAssetKind | null) => rotulo(TIPOS_DE_ARQUIVO, v);
 
 const VALORES_DE_ESTAGIO = new Set<string>(ESTAGIOS_DO_CICLO.map(e => e.value));
 

@@ -9,38 +9,15 @@ import {
 } from '@/lib/query/hooks/useClientsQuery';
 import { estadoDaConsulta } from '@/lib/clients/estadoDaConsulta';
 import {
+    TIPOS_DE_ARQUIVO_ENVIAVEIS,
+    rotuloDoTipoDeArquivo,
+} from '@/lib/clients/vocabulario';
+import {
     clientAssetsService,
     formatarTamanho,
     TAMANHO_MAXIMO_BYTES,
 } from '@/lib/supabase/clientAssets';
 import type { ClientAsset, ClientAssetKind } from '@/types/clients';
-
-/**
- * Tipos que uma pessoa escolhe ao subir arquivo.
- *
- * `gerado` fica de fora: ele marca arquivo produzido pelo sistema, e oferecê-lo
- * num seletor manual deixaria a origem do arquivo mentindo. Os três aqui são os
- * que alguém de fato sobe.
- */
-const TIPOS: ReadonlyArray<{ value: ClientAssetKind; label: string }> = [
-    { value: 'documento', label: 'Documento' },
-    { value: 'foto_autorizada', label: 'Foto Autorizada' },
-    { value: 'contrato', label: 'Contrato' },
-];
-
-/**
- * Rótulos de EXIBIÇÃO, que incluem `gerado`.
- *
- * O seletor de upload (`TIPOS`) omite `gerado` de propósito — arquivo produzido
- * pelo sistema não é coisa que alguém escolhe ao subir. Mas o CHECK do banco
- * aceita o valor, então a tabela pode conter uma linha assim, e derivar o
- * rótulo só de `TIPOS` fazia ela aparecer crua como "gerado". Duas listas
- * porque são duas perguntas: o que dá pra escolher, e o que dá pra mostrar.
- */
-const ROTULO_DO_TIPO = new Map<ClientAssetKind, string>([
-    ...TIPOS.map(t => [t.value, t.label] as const),
-    ['gerado', 'Gerado pelo Sistema'],
-]);
 
 /** `timestamptz` no fuso do navegador. O banco guarda UTC; a tela converte. */
 function quando(iso: string): string {
@@ -86,8 +63,13 @@ export const DossieTab: React.FC<{ companyId: string }> = ({ companyId }) => {
 
     async function aoEscolherArquivo(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
-        // Limpa o input SEMPRE: sem isto, escolher o mesmo arquivo de novo
-        // depois de um erro não dispara `change` e o botão parece morto.
+        // Limpa o input SEMPRE, antes do early return: sem isto, escolher o
+        // mesmo arquivo de novo depois de um erro não dispara `change` e o
+        // botão parece morto. A ordem em relação ao `if (!file) return` só tem
+        // efeito no caso de CANCELAR o seletor, e não há teste que a guarde —
+        // `value` de input de arquivo não é atribuível em happy-dom, então a
+        // injeção de regressão que inverte os dois fica verde. Limitação
+        // conhecida, ver `test/dossieTab.test.tsx`.
         e.target.value = '';
         if (!file) return;
         await enviar.mutateAsync({ companyId, file, kind: tipo }).catch(() => {
@@ -154,7 +136,7 @@ export const DossieTab: React.FC<{ companyId: string }> = ({ companyId }) => {
                         disabled={enviar.isPending}
                         aria-label="Tipo do arquivo a enviar"
                     >
-                        {TIPOS.map(t => (
+                        {TIPOS_DE_ARQUIVO_ENVIAVEIS.map(t => (
                             <option key={t.value} value={t.value}>{t.label}</option>
                         ))}
                     </select>
@@ -233,7 +215,7 @@ export const DossieTab: React.FC<{ companyId: string }> = ({ companyId }) => {
                                     <td>
                                         <span className="client-dossie__nome">{a.fileName}</span>
                                     </td>
-                                    <td>{ROTULO_DO_TIPO.get(a.kind) ?? a.kind}</td>
+                                    <td>{rotuloDoTipoDeArquivo(a.kind)}</td>
                                     <td className="cell-num num">{formatarTamanho(a.fileSize)}</td>
                                     <td>{quando(a.createdAt)}</td>
                                     <td>

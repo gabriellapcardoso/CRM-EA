@@ -1,5 +1,31 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Injeção de regressão que fica VERDE é informação, não fracasso (2026-09-24)
+
+Ao fechar as guardas da F4a, três injeções ficaram vermelhas como esperado e uma
+ficou verde: inverter `e.target.value = ''` com o `if (!file) return` no
+`DossieTab` não quebrou nenhum dos 7 testes novos.
+
+A tentação é tratar isso como injeção mal feita e procurar outra mutação até
+achar uma que falhe. **O verde é a resposta.** Ele diz que o teste não cobre o
+que o comentário do código afirma ser deliberado: `userEvent.upload` sempre
+entrega um arquivo, então o early return nunca dispara e o reset roda nas duas
+ordens. A ordem só tem efeito quando a pessoa abre o seletor e CANCELA — estado
+que não é montável em happy-dom, porque `value` de input de arquivo não é
+atribuível.
+
+Duas saídas honestas, e a terceira é a errada:
+
+1. escrever o teste que distingue (aqui: impossível no ambiente);
+2. **declarar a limitação** no teste E no código, que foi o que ficou;
+3. ~~deixar o teste alegando cobertura que ele não tem~~ — é assim que nasce a
+   asserção que passa por vacuidade, e este arquivo já tem três entradas dessa
+   família.
+
+A injeção não serve só pra validar a guarda: ela **mede o alcance** dela. Rodar e
+anotar o que ficou verde vale tanto quanto o que ficou vermelho, e é a única
+forma de saber a diferença entre "guardado" e "parece guardado".
+
 ## Guarda duplicada e mais fraca ocupa o lugar mental da guarda boa (2026-09-24)
 
 A F4a escreveu `test/clientAssetsCaminhoPorOrganizacao.test.ts` com duas

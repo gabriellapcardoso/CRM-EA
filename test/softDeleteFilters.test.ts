@@ -202,3 +202,28 @@ describe('boardsService.getAll — filtro de deleted_at', () => {
     vi.resetModules()
   })
 })
+
+describe('clientAssetsService.listar — filtro de deleted_at', () => {
+  it('inclui .is(deleted_at, null) na query do dossiê', async () => {
+    // `client_assets` não está entre as oito tabelas de soft-delete do
+    // CLAUDE.md, mas TEM a coluna `deleted_at` (migration:252) e o trigger de
+    // tenant roda em UPDATE — ou seja, a coluna é escrevível por fora da
+    // aplicação. Sem esta guarda, remover o filtro do `listar()` passava verde:
+    // este arquivo enumera serviços um a um, e `clientAssetsService` não estava
+    // no rol. Achado por teste de mutação na revisão da F4a.
+    const assetsBuilder = chainable()
+    assetsBuilder.order = vi.fn(() => Promise.resolve({ data: [], error: null }))
+    const fromMock = vi.fn(() => assetsBuilder)
+
+    vi.doMock('@/lib/supabase/client', () => ({ supabase: { from: fromMock } }))
+
+    const { clientAssetsService } = await import('@/lib/supabase/clientAssets')
+    await clientAssetsService.listar('empresa-1')
+
+    expect(fromMock).toHaveBeenCalledWith('client_assets')
+    expect(hasCall(assetsBuilder._calls, 'is', 'deleted_at', null)).toBe(true)
+
+    vi.doUnmock('@/lib/supabase/client')
+    vi.resetModules()
+  })
+})
