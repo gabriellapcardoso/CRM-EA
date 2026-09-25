@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### test(clientes): guardas da F4a — o call site, o rollback e o vocabulário — 2026-09-24
+
+Fecha os seis P2 de guarda que a revisão da F4a deixou abertos. Cada um provado
+por injeção de regressão: mutar o código e exigir vermelho, não reler o teste.
+
+**O furo grave:** trocar a ordem dos argumentos em
+`caminhoDoAsset(organizationId, companyId, …)` passava nos 15 testes. Os dois são
+`string`, o TypeScript não acusa, e em produção **todo upload falharia** na
+policy do bucket com erro que não explica a causa. O teste antigo amarrava a
+função pura à migration e nunca amarrava quem a chama.
+`test/clientAssetsEnvio.test.ts` afirma sobre o caminho que chega no
+`storage.upload`, e a mutação agora fica vermelha.
+
+Mesmo arquivo fecha o desfazimento do upload quando o insert falha — a única das
+três correções que o `clientAssets.ts` declara sobre o `dealFiles` que não tinha
+guarda, e a única que produz dado permanente e invisível. O teste confere que a
+limpeza remove o MESMO caminho que subiu, não só que remove algo.
+
+`ClientAssetKind` mudou-se pra `lib/clients/vocabulario.ts`, que o `CLAUDE.md`
+declara fonte única do módulo, em duas listas: `TIPOS_DE_ARQUIVO` (exibição,
+espelha o CHECK inteiro) e `TIPOS_DE_ARQUIVO_ENVIAVEIS` (seletor de upload, sem
+`gerado`). Era o quinto vocabulário fechado do módulo e o único sem guarda
+contra o CHECK do banco.
+
+Mais: `clientAssetsService.listar` entrou no `softDeleteFilters`;
+`TAMANHO_MAXIMO_BYTES` passou de comentário afirmando bater com a migration para
+comparação lida da migration; e o `DossieTab` ganhou teste de componente.
+
+**Uma limitação declarada em vez de escondida:** a ordem entre
+`e.target.value = ''` e o `if (!file) return` não tem guarda. A injeção que
+inverte os dois fica VERDE — `userEvent.upload` sempre entrega arquivo, o early
+return nunca dispara, e o caso que distingue (cancelar o seletor) não é montável
+em happy-dom. Escrito no teste e no componente.
+
 ### feat(clientes): dossiê do cliente — upload, download e exclusão (F4a) — 2026-09-24
 
 Aba Dossiê na ficha do cliente. Guarda contrato assinado, briefing, manual de

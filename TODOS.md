@@ -37,34 +37,33 @@ assinado", e sob concorrência isso não é verdade. **Baixa probabilidade hoje*
 acontece. Conserto real: claim atômico de estado no servidor, ou constraint que
 impeça vínculo novo enquanto o asset está marcado pra exclusão.
 
-### Caminhos da F4a sem guarda de teste — P2
+### ~~Caminhos da F4a sem guarda de teste — P2~~ — RESOLVIDO (2026-09-24)
 
-Achados por teste de mutação na revisão da F4a: o código está correto hoje, e
-nada impede que pare de estar.
+Os seis itens fecharam em `test/guardas-da-f4a`. Cada um foi provado por injeção
+de regressão — mutar o código e exigir vermelho, não reler o teste:
 
-- **Trocar a ordem dos argumentos em `caminhoDoAsset(organizationId, companyId, …)`
-  passa em todos os testes.** Os dois são `string`, o TypeScript não acusa, e o
-  resultado é **todo upload falhando** na policy do bucket com erro opaco. O teste
-  atual amarra a função pura à migration e nunca amarra quem a chama.
-  Conserto: `test/clientAssetsEnvio.test.ts`, mock do Storage, afirmar que o
-  caminho passado ao `upload` começa pelo id da organização — com injeção de
-  regressão trocando os argumentos.
-- **O desfazimento do upload quando o insert falha não tem teste nenhum.**
-  Substituir o rollback por nada passa verde. É a única das três correções que o
-  arquivo declara sobre o `dealFiles` que não tem guarda, e a única que produz
-  dado permanente e invisível.
-- **`clientAssetsService` não está em `test/softDeleteFilters.test.ts`.** Remover
-  o `.is('deleted_at', null)` do `listar()` passa verde. O arquivo enumera
-  serviços um a um; acrescentar o caso no molde dos cinco que já estão lá.
-- **`ClientAssetKind` é vocabulário fechado sem guarda contra o CHECK do banco**,
-  e não mora em `lib/clients/vocabulario.ts`, que o `CLAUDE.md` declara fonte
-  única do módulo. Quebra o precedente que a F3 estabeleceu.
-- **`DossieTab.tsx` tem 241 linhas e zero teste de componente.** Sem cobertura:
-  os seis estados de `estadoDaConsulta`, o reset do input que o comentário diz
-  ser deliberado, e o `disabled` dos botões.
-- **O limite de tamanho (`TAMANHO_MAXIMO_BYTES`) afirma bater com o
-  `file_size_limit` do bucket e nada verifica.** O número aparece na tela, então
-  divergir faz a interface mentir antes de o upload falhar no servidor.
+- **Troca de argumentos no call site de `caminhoDoAsset`** → `test/clientAssetsEnvio.test.ts`
+  afirma sobre o caminho que chega no `storage.upload`, não sobre a função pura.
+  Inverter os argumentos agora fica vermelho.
+- **Desfazimento do upload quando o insert falha** → mesmo arquivo, e ele confere
+  que a limpeza remove o MESMO caminho que subiu, não só que remove algo.
+- **`clientAssetsService.listar`** entrou em `test/softDeleteFilters.test.ts`, no
+  rol dos serviços que já estavam lá.
+- **`ClientAssetKind`** mudou-se pra `lib/clients/vocabulario.ts` como
+  `TIPOS_DE_ARQUIVO` (exibição, espelha o CHECK inteiro) e
+  `TIPOS_DE_ARQUIVO_ENVIAVEIS` (seletor de upload, sem `gerado`), com guarda
+  contra o CHECK em `test/clientesFiltrosOrdenacao.test.ts`.
+- **`DossieTab`** ganhou `test/dossieTab.test.tsx`: os estados da consulta, o
+  vocabulário na tela e o reset do input.
+- **`TAMANHO_MAXIMO_BYTES`** agora é comparado com o `file_size_limit` lido da
+  migration, em vez de afirmado por comentário.
+
+**Uma limitação ficou, declarada em vez de escondida:** a ORDEM entre
+`e.target.value = ''` e o `if (!file) return` no `DossieTab` não tem guarda.
+Inverter os dois mantém os testes verdes, porque `userEvent.upload` sempre
+entrega arquivo e o early return nunca dispara. A ordem só importa quando a
+pessoa cancela o seletor, e esse estado não é montável em happy-dom — `value` de
+input de arquivo não é atribuível. Está escrito no teste e no componente.
 
 ### `formatFileSize` existe em três cópias — P3
 

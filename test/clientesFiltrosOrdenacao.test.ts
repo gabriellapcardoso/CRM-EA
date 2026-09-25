@@ -16,6 +16,8 @@ import {
     CATEGORIAS,
     NICHOS,
     ehEstagioConhecido,
+    TIPOS_DE_ARQUIVO,
+    TIPOS_DE_ARQUIVO_ENVIAVEIS,
 } from '@/lib/clients/vocabulario';
 
 const HOJE = '2026-09-07';
@@ -208,6 +210,35 @@ describe('o vocabulário do código tem que bater com o CHECK do banco', () => {
     }
 
     const SQL = readFileSync(join(process.cwd(), MIGRATION), 'utf-8');
+
+    /**
+     * O CHECK de `kind` não tem o `IS NULL OR` dos outros três: a coluna é
+     * NOT NULL com default, então o formato é `kind IN (...)` puro e o
+     * extrator acima não o alcança.
+     */
+    function valoresDoCheckSemNulo(sql: string, coluna: string): string[] {
+        const re = new RegExp(`CHECK \\(${coluna} IN \\(([^)]*)\\)\\)`, 's');
+        const bruto = sql.match(re)?.[1];
+        if (!bruto) throw new Error(`CHECK de ${coluna} não encontrado em ${MIGRATION}`);
+        return [...bruto.matchAll(/'([^']+)'/g)].map(m => m[1]);
+    }
+
+    it('os tipos de arquivo do dossiê são exatamente os do CHECK', () => {
+        // Quinto vocabulário fechado do módulo, e o último a ganhar guarda.
+        // Valor novo no CHECK sem entrada aqui aparece cru na tabela do dossiê
+        // em vez do rótulo — o escape de `rotulo()` protege, este teste avisa.
+        const doBanco = valoresDoCheckSemNulo(SQL, 'kind');
+        expect([...TIPOS_DE_ARQUIVO.map(t => t.value)].sort()).toEqual([...doBanco].sort());
+    });
+
+    it('o seletor de upload omite `gerado`, e só ele', () => {
+        // `gerado` marca arquivo produzido pelo sistema: o banco aceita, a
+        // tabela exibe, e o seletor manual não oferece. A diferença entre as
+        // duas listas é exatamente um valor, e é esse.
+        const exibiveis = TIPOS_DE_ARQUIVO.map(t => t.value);
+        const enviaveis = TIPOS_DE_ARQUIVO_ENVIAVEIS.map(t => t.value);
+        expect(exibiveis.filter(v => !enviaveis.includes(v))).toEqual(['gerado']);
+    });
 
     it('os estágios do ciclo são exatamente os do CHECK, na mesma ordem', () => {
         // A ordem importa: é a das colunas do kanban, e ela é semântica.
