@@ -1,5 +1,76 @@
 # DESAFIOS — fricções operacionais e de ambiente (registradas pra não redescobrir)
 
+## Janela de retro fixa deixa trabalho fora quando o intervalo entre retros varia (2026-09-24)
+
+A retro anterior foi em 06/09. A seguinte rodou com a janela padrão de 7 dias,
+começando em 17/09. **Os cinco PRs de 07/09 — #79 a #83, que são a F2, a F3, o
+QA e o conserto do takeover da IA — não entraram em retro nenhuma.** Caíram no
+vão entre as duas janelas.
+
+É o espelho de um problema já registrado no `painel-gastos-ads`, onde o intervalo
+entre retros era MENOR que a janela e a mesma semana era medida duas vezes. Os
+dois vêm da mesma causa: **a janela é fixa e o intervalo entre retros não é.**
+
+**Como isso não repete:** antes de rodar `/retro`, olhar a data da anterior
+(`ls -t .context/retros/`) e passar a janela que cobre desde ela. Aqui teria sido
+`/retro 18d`. O padrão de 7 dias só está certo por coincidência — quando a
+cadência é semanal de verdade.
+
+Sintoma de que aconteceu: `ACTIVE_DAYS` muito menor que a janela, com PRs
+conhecidos faltando na contagem.
+
+## Métrica corrigida à mão pela quarta vez é defeito da métrica, não da narrativa (2026-09-24)
+
+`REGRESSION_TEST_COMMITS` do `gstack-retro-metrics` reportou **0** numa janela em
+que os três commits carregavam teste de regressão. Ela procura os prefixos
+`test(qa):` / `test(design):` / `test: coverage`, e a convenção deste repositório
+é commitar o teste de regressão **junto** do conserto, sob `feat(...)` ou
+`fix(...)`.
+
+Quarta correção manual da mesma métrica, e a primeira em projeto diferente — o
+que a promove de particularidade local a defeito da métrica. A convenção daqui é
+a certa e não vai mudar: teste junto do conserto é o que garante que os dois
+andam no mesmo PR.
+
+**Regra geral que sai daqui:** quando a mesma métrica é corrigida à mão pela
+terceira vez, o conserto deixa de ser a narrativa e passa a ser a métrica. Anotar
+a correção pela enésima vez é o hábito que impede o conserto de verdade.
+
+**Segunda métrica na mesma família, mesma retro:** `TOTAL_ACTIVE_MINUTES: 0` com
+três sessões micro. O detector usa intervalo de 45 minutos entre commits, e os
+três estavam separados por 7h e 2h — cada um virou sessão de commit único, com
+duração zero. O dia teve horas de trabalho contínuo. **A métrica mede
+espaçamento de commit, não tempo de trabalho**, e com um fluxo de "trabalha
+muito, commita no fim" ela reporta silêncio. Não corrigir a métrica; parar de
+citá-la quando `ACTIVE_DAYS` é baixo e os commits são esparsos.
+
+## CI pode não disparar, e verde na Vercel não é CI (2026-09-24)
+
+O PR #85 ficou com **zero check-suites do GitHub Actions**. O workflow estava
+`active`, sem filtro de caminho, e o gatilho `pull_request` mira `main` — deveria
+ter rodado. `gh pr checks` mostrava só `Vercel` e `Vercel Preview Comments`, os
+dois verdes, o que dá a aparência de PR checado.
+
+Quase virou merge às cegas: o `precheck` local estava verde, e verde local mais
+verde da Vercel parece suficiente até alguém reparar que o job de teste não está
+na lista.
+
+**Duas coisas saíram disso.** A primeira: o gatilho de push listava `feature/**`
+e **não** `feat/**`, que é o prefixo que este repositório usa em quase toda
+branch (`feat/clientes-f2`, `feat/clientes-f3`, `feat/clientes-dossie-f4a`).
+Essas branches dependiam do `pull_request` sozinho, sem rede. Ampliado para
+cobrir `feat/**`, `docs/**` e `qa/**` também.
+
+A segunda, que é a lição: **conferir que o job que importa está na lista**, não
+que a lista está verde. `gh pr checks` verde com o CI ausente é indistinguível de
+`gh pr checks` verde com o CI passando, e a diferença só aparece lendo os nomes.
+`gh api repos/<owner>/<repo>/commits/<sha>/check-suites` diz quais apps sequer
+criaram suite.
+
+Na tentativa seguinte o `pull_request` disparou normalmente, então a falta
+original foi transitória do lado do GitHub. A rede de push é o que garante que a
+próxima transitória não passe despercebida.
+
 ## Injeção de regressão que fica VERDE é informação, não fracasso (2026-09-24)
 
 Ao fechar as guardas da F4a, três injeções ficaram vermelhas como esperado e uma
